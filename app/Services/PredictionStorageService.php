@@ -163,7 +163,7 @@ class PredictionStorageService
             'weather_observation_id' => null,
             'requested_at' => $this->createRequestedAt($input),
             'input_data_json' => $input,
-            'source' => 'Automated',
+           'source' => 'API',
             'status' => 'Completed',
             'error_message' => null,
         ]);

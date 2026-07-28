@@ -237,7 +237,7 @@
                 </h2>
 
                 <p class="mt-1 text-sm text-slate-500">
-                    {{ $citywideResult['barangay_count'] ?? 0 }}
+                    {{ $citywideResult['summary']['total_barangays'] ?? ($citywideResult['barangay_count'] ?? 0) }}
                     barangays analyzed
                 </p>
             </div>
@@ -256,7 +256,7 @@
                         <p class="text-sm font-medium">{{ $level }} Risk</p>
 
                         <p class="mt-2 text-3xl font-bold">
-                            {{ $citywideResult['risk_summary'][$level] ?? 0 }}
+                            {{ $citywideResult['summary']['risk_distribution'][$level] ?? ($citywideResult['risk_summary'][$level] ?? 0) }}
                         </p>
                     </div>
                 @endforeach
@@ -296,7 +296,8 @@
                         <tbody class="divide-y divide-slate-100">
                             @forelse (($citywideResult['predictions'] ?? []) as $index => $item)
                                 @php
-                                    $risk = $item['predicted_risk_level']
+                                    $risk = $item['risk_level']
+                                        ?? $item['predicted_risk_level']
                                         ?? 'Unknown';
 
                                     $badgeClass = match ($risk) {
@@ -323,12 +324,22 @@
                                     </td>
 
                                     <td class="px-4 py-3 text-right text-sm text-slate-700">
+                                        @php
+                                            $confidenceValue =
+                                                $item['confidence_percent']
+                                                ?? null;
+
+                                            if ($confidenceValue === null) {
+                                                $confidenceValue =
+                                                    ((float) (
+                                                        $item['confidence']
+                                                        ?? 0
+                                                    )) * 100;
+                                            }
+                                        @endphp
+
                                         {{ number_format(
-                                            (float) (
-                                                $item[
-                                                    'confidence_percent'
-                                                ] ?? 0
-                                            ),
+                                            (float) $confidenceValue,
                                             2
                                         ) }}%
                                     </td>
@@ -336,9 +347,11 @@
                                     <td class="px-4 py-3 text-right text-sm text-slate-700">
                                         {{ number_format(
                                             (float) (
-                                                $item[
+                                                $item['predicted_depth_mm']
+                                                ?? $item[
                                                     'predicted_flood_depth_mm'
-                                                ] ?? 0
+                                                ]
+                                                ?? 0
                                             ),
                                             2
                                         ) }} mm

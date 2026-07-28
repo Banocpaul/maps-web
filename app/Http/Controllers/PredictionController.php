@@ -24,7 +24,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Display current Mandaluyong weather and the citywide prediction page.
+     * Display current weather and the citywide prediction page.
      */
     public function index(): View
     {
@@ -44,7 +44,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Keep the former single-prediction route from causing an error.
+     * Redirect the old manual prediction route.
      */
     public function run(Request $request): RedirectResponse
     {
@@ -63,23 +63,11 @@ class PredictionController extends Controller
     public function citywide(Request $request): View|RedirectResponse
     {
         try {
-            /*
-             * Retrieve the latest weather data for display and prediction
-             * history storage.
-             */
             $liveWeather = $this->liveWeatherService
                 ->getCurrentWeather();
 
-            /*
-             * Load the geographic, environmental, and historical profile
-             * of every barangay from the production database.
-             */
             $barangays = $this->getBarangayProfiles();
 
-            /*
-             * Preserve the weather fields for storage while adding the
-             * barangays array required by the FastAPI citywide endpoint.
-             */
             $predictionData = array_merge(
                 $this->prepareWeatherStorageData($liveWeather),
                 [
@@ -91,15 +79,9 @@ class PredictionController extends Controller
                 'barangay' => $predictionData['barangays'][0] ?? null,
             ]);
 
-            /*
-             * Send the citywide payload to the deployed FastAPI service.
-             */
             $citywideResult = $this->floodPredictionService
                 ->predictCitywide($predictionData);
 
-            /*
-             * Save all returned barangay predictions to the database.
-             */
             $storedPredictionRuns =
                 $this->predictionStorageService->saveCitywide(
                     input: $predictionData,
@@ -131,10 +113,12 @@ class PredictionController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return back()->with(
-                'error',
-                $exception->getMessage()
-            );
+            return redirect()
+                ->route('prediction.index')
+                ->with(
+                    'error',
+                    $exception->getMessage()
+                );
         } catch (Throwable $exception) {
             Log::error(
                 'Unexpected automated citywide prediction error.',
@@ -145,11 +129,13 @@ class PredictionController extends Controller
                 ]
             );
 
-            return back()->with(
-                'error',
-                'The citywide prediction could not be completed: '
-                . $exception->getMessage()
-            );
+            return redirect()
+                ->route('prediction.index')
+                ->with(
+                    'error',
+                    'The citywide prediction could not be completed: '
+                    . $exception->getMessage()
+                );
         }
     }
 
@@ -168,24 +154,15 @@ class PredictionController extends Controller
         |--------------------------------------------------------------------------
         | DATABASE CONNECTION DIAGNOSTICS
         |--------------------------------------------------------------------------
-        | These temporary logs show which database Laravel is using and what
-        | Laravel receives directly from the barangays table.
-        |--------------------------------------------------------------------------
         */
 
         $connection = DB::selectOne(
-            '
-            SELECT
-                DATABASE() AS database_name,
-                CURRENT_USER() AS current_user
-            '
+            'SELECT DATABASE() AS database_name'
         );
 
         Log::info('Active database connection', [
             'database' =>
                 $connection->database_name ?? null,
-            'current_user' =>
-                $connection->current_user ?? null,
             'configured_host' =>
                 config('database.connections.mysql.host'),
             'configured_port' =>
@@ -199,10 +176,7 @@ class PredictionController extends Controller
         ]);
 
         /*
-         * Run a direct SQL query for Addition Hills.
-         *
-         * This bypasses mapping and alias conversion so the Render log shows
-         * exactly what the connected database returns.
+         * Directly verify Addition Hills.
          */
         $directRow = DB::selectOne(
             '
@@ -230,9 +204,10 @@ class PredictionController extends Controller
         );
 
         /*
-         * Retrieve every barangay profile.
+         * Retrieve all active barangays.
          */
         $rows = DB::table('barangays')
+            ->where('is_active', 1)
             ->orderBy('id')
             ->get();
 
@@ -244,13 +219,10 @@ class PredictionController extends Controller
 
         if ($rows->isEmpty()) {
             throw new RuntimeException(
-                'No barangay records were found in the barangays table.'
+                'No active barangay records were found.'
             );
         }
 
-        /*
-         * Convert database rows into the exact format expected by FastAPI.
-         */
         $profiles = $rows->map(
             function (object $row): array {
                 $data = (array) $row;
@@ -349,12 +321,9 @@ class PredictionController extends Controller
             }
         );
 
-        /*
-         * Mandaluyong City should contain 27 barangay profiles.
-         */
         if ($profiles->count() !== 27) {
             Log::warning(
-                'Unexpected barangay profile count for citywide prediction.',
+                'Unexpected barangay profile count.',
                 [
                     'expected' => 27,
                     'actual' => $profiles->count(),
@@ -366,7 +335,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Prepare weather values used by PredictionStorageService.
+     * Prepare weather values used for prediction storage.
      */
     private function prepareWeatherStorageData(
         array $liveWeather
@@ -435,8 +404,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Retrieve live weather while keeping the prediction page available
-     * if the weather provider becomes unavailable.
+     * Retrieve live weather without breaking the page during failures.
      */
     private function getLiveWeatherContext(): array
     {
@@ -516,7 +484,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Get an optional string value from possible column names.
+     * Get an optional string value.
      */
     private function stringFromAliases(
         array $data,
@@ -543,7 +511,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Get an optional float value from possible column names.
+     * Get an optional float value.
      */
     private function floatFromAliases(
         array $data,
@@ -565,7 +533,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Get an optional integer value from possible column names.
+     * Get an optional integer value.
      */
     private function integerFromAliases(
         array $data,

@@ -11,19 +11,19 @@ use Throwable;
 class FloodPredictionService
 {
     /**
-     * Base URL of the FastAPI machine-learning service.
+     * Base URL of the deployed FastAPI machine-learning service.
      */
     private string $baseUrl;
 
     /**
      * Maximum number of seconds Laravel will wait for the ML API.
      */
-    private int $timeoutSeconds = 60;
+    private int $timeoutSeconds = 120;
 
     /**
      * Maximum number of seconds allowed when establishing a connection.
      */
-    private int $connectTimeoutSeconds = 10;
+    private int $connectTimeoutSeconds = 15;
 
     public function __construct()
     {
@@ -36,23 +36,38 @@ class FloodPredictionService
     }
 
     /**
-     * Run a flood prediction for one barangay.
+     * The currently deployed FastAPI version does not expose POST /predict.
      *
-     * FastAPI endpoint:
-     * POST /predict
+     * This method is retained only to prevent an undefined-method error.
      */
     public function predict(array $data): array
     {
-        $payload = $this->prepareSinglePredictionPayload($data);
-
-        return $this->sendPostRequest('/predict', $payload);
+        throw new RuntimeException(
+            'Single-barangay prediction is not available in the deployed '
+            . 'M.A.P.S. ML API. Use predictCitywide() instead.'
+        );
     }
 
     /**
-     * Run flood predictions for all 27 Mandaluyong barangays.
+     * Run flood predictions for the supplied Mandaluyong barangays.
      *
-     * FastAPI endpoint:
-     * POST /predict/citywide
+     * Expected input:
+     *
+     * [
+     *     'barangays' => [
+     *         [
+     *             'barangay_id' => 1,
+     *             'barangay' => 'Addition Hills',
+     *             'nearest_waterway' => 'Maytunas Creek',
+     *             'elevation_m' => 25,
+     *             'distance_to_waterway_m' => 300,
+     *             'drainage_index' => 0.70,
+     *             'impervious_surface_ratio' => 0.80,
+     *             'population_density_per_km2' => 25000,
+     *             'historical_flood_count_5y' => 10,
+     *         ],
+     *     ],
+     * ]
      */
     public function predictCitywide(array $data): array
     {
@@ -62,10 +77,15 @@ class FloodPredictionService
     }
 
     /**
-     * Check whether the FastAPI service and models are available.
-     *
-     * FastAPI endpoint:
-     * GET /health
+     * Get live weather directly from FastAPI.
+     */
+    public function liveWeather(): array
+    {
+        return $this->sendGetRequest('/weather/live');
+    }
+
+    /**
+     * Check whether the FastAPI service and required models are available.
      */
     public function health(): array
     {
@@ -73,18 +93,7 @@ class FloodPredictionService
     }
 
     /**
-     * Retrieve the model features, barangays, and model metadata.
-     *
-     * FastAPI endpoint:
-     * GET /model-info
-     */
-    public function modelInfo(): array
-    {
-        return $this->sendGetRequest('/model-info');
-    }
-
-    /**
-     * Determine whether all required machine-learning models are loaded.
+     * Determine whether the deployed ML API is ready.
      */
     public function isAvailable(): bool
     {
@@ -101,152 +110,112 @@ class FloodPredictionService
     }
 
     /**
-     * Prepare the exact JSON structure required by FloodPredictionRequest.
-     */
-    private function prepareSinglePredictionPayload(array $data): array
-    {
-        return [
-            'barangay' => $this->requiredString(
-                $data,
-                'barangay'
-            ),
-
-            'date' => $this->requiredString(
-                $data,
-                'date'
-            ),
-
-            'time' => $this->normalizeTime(
-                $this->requiredString($data, 'time')
-            ),
-
-            'cause' => $this->nullableString(
-                $data['cause'] ?? null,
-                'Unknown'
-            ),
-
-            'avg_rainfall_24h_mm' => $this->nullableFloat(
-                $data['avg_rainfall_24h_mm'] ?? null
-            ),
-
-            'rainfall_3d_mm' => $this->nullableFloat(
-                $data['rainfall_3d_mm'] ?? null
-            ),
-
-            'rainfall_7d_mm' => $this->nullableFloat(
-                $data['rainfall_7d_mm'] ?? null
-            ),
-
-            'avg_tmax_c' => $this->nullableFloat(
-                $data['avg_tmax_c'] ?? null
-            ),
-
-            'avg_tmin_c' => $this->nullableFloat(
-                $data['avg_tmin_c'] ?? null
-            ),
-
-            'avg_temp_mean_c' => $this->nullableFloat(
-                $data['avg_temp_mean_c'] ?? null
-            ),
-
-            'avg_rh_pct' => $this->nullableFloat(
-                $data['avg_rh_pct'] ?? null
-            ),
-
-            'avg_wind_speed' => $this->nullableFloat(
-                $data['avg_wind_speed'] ?? null
-            ),
-
-            'avg_wind_direction_deg' => $this->nullableFloat(
-                $data['avg_wind_direction_deg'] ?? null
-            ),
-
-            'weather_station_count' => $this->integerValue(
-                $data['weather_station_count'] ?? 1,
-                1
-            ),
-
-            'weather_match_status' => $this->nullableString(
-                $data['weather_match_status'] ?? null,
-                'Live weather input'
-            ),
-        ];
-    }
-
-    /**
-     * Prepare the exact JSON structure required by
-     * CitywidePredictionRequest.
-     *
-     * The citywide request intentionally does not contain a barangay,
-     * because FastAPI automatically predicts all 27 barangays.
+     * Prepare the exact JSON structure required by the deployed
+     * FastAPI CitywidePredictionRequest schema.
      */
     private function prepareCitywidePredictionPayload(array $data): array
     {
+        $barangays = $data['barangays'] ?? $data;
+
+        if (! is_array($barangays) || $barangays === []) {
+            throw new RuntimeException(
+                'No barangay profiles were supplied for citywide prediction.'
+            );
+        }
+
+        $normalizedBarangays = [];
+
+        foreach ($barangays as $index => $barangay) {
+            if (is_object($barangay)) {
+                if (method_exists($barangay, 'toArray')) {
+                    $barangay = $barangay->toArray();
+                } else {
+                    $barangay = (array) $barangay;
+                }
+            }
+
+            if (! is_array($barangay)) {
+                throw new RuntimeException(
+                    'Invalid barangay profile at index ' . $index . '.'
+                );
+            }
+
+            $normalizedBarangays[] = [
+                'barangay_id' => $this->requiredInteger(
+                    $barangay,
+                    ['barangay_id', 'id']
+                ),
+
+                'barangay' => $this->requiredStringFromAliases(
+                    $barangay,
+                    ['barangay', 'name', 'barangay_name']
+                ),
+
+                'nearest_waterway' => $this->stringFromAliases(
+                    $barangay,
+                    ['nearest_waterway', 'waterway'],
+                    'Unknown'
+                ),
+
+                'elevation_m' => $this->floatFromAliases(
+                    $barangay,
+                    ['elevation_m', 'elevation'],
+                    0.0
+                ),
+
+                'distance_to_waterway_m' => $this->floatFromAliases(
+                    $barangay,
+                    [
+                        'distance_to_waterway_m',
+                        'distance_to_waterway',
+                        'waterway_distance_m',
+                    ],
+                    0.0
+                ),
+
+                'drainage_index' => $this->floatFromAliases(
+                    $barangay,
+                    ['drainage_index'],
+                    0.0
+                ),
+
+                'impervious_surface_ratio' => $this->floatFromAliases(
+                    $barangay,
+                    [
+                        'impervious_surface_ratio',
+                        'impervious_ratio',
+                    ],
+                    0.0
+                ),
+
+                'population_density_per_km2' => $this->floatFromAliases(
+                    $barangay,
+                    [
+                        'population_density_per_km2',
+                        'population_density',
+                    ],
+                    0.0
+                ),
+
+                'historical_flood_count_5y' => $this->integerFromAliases(
+                    $barangay,
+                    [
+                        'historical_flood_count_5y',
+                        'historical_flood_count',
+                        'flood_count_5y',
+                    ],
+                    0
+                ),
+            ];
+        }
+
         return [
-            'date' => $this->requiredString(
-                $data,
-                'date'
-            ),
-
-            'time' => $this->normalizeTime(
-                $this->requiredString($data, 'time')
-            ),
-
-            'cause' => $this->nullableString(
-                $data['cause'] ?? null,
-                'Unknown'
-            ),
-
-            'avg_rainfall_24h_mm' => $this->nullableFloat(
-                $data['avg_rainfall_24h_mm'] ?? null
-            ),
-
-            'rainfall_3d_mm' => $this->nullableFloat(
-                $data['rainfall_3d_mm'] ?? null
-            ),
-
-            'rainfall_7d_mm' => $this->nullableFloat(
-                $data['rainfall_7d_mm'] ?? null
-            ),
-
-            'avg_tmax_c' => $this->nullableFloat(
-                $data['avg_tmax_c'] ?? null
-            ),
-
-            'avg_tmin_c' => $this->nullableFloat(
-                $data['avg_tmin_c'] ?? null
-            ),
-
-            'avg_temp_mean_c' => $this->nullableFloat(
-                $data['avg_temp_mean_c'] ?? null
-            ),
-
-            'avg_rh_pct' => $this->nullableFloat(
-                $data['avg_rh_pct'] ?? null
-            ),
-
-            'avg_wind_speed' => $this->nullableFloat(
-                $data['avg_wind_speed'] ?? null
-            ),
-
-            'avg_wind_direction_deg' => $this->nullableFloat(
-                $data['avg_wind_direction_deg'] ?? null
-            ),
-
-            'weather_station_count' => $this->integerValue(
-                $data['weather_station_count'] ?? 1,
-                1
-            ),
-
-            'weather_match_status' => $this->nullableString(
-                $data['weather_match_status'] ?? null,
-                'Live weather input'
-            ),
+            'barangays' => $normalizedBarangays,
         ];
     }
 
     /**
-     * Send a POST request to the FastAPI service.
+     * Send a POST request to FastAPI.
      */
     private function sendPostRequest(
         string $endpoint,
@@ -257,6 +226,11 @@ class FloodPredictionService
                 ->asJson()
                 ->connectTimeout($this->connectTimeoutSeconds)
                 ->timeout($this->timeoutSeconds)
+                ->retry(
+                    2,
+                    1000,
+                    throw: false
+                )
                 ->post(
                     $this->baseUrl . $endpoint,
                     $payload
@@ -265,9 +239,7 @@ class FloodPredictionService
             throw new RuntimeException(
                 'Cannot connect to the M.A.P.S. ML API at '
                 . $this->baseUrl
-                . '. Make sure FastAPI is running using: '
-                . 'python -m uvicorn main:app --reload '
-                . '--host 127.0.0.1 --port 8000',
+                . '. The Render service may still be waking up.',
                 previous: $exception
             );
         } catch (Throwable $exception) {
@@ -283,7 +255,7 @@ class FloodPredictionService
     }
 
     /**
-     * Send a GET request to the FastAPI service.
+     * Send a GET request to FastAPI.
      */
     private function sendGetRequest(string $endpoint): array
     {
@@ -291,12 +263,17 @@ class FloodPredictionService
             $response = Http::acceptJson()
                 ->connectTimeout($this->connectTimeoutSeconds)
                 ->timeout($this->timeoutSeconds)
+                ->retry(
+                    2,
+                    1000,
+                    throw: false
+                )
                 ->get($this->baseUrl . $endpoint);
         } catch (ConnectionException $exception) {
             throw new RuntimeException(
                 'Cannot connect to the M.A.P.S. ML API at '
                 . $this->baseUrl
-                . '. Make sure the FastAPI server is running.',
+                . '. The Render service may still be waking up.',
                 previous: $exception
             );
         } catch (Throwable $exception) {
@@ -312,7 +289,7 @@ class FloodPredictionService
     }
 
     /**
-     * Validate and return the JSON response from FastAPI.
+     * Validate and return a JSON response from FastAPI.
      */
     private function processResponse(Response $response): array
     {
@@ -328,21 +305,16 @@ class FloodPredictionService
             return $responseData;
         }
 
-        $message = $this->extractApiErrorMessage(
-            $responseData,
-            $response->status()
+        throw new RuntimeException(
+            $this->extractApiErrorMessage(
+                $responseData,
+                $response->status()
+            )
         );
-
-        throw new RuntimeException($message);
     }
 
     /**
-     * Extract a useful message from FastAPI errors.
-     *
-     * This supports:
-     * - 422 Pydantic validation errors
-     * - 500 prediction errors
-     * - ordinary HTTP errors
+     * Extract a readable FastAPI error.
      */
     private function extractApiErrorMessage(
         mixed $responseData,
@@ -373,12 +345,9 @@ class FloodPredictionService
                     ? implode('.', $location)
                     : 'request';
 
-                $errorMessage = $error['msg']
-                    ?? 'Invalid value.';
+                $errorMessage = $error['msg'] ?? 'Invalid value.';
 
-                $validationMessages[] = $field
-                    . ': '
-                    . $errorMessage;
+                $validationMessages[] = $field . ': ' . $errorMessage;
             }
 
             if ($validationMessages !== []) {
@@ -393,98 +362,118 @@ class FloodPredictionService
     }
 
     /**
-     * Retrieve a required non-empty string.
+     * Get a required non-empty string using possible column aliases.
      */
-    private function requiredString(
+    private function requiredStringFromAliases(
         array $data,
-        string $key
+        array $aliases
     ): string {
-        $value = $data[$key] ?? null;
+        foreach ($aliases as $alias) {
+            if (! array_key_exists($alias, $data)) {
+                continue;
+            }
 
-        if (! is_string($value) && ! is_numeric($value)) {
-            throw new RuntimeException(
-                "The required prediction field '{$key}' is missing."
-            );
+            $value = trim((string) $data[$alias]);
+
+            if ($value !== '') {
+                return $value;
+            }
         }
 
-        $normalizedValue = trim((string) $value);
-
-        if ($normalizedValue === '') {
-            throw new RuntimeException(
-                "The required prediction field '{$key}' is empty."
-            );
-        }
-
-        return $normalizedValue;
+        throw new RuntimeException(
+            'Missing required barangay field: '
+            . implode(' or ', $aliases)
+            . '.'
+        );
     }
 
     /**
-     * Convert a blank string to the supplied default value.
+     * Get a string using possible column aliases.
      */
-    private function nullableString(
-        mixed $value,
+    private function stringFromAliases(
+        array $data,
+        array $aliases,
         string $default
     ): string {
-        if ($value === null) {
-            return $default;
+        foreach ($aliases as $alias) {
+            if (! array_key_exists($alias, $data)) {
+                continue;
+            }
+
+            $value = trim((string) $data[$alias]);
+
+            if ($value !== '') {
+                return $value;
+            }
         }
 
-        $normalizedValue = trim((string) $value);
-
-        return $normalizedValue !== ''
-            ? $normalizedValue
-            : $default;
+        return $default;
     }
 
     /**
-     * Convert a numeric input into a float.
-     *
-     * Empty inputs are returned as null because the FastAPI schema permits
-     * nullable weather measurements.
+     * Get a required integer using possible column aliases.
      */
-    private function nullableFloat(mixed $value): ?float
-    {
-        if ($value === null || $value === '') {
-            return null;
+    private function requiredInteger(
+        array $data,
+        array $aliases
+    ): int {
+        foreach ($aliases as $alias) {
+            if (
+                array_key_exists($alias, $data)
+                && is_numeric($data[$alias])
+            ) {
+                return (int) $data[$alias];
+            }
         }
 
-        if (! is_numeric($value)) {
-            return null;
-        }
-
-        return (float) $value;
+        throw new RuntimeException(
+            'Missing required barangay ID field: '
+            . implode(' or ', $aliases)
+            . '.'
+        );
     }
 
     /**
-     * Convert a numeric value into an integer.
+     * Get a float using possible column aliases.
      */
-    private function integerValue(
-        mixed $value,
+    private function floatFromAliases(
+        array $data,
+        array $aliases,
+        float $default
+    ): float {
+        foreach ($aliases as $alias) {
+            if (
+                array_key_exists($alias, $data)
+                && $data[$alias] !== null
+                && $data[$alias] !== ''
+                && is_numeric($data[$alias])
+            ) {
+                return (float) $data[$alias];
+            }
+        }
+
+        return $default;
+    }
+
+    /**
+     * Get an integer using possible column aliases.
+     */
+    private function integerFromAliases(
+        array $data,
+        array $aliases,
         int $default
     ): int {
-        if ($value === null || $value === '') {
-            return $default;
+        foreach ($aliases as $alias) {
+            if (
+                array_key_exists($alias, $data)
+                && $data[$alias] !== null
+                && $data[$alias] !== ''
+                && is_numeric($data[$alias])
+            ) {
+                return (int) $data[$alias];
+            }
         }
 
-        if (! is_numeric($value)) {
-            return $default;
-        }
-
-        return (int) $value;
-    }
-
-    /**
-     * Convert HTML time inputs such as 20:30 into the format accepted by
-     * FastAPI, such as 20:30:00.
-     */
-    private function normalizeTime(string $time): string
-    {
-        $normalizedTime = trim($time);
-
-        if (preg_match('/^\d{2}:\d{2}$/', $normalizedTime) === 1) {
-            return $normalizedTime . ':00';
-        }
-
-        return $normalizedTime;
+        return $default;
     }
 }

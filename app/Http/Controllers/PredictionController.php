@@ -58,28 +58,27 @@ class PredictionController extends Controller
     }
 
     /**
-     * Run predictions for every Mandaluyong barangay.
+     * Run predictions for all Mandaluyong barangays.
      */
     public function citywide(Request $request): View|RedirectResponse
     {
         try {
             /*
-             * Weather is still collected for display and storage.
-             * The deployed FastAPI service collects its own live weather
-             * when processing POST /predict/citywide.
+             * Retrieve the latest weather data for display and prediction
+             * history storage.
              */
             $liveWeather = $this->liveWeatherService
                 ->getCurrentWeather();
 
             /*
-             * Load the geographic and historical profile required by
-             * FastAPI for every barangay.
+             * Load the geographic, environmental, and historical profile
+             * of every barangay from the production database.
              */
             $barangays = $this->getBarangayProfiles();
 
             /*
-             * Preserve the weather fields for PredictionStorageService,
-             * while adding the required FastAPI "barangays" array.
+             * Preserve the weather fields for storage while adding the
+             * barangays array required by the FastAPI citywide endpoint.
              */
             $predictionData = array_merge(
                 $this->prepareWeatherStorageData($liveWeather),
@@ -89,12 +88,18 @@ class PredictionController extends Controller
             );
 
             Log::info('First barangay payload', [
-    'barangay' => $predictionData['barangays'][0],
-]);
+                'barangay' => $predictionData['barangays'][0] ?? null,
+            ]);
 
+            /*
+             * Send the citywide payload to the deployed FastAPI service.
+             */
             $citywideResult = $this->floodPredictionService
                 ->predictCitywide($predictionData);
 
+            /*
+             * Save all returned barangay predictions to the database.
+             */
             $storedPredictionRuns =
                 $this->predictionStorageService->saveCitywide(
                     input: $predictionData,
@@ -150,10 +155,6 @@ class PredictionController extends Controller
 
     /**
      * Load and normalize barangay profiles from the database.
-     *
-     * This implementation uses the "barangays" table directly so it does
-     * not depend on a specific Eloquent model. It supports common alternate
-     * column names used in earlier M.A.P.S. database versions.
      */
     private function getBarangayProfiles(): Collection
     {
@@ -163,13 +164,83 @@ class PredictionController extends Controller
             );
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | DATABASE CONNECTION DIAGNOSTICS
+        |--------------------------------------------------------------------------
+        | These temporary logs show which database Laravel is using and what
+        | Laravel receives directly from the barangays table.
+        |--------------------------------------------------------------------------
+        */
+
+        $connection = DB::selectOne(
+            '
+            SELECT
+                DATABASE() AS database_name,
+                CURRENT_USER() AS current_user
+            '
+        );
+
+        Log::info('Active database connection', [
+            'database' =>
+                $connection->database_name ?? null,
+            'current_user' =>
+                $connection->current_user ?? null,
+            'configured_host' =>
+                config('database.connections.mysql.host'),
+            'configured_port' =>
+                config('database.connections.mysql.port'),
+            'configured_database' =>
+                config('database.connections.mysql.database'),
+            'configured_username' =>
+                config('database.connections.mysql.username'),
+            'database_url_present' =>
+                ! empty(config('database.connections.mysql.url')),
+        ]);
+
+        /*
+         * Run a direct SQL query for Addition Hills.
+         *
+         * This bypasses mapping and alias conversion so the Render log shows
+         * exactly what the connected database returns.
+         */
+        $directRow = DB::selectOne(
+            '
+            SELECT
+                id,
+                name,
+                elevation_m,
+                nearest_waterway,
+                distance_to_waterway_m,
+                drainage_index,
+                impervious_surface_ratio,
+                population_density_per_km2,
+                historical_flood_count_5y
+            FROM barangays
+            WHERE id = 1
+            LIMIT 1
+            '
+        );
+
+        Log::info(
+            'Direct SQL Result',
+            $directRow !== null
+                ? (array) $directRow
+                : ['row' => null]
+        );
+
+        /*
+         * Retrieve every barangay profile.
+         */
         $rows = DB::table('barangays')
             ->orderBy('id')
             ->get();
 
-            Log::info('Raw first barangay from database', [
-    'row' => (array) $rows->first(),
-]);
+        Log::info('Raw first barangay from database', [
+            'row' => $rows->isNotEmpty()
+                ? (array) $rows->first()
+                : null,
+        ]);
 
         if ($rows->isEmpty()) {
             throw new RuntimeException(
@@ -177,32 +248,52 @@ class PredictionController extends Controller
             );
         }
 
+        /*
+         * Convert database rows into the exact format expected by FastAPI.
+         */
         $profiles = $rows->map(
             function (object $row): array {
                 $data = (array) $row;
 
                 return [
-                    'barangay_id' => $this->requiredIntegerFromAliases(
-                        $data,
-                        ['barangay_id', 'id']
-                    ),
+                    'barangay_id' =>
+                        $this->requiredIntegerFromAliases(
+                            $data,
+                            [
+                                'barangay_id',
+                                'id',
+                            ]
+                        ),
 
-                    'barangay' => $this->requiredStringFromAliases(
-                        $data,
-                        ['barangay', 'name', 'barangay_name']
-                    ),
+                    'barangay' =>
+                        $this->requiredStringFromAliases(
+                            $data,
+                            [
+                                'barangay',
+                                'name',
+                                'barangay_name',
+                            ]
+                        ),
 
-                    'nearest_waterway' => $this->stringFromAliases(
-                        $data,
-                        ['nearest_waterway', 'waterway'],
-                        'Unknown'
-                    ),
+                    'nearest_waterway' =>
+                        $this->stringFromAliases(
+                            $data,
+                            [
+                                'nearest_waterway',
+                                'waterway',
+                            ],
+                            'Unknown'
+                        ),
 
-                    'elevation_m' => $this->floatFromAliases(
-                        $data,
-                        ['elevation_m', 'elevation'],
-                        0.0
-                    ),
+                    'elevation_m' =>
+                        $this->floatFromAliases(
+                            $data,
+                            [
+                                'elevation_m',
+                                'elevation',
+                            ],
+                            0.0
+                        ),
 
                     'distance_to_waterway_m' =>
                         $this->floatFromAliases(
@@ -215,11 +306,14 @@ class PredictionController extends Controller
                             0.0
                         ),
 
-                    'drainage_index' => $this->floatFromAliases(
-                        $data,
-                        ['drainage_index'],
-                        0.0
-                    ),
+                    'drainage_index' =>
+                        $this->floatFromAliases(
+                            $data,
+                            [
+                                'drainage_index',
+                            ],
+                            0.0
+                        ),
 
                     'impervious_surface_ratio' =>
                         $this->floatFromAliases(
@@ -256,9 +350,7 @@ class PredictionController extends Controller
         );
 
         /*
-         * The project scope expects Mandaluyong's 27 barangays.
-         * Do not block execution if the table contains a different count,
-         * but record it so the database can be corrected.
+         * Mandaluyong City should contain 27 barangay profiles.
          */
         if ($profiles->count() !== 27) {
             Log::warning(
@@ -274,10 +366,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Preserve automatic weather values for prediction-history storage.
-     *
-     * These fields are not sent by FloodPredictionService to the current
-     * FastAPI schema; the service extracts only the "barangays" array.
+     * Prepare weather values used by PredictionStorageService.
      */
     private function prepareWeatherStorageData(
         array $liveWeather
@@ -296,13 +385,16 @@ class PredictionController extends Controller
                 ?? 'Forecast Weather Conditions',
 
             'avg_rainfall_24h_mm' =>
-                $liveWeather['forecast_rainfall_24h_mm'] ?? 0,
+                $liveWeather['forecast_rainfall_24h_mm']
+                ?? 0,
 
             'rainfall_3d_mm' =>
-                $liveWeather['rainfall_3d_mm'] ?? 0,
+                $liveWeather['rainfall_3d_mm']
+                ?? 0,
 
             'rainfall_7d_mm' =>
-                $liveWeather['rainfall_7d_mm'] ?? 0,
+                $liveWeather['rainfall_7d_mm']
+                ?? 0,
 
             'avg_tmax_c' =>
                 $liveWeather['forecast_tmax_c']
@@ -334,7 +426,8 @@ class PredictionController extends Controller
                 ?? null,
 
             'weather_station_count' =>
-                $liveWeather['weather_station_count'] ?? 1,
+                $liveWeather['weather_station_count']
+                ?? 1,
 
             'weather_match_status' =>
                 'Open-Meteo current weather and 24-hour forecast',
@@ -342,8 +435,8 @@ class PredictionController extends Controller
     }
 
     /**
-     * Retrieve weather while keeping the page available during provider
-     * failures.
+     * Retrieve live weather while keeping the prediction page available
+     * if the weather provider becomes unavailable.
      */
     private function getLiveWeatherContext(): array
     {
@@ -374,7 +467,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Get a required integer from one of several possible column names.
+     * Get a required integer value from possible column names.
      */
     private function requiredIntegerFromAliases(
         array $data,
@@ -395,7 +488,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Get a required string from one of several possible column names.
+     * Get a required string value from possible column names.
      */
     private function requiredStringFromAliases(
         array $data,
@@ -403,6 +496,10 @@ class PredictionController extends Controller
     ): string {
         foreach ($aliases as $alias) {
             if (! array_key_exists($alias, $data)) {
+                continue;
+            }
+
+            if ($data[$alias] === null) {
                 continue;
             }
 
@@ -419,7 +516,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Get an optional string from one of several possible column names.
+     * Get an optional string value from possible column names.
      */
     private function stringFromAliases(
         array $data,
@@ -428,6 +525,10 @@ class PredictionController extends Controller
     ): string {
         foreach ($aliases as $alias) {
             if (! array_key_exists($alias, $data)) {
+                continue;
+            }
+
+            if ($data[$alias] === null) {
                 continue;
             }
 
@@ -442,7 +543,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Get an optional float from one of several possible column names.
+     * Get an optional float value from possible column names.
      */
     private function floatFromAliases(
         array $data,
@@ -464,7 +565,7 @@ class PredictionController extends Controller
     }
 
     /**
-     * Get an optional integer from one of several possible column names.
+     * Get an optional integer value from possible column names.
      */
     private function integerFromAliases(
         array $data,

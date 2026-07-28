@@ -88,6 +88,10 @@ class PredictionController extends Controller
                 ]
             );
 
+            Log::info('First barangay payload', [
+    'barangay' => $predictionData['barangays'][0],
+]);
+
             $citywideResult = $this->floodPredictionService
                 ->predictCitywide($predictionData);
 

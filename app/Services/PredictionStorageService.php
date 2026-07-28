@@ -30,7 +30,10 @@ class PredictionStorageService
                 ?? $input['barangay']
                 ?? null;
 
-            if (! is_string($barangayName) || trim($barangayName) === '') {
+            if (
+                ! is_string($barangayName)
+                || trim($barangayName) === ''
+            ) {
                 throw new RuntimeException(
                     'The prediction response does not contain a barangay name.'
                 );
@@ -85,9 +88,14 @@ class PredictionStorageService
         ): Collection {
             $storedRuns = collect();
 
+            /*
+             * Support both the old and deployed FastAPI response formats.
+             */
             $commonPredictionDateTime =
                 $this->parseDateTime(
-                    $citywideResult['prediction_datetime'] ?? null
+                    $citywideResult['prediction_datetime']
+                    ?? $citywideResult['generated_at']
+                    ?? null
                 )
                 ?? $this->createRequestedAt($input);
 
@@ -155,7 +163,7 @@ class PredictionStorageService
             'weather_observation_id' => null,
             'requested_at' => $this->createRequestedAt($input),
             'input_data_json' => $input,
-            'source' => 'Manual',
+            'source' => 'Automated',
             'status' => 'Completed',
             'error_message' => null,
         ]);
@@ -163,22 +171,36 @@ class PredictionStorageService
 
     /**
      * Create the child flood_predictions record.
+     *
+     * Supports both response formats:
+     *
+     * Old API:
+     * - predicted_risk_level
+     * - risk_probabilities_percent
+     * - predicted_flood_depth_mm
+     * - prediction_datetime
+     *
+     * Current deployed API:
+     * - risk_level
+     * - probabilities
+     * - predicted_depth_mm
+     * - generated_at on the citywide response
      */
     private function createFloodPrediction(
         PredictionRun $predictionRun,
         array $prediction,
         Carbon $fallbackPredictionDateTime
     ): FloodPrediction {
-        $riskLevel = $prediction['predicted_risk_level'] ?? null;
-
-        if (! in_array($riskLevel, ['Low', 'Medium', 'High'], true)) {
-            throw new RuntimeException(
-                'The prediction contains an unsupported risk level.'
-            );
-        }
+        $riskLevel = $this->normalizeRiskLevel(
+            $prediction['predicted_risk_level']
+            ?? $prediction['risk_level']
+            ?? null
+        );
 
         $probabilities =
-            $prediction['risk_probabilities_percent'] ?? [];
+            $prediction['risk_probabilities_percent']
+            ?? $prediction['probabilities']
+            ?? [];
 
         if (! is_array($probabilities)) {
             $probabilities = [];
@@ -186,7 +208,9 @@ class PredictionStorageService
 
         $predictedAt =
             $this->parseDateTime(
-                $prediction['prediction_datetime'] ?? null
+                $prediction['prediction_datetime']
+                ?? $prediction['generated_at']
+                ?? null
             )
             ?? $fallbackPredictionDateTime;
 
@@ -194,9 +218,8 @@ class PredictionStorageService
             'prediction_run_id' => $predictionRun->id,
 
             /*
-             * ml_models is currently empty, and these database fields
-             * are nullable. They will be populated after the model
-             * registry records are added.
+             * Model registry IDs remain nullable until ml_models records
+             * are created and linked.
              */
             'classification_model_id' => null,
             'depth_model_id' => null,
@@ -205,32 +228,42 @@ class PredictionStorageService
             'predicted_risk_level' => $riskLevel,
 
             /*
-             * FastAPI returns percentages such as 72.45.
-             * The database stores decimal probabilities such as 0.724500.
+             * The current FastAPI returns decimal probabilities such as
+             * 0.7245. Older API versions returned percentages such as 72.45.
+             * normalizeProbability() accepts both formats.
              */
             'low_probability' =>
-                $this->percentageToProbability(
-                    $probabilities['Low'] ?? null
+                $this->normalizeProbability(
+                    $probabilities['Low']
+                    ?? $probabilities['low']
+                    ?? null
                 ),
 
             'medium_probability' =>
-                $this->percentageToProbability(
-                    $probabilities['Medium'] ?? null
+                $this->normalizeProbability(
+                    $probabilities['Medium']
+                    ?? $probabilities['medium']
+                    ?? null
                 ),
 
             'high_probability' =>
-                $this->percentageToProbability(
-                    $probabilities['High'] ?? null
+                $this->normalizeProbability(
+                    $probabilities['High']
+                    ?? $probabilities['high']
+                    ?? null
                 ),
 
             'predicted_depth_mm' =>
                 $this->nullableFloat(
-                    $prediction['predicted_flood_depth_mm'] ?? null
+                    $prediction['predicted_flood_depth_mm']
+                    ?? $prediction['predicted_depth_mm']
+                    ?? null
                 ),
 
             'predicted_duration_hours' =>
                 $this->nullableFloat(
-                    $prediction['predicted_duration_hours'] ?? null
+                    $prediction['predicted_duration_hours']
+                    ?? null
                 ),
 
             'predicted_at' => $predictedAt,
@@ -239,13 +272,35 @@ class PredictionStorageService
     }
 
     /**
+     * Normalize and validate a risk level.
+     */
+    private function normalizeRiskLevel(mixed $value): string
+    {
+        if (! is_string($value)) {
+            throw new RuntimeException(
+                'The prediction contains an unsupported risk level.'
+            );
+        }
+
+        $normalized = Str::lower(trim($value));
+
+        $riskLevels = [
+            'low' => 'Low',
+            'medium' => 'Medium',
+            'high' => 'High',
+        ];
+
+        if (! array_key_exists($normalized, $riskLevels)) {
+            throw new RuntimeException(
+                "The prediction contains an unsupported risk level: {$value}."
+            );
+        }
+
+        return $riskLevels[$normalized];
+    }
+
+    /**
      * Match FastAPI barangay names with database barangay names.
-     *
-     * This handles differences such as:
-     * - Zañiga versus Zaniga
-     * - Pag-Asa versus Pag Asa
-     * - Mabini-J. Rizal punctuation
-     * - Wack-Wack Greenhills East versus Wack-Wack Greenhills
      */
     private function findBarangay(string $barangayName): Barangay
     {
@@ -271,6 +326,9 @@ class PredictionStorageService
         return $barangay;
     }
 
+    /**
+     * Normalize barangay spelling and punctuation differences.
+     */
     private function normalizeBarangayName(string $name): string
     {
         $normalized = Str::ascii(
@@ -284,25 +342,33 @@ class PredictionStorageService
         ) ?? '';
 
         $aliases = [
-    // ML API: Hagdan Bato
-    // Database: Hagdang Bato
-    'hagdanbatoitaas' =>
-        'hagdangbatoitaas',
+            'hagdanbatoitaas' =>
+                'hagdangbatoitaas',
 
-    'hagdanbatolibis' =>
-        'hagdangbatolibis',
+            'hagdanbatolibis' =>
+                'hagdangbatolibis',
 
-    // Handles either version of the Wack-Wack name.
-    'wackwackgreenhillseast' =>
-        'wackwackgreenhills',
+            'wackwackgreenhillseast' =>
+                'wackwackgreenhills',
 
-    'wackwackgreenhills' =>
-        'wackwackgreenhills',
+            'wackwackgreenhills' =>
+                'wackwackgreenhills',
 
-    // Capitalization is already handled by normalization.
-    'harapinangbukas' =>
-        'harapinangbukas',
-];
+            'harapinangbukas' =>
+                'harapinangbukas',
+
+            'newzaniga' =>
+                'newzaniga',
+
+            'oldzaniga' =>
+                'oldzaniga',
+
+            'pagasa' =>
+                'pagasa',
+
+            'mabinijrizal' =>
+                'mabinijrizal',
+        ];
 
         return $aliases[$normalized] ?? $normalized;
     }
@@ -316,7 +382,7 @@ class PredictionStorageService
         $time = trim((string) ($input['time'] ?? ''));
 
         if ($date === '' || $time === '') {
-            return now();
+            return now(config('app.timezone'));
         }
 
         try {
@@ -324,11 +390,14 @@ class PredictionStorageService
                 $date . ' ' . $time,
                 config('app.timezone')
             );
-        } catch (\Throwable) {
-            return now();
+        } catch (Throwable) {
+            return now(config('app.timezone'));
         }
     }
 
+    /**
+     * Parse an API datetime safely.
+     */
     private function parseDateTime(mixed $value): ?Carbon
     {
         if (! is_string($value) || trim($value) === '') {
@@ -340,14 +409,17 @@ class PredictionStorageService
                 $value,
                 config('app.timezone')
             );
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }
 
-    private function percentageToProbability(
-        mixed $value
-    ): ?float {
+    /**
+     * Convert either a decimal probability or a percentage into
+     * a decimal value between 0 and 1.
+     */
+    private function normalizeProbability(mixed $value): ?float
+    {
         if ($value === null || $value === '') {
             return null;
         }
@@ -356,14 +428,29 @@ class PredictionStorageService
             return null;
         }
 
-        $percentage = max(
+        $numericValue = (float) $value;
+
+        /*
+         * Values above 1 are treated as percentages.
+         * Examples:
+         * 0.7245 -> 0.724500
+         * 72.45  -> 0.724500
+         */
+        if ($numericValue > 1) {
+            $numericValue /= 100;
+        }
+
+        $numericValue = max(
             0,
-            min(100, (float) $value)
+            min(1, $numericValue)
         );
 
-        return round($percentage / 100, 6);
+        return round($numericValue, 6);
     }
 
+    /**
+     * Convert a numeric value to float or null.
+     */
     private function nullableFloat(mixed $value): ?float
     {
         if ($value === null || $value === '') {

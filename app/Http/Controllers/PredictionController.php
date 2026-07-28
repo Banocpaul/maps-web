@@ -167,6 +167,10 @@ class PredictionController extends Controller
             ->orderBy('id')
             ->get();
 
+            Log::info('Raw first barangay from database', [
+    'row' => (array) $rows->first(),
+]);
+
         if ($rows->isEmpty()) {
             throw new RuntimeException(
                 'No barangay records were found in the barangays table.'

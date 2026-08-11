@@ -100,10 +100,17 @@ class FloodPredictionService
         try {
             $health = $this->health();
 
+            $occurrenceModelLoaded =
+                ($health['occurrence_v2_loaded'] ?? false) === true
+                || ($health['risk_model_loaded'] ?? false) === true;
+
+            $durationModelLoaded =
+                ($health['duration_v2_loaded'] ?? false) === true
+                || ($health['duration_model_loaded'] ?? false) === true;
+
             return ($health['status'] ?? null) === 'healthy'
-                && ($health['risk_model_loaded'] ?? false) === true
-                && ($health['depth_model_loaded'] ?? false) === true
-                && ($health['duration_model_loaded'] ?? false) === true;
+                && $occurrenceModelLoaded
+                && $durationModelLoaded;
         } catch (Throwable) {
             return false;
         }

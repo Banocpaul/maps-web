@@ -173,7 +173,7 @@
             color: #991b1b;
         }
 
-        .incident-status-pending {
+        .incident-status-reported {
             background: #f3f4f6;
             color: #374151;
         }

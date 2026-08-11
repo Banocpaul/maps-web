@@ -191,7 +191,7 @@
             color: #991b1b;
         }
 
-        .fire-status-pending {
+        .fire-status-reported {
             background: #f3f4f6;
             color: #374151;
         }
@@ -329,7 +329,7 @@
                     <label for="status">Status</label>
                     <select id="status" name="status">
                         <option value="">All statuses</option>
-                        @foreach (['Pending', 'Responding', 'Controlled', 'Resolved'] as $status)
+                        @foreach (['Reported', 'Responding', 'Controlled', 'Resolved'] as $status)
                             <option value="{{ $status }}" @selected(request('status') === $status)>
                                 {{ $status }}
                             </option>

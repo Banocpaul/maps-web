@@ -105,15 +105,15 @@ class FireIncident extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function scopePending($query)
+    public function scopeReported($query)
     {
-        return $query->where('status', 'Pending');
+        return $query->where('status', 'Reported');
     }
 
     public function scopeActive($query)
     {
         return $query->whereIn('status', [
-            'Pending',
+            'Reported',
             'Responding',
             'Controlled',
         ]);

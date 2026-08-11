@@ -582,14 +582,14 @@
                                 </option>
 
                                 <option
-                                    value="Pending"
+                                    value="Reported"
                                     @selected(
-                                        old('status', 'Pending')
+                                        old('status', 'Reported')
                                         ===
-                                        'Pending'
+                                        'Reported'
                                     )
                                 >
-                                    Pending
+                                    Reported
                                 </option>
 
                                 <option

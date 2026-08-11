@@ -91,7 +91,7 @@ class FireIncidentController extends Controller
             'active' => FireIncident::whereIn(
                 'status',
                 [
-                    'Pending',
+                    'Reported',
                     'Responding',
                     'Controlled',
                 ]
@@ -285,7 +285,7 @@ class FireIncidentController extends Controller
             'status' => [
                 'required',
                 Rule::in([
-                    'Pending',
+                    'Reported',
                     'Responding',
                     'Controlled',
                     'Resolved',

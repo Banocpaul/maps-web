@@ -302,7 +302,7 @@
 
                             <select id="status" name="status" required>
                                 <option value="">Select status</option>
-                                <option value="Pending" @selected(old('status', $fireIncident->status) === 'Pending')>Pending</option>
+                                <option value="Reported" @selected(old('status', $fireIncident->status) === 'Reported')>Reported</option>
                                 <option value="Responding" @selected(old('status', $fireIncident->status) === 'Responding')>Responding</option>
                                 <option value="Controlled" @selected(old('status', $fireIncident->status) === 'Controlled')>Controlled</option>
                                 <option value="Resolved" @selected(old('status', $fireIncident->status) === 'Resolved')>Resolved</option>

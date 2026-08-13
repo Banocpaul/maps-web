@@ -139,6 +139,18 @@
             'icon' => 'settings',
         ],
     ];
+
+    if ($currentUser?->isAdministrator()) {
+        $managementNavigation[] = [
+            'label' => 'Activity Logs',
+            'route' => Route::has('activity-logs.index')
+                ? 'activity-logs.index'
+                : null,
+            'active' => ['activity-logs.*'],
+            'permission' => 'activity-logs.view',
+            'icon' => 'activity',
+        ];
+    }
 @endphp
 
 <aside
@@ -541,6 +553,23 @@
                                                 stroke-linecap="round"
                                                 stroke-linejoin="round"
                                                 d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.1 2.1-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-3v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L6.6 17l.1-.1A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.6-1H5v-3h.4A1.7 1.7 0 0 0 7 10a1.7 1.7 0 0 0-.3-1.9L6.6 8l2.1-2.1.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h3v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.4v3H21a1.7 1.7 0 0 0-1.6 1Z"
+                                            />
+                                        </svg>
+                                        @break
+
+                                    @case('activity')
+                                        <svg
+                                            class="h-5 w-5"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M9 5h6m-7 4h8m-8 4h5m-5 4h8M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
                                             />
                                         </svg>
                                         @break

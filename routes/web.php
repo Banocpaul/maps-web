@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FireHydrantController;
 use App\Http\Controllers\FireIncidentController;
@@ -359,6 +360,22 @@ Route::middleware('auth')->group(function (): void {
             [UserManagementController::class, 'destroy']
         )->name('users.destroy');
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Administrator-only Activity Logs
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get(
+        '/activity-logs',
+        [ActivityLogController::class, 'index']
+    )
+        ->middleware([
+            'admin',
+            'permission:activity-logs.view',
+        ])
+        ->name('activity-logs.index');
 
     /*
     |--------------------------------------------------------------------------

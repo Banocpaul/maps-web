@@ -16,7 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'admin' => \App\Http\Middleware\EnsureAdministrator::class,
         ]);
+
+        $middleware->appendToGroup(
+            'web',
+            \App\Http\Middleware\LogUserActivity::class
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

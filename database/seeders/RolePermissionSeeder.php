@@ -244,6 +244,7 @@ class RolePermissionSeeder extends Seeder
                     'fire.edit',
                     'hydrants.manage',
                     'prediction.view',
+                    'prediction.run',
                     'gis.view',
                     'gis.manage',
                     'sms.view',

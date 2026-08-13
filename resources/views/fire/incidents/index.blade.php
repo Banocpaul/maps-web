@@ -240,15 +240,6 @@
             color: #b91c1c;
         }
 
-        .fire-action-locked {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            color: #64748b;
-            font-size: 0.85rem;
-            font-weight: 700;
-        }
-
         .fire-empty {
             padding: 2.5rem;
             text-align: center;
@@ -458,13 +449,6 @@
                                                         Delete
                                                     </button>
                                                 </form>
-                                            @else
-                                                <span
-                                                    class="fire-action-locked"
-                                                    title="Resolved incidents are official locked records."
-                                                >
-                                                    &#128274; Locked
-                                                </span>
                                             @endif
                                         </div>
                                     </td>

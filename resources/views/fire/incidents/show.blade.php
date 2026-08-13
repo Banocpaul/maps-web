@@ -65,12 +65,6 @@
             color: #991b1b;
         }
 
-        .incident-button-locked {
-            background: #f1f5f9;
-            color: #475569;
-            cursor: not-allowed;
-        }
-
         .incident-alert {
             padding: 0.9rem 1rem;
             border-radius: 0.6rem;
@@ -275,13 +269,6 @@
                             Delete
                         </button>
                     </form>
-                @else
-                    <span
-                        class="incident-button incident-button-locked"
-                        title="Resolved incidents are official locked records."
-                    >
-                        &#128274; Resolved — Locked
-                    </span>
                 @endif
             </div>
         </section>
@@ -398,10 +385,10 @@
                     <strong>No coordinates recorded</strong>
 
                     <p>
-                        @if ($fireIncident->status === 'Resolved')
-                            This resolved incident is locked. Coordinates can no longer be changed.
-                        @else
+                        @if ($fireIncident->status !== 'Resolved')
                             Edit this incident to add latitude and longitude for GIS visualization.
+                        @else
+                            No coordinates were recorded for this incident.
                         @endif
                     </p>
                 @endif

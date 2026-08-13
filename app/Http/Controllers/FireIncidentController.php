@@ -183,6 +183,10 @@ class FireIncidentController extends Controller
     public function edit(
         FireIncident $fireIncident
     ): View {
+        $this->ensureIncidentIsEditable(
+            $fireIncident
+        );
+
         $barangays = Barangay::active()
             ->orderBy('name')
             ->get();
@@ -203,6 +207,10 @@ class FireIncidentController extends Controller
         Request $request,
         FireIncident $fireIncident
     ): RedirectResponse {
+        $this->ensureIncidentIsEditable(
+            $fireIncident
+        );
+
         $validated = $request->validate(
             $this->validationRules(),
             $this->validationMessages()
@@ -227,6 +235,10 @@ class FireIncidentController extends Controller
     public function destroy(
         FireIncident $fireIncident
     ): RedirectResponse {
+        $this->ensureIncidentIsEditable(
+            $fireIncident
+        );
+
         $fireIncident->delete();
 
         return redirect()
@@ -235,6 +247,19 @@ class FireIncidentController extends Controller
                 'success',
                 'Fire incident deleted successfully.'
             );
+    }
+
+    /**
+     * Prevent resolved incidents from being changed or deleted.
+     */
+    private function ensureIncidentIsEditable(
+        FireIncident $fireIncident
+    ): void {
+        abort_if(
+            $fireIncident->status === 'Resolved',
+            403,
+            'Resolved fire incidents are locked and can no longer be edited or deleted.'
+        );
     }
 
     /**

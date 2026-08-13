@@ -65,6 +65,12 @@
             color: #991b1b;
         }
 
+        .incident-button-locked {
+            background: #f1f5f9;
+            color: #475569;
+            cursor: not-allowed;
+        }
+
         .incident-alert {
             padding: 0.9rem 1rem;
             border-radius: 0.6rem;
@@ -249,22 +255,34 @@
                     Back to Incidents
                 </a>
 
-                <a href="{{ route('fire-incidents.edit', $fireIncident) }}" class="incident-button incident-button-primary">
-                    Edit Incident
-                </a>
+                @if ($fireIncident->status !== 'Resolved')
+                    <a
+                        href="{{ route('fire-incidents.edit', $fireIncident) }}"
+                        class="incident-button incident-button-primary"
+                    >
+                        Edit Incident
+                    </a>
 
-                <form
-                    method="POST"
-                    action="{{ route('fire-incidents.destroy', $fireIncident) }}"
-                    onsubmit="return confirm('Delete this fire incident? This action cannot be undone.');"
-                >
-                    @csrf
-                    @method('DELETE')
+                    <form
+                        method="POST"
+                        action="{{ route('fire-incidents.destroy', $fireIncident) }}"
+                        onsubmit="return confirm('Delete this fire incident? This action cannot be undone.');"
+                    >
+                        @csrf
+                        @method('DELETE')
 
-                    <button type="submit" class="incident-button incident-button-danger">
-                        Delete
-                    </button>
-                </form>
+                        <button type="submit" class="incident-button incident-button-danger">
+                            Delete
+                        </button>
+                    </form>
+                @else
+                    <span
+                        class="incident-button incident-button-locked"
+                        title="Resolved incidents are official locked records."
+                    >
+                        &#128274; Resolved — Locked
+                    </span>
+                @endif
             </div>
         </section>
 
@@ -380,7 +398,11 @@
                     <strong>No coordinates recorded</strong>
 
                     <p>
-                        Edit this incident to add latitude and longitude for GIS visualization.
+                        @if ($fireIncident->status === 'Resolved')
+                            This resolved incident is locked. Coordinates can no longer be changed.
+                        @else
+                            Edit this incident to add latitude and longitude for GIS visualization.
+                        @endif
                     </p>
                 @endif
             </div>

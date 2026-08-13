@@ -7,6 +7,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -20,14 +21,21 @@ class LogUserActivity
         'current_password',
         'new_password',
         'new_password_confirmation',
+        'remember_token',
         'token',
         'api_key',
         'secret',
+        'credential',
     ];
 
-    public function handle(Request $request, Closure $next): Response
-    {
+    public function handle(
+        Request $request,
+        Closure $next
+    ): Response {
         $userBefore = $request->user();
+        [$subjectType, $subjectId, $oldValues] =
+            $this->resolveSubjectBeforeAction($request);
+
         $response = $next($request);
 
         if (! $this->shouldLog($request)) {
@@ -43,23 +51,25 @@ class LogUserActivity
             $routeName = $request->route()?->getName();
             $action = $this->resolveAction($request, $user);
             $module = $this->resolveModule($routeName);
-            [$subjectType, $subjectId] = $this->resolveSubject($request);
 
             ActivityLog::create([
                 'user_id' => $user?->id,
-                'user_name' => $user?->full_name ?? $user?->name,
-                'role_name' => $user?->role?->name,
+                'user_name' => $this->userName($user),
+                'role_name' => $this->roleName($user),
                 'action' => $action,
                 'module' => $module,
                 'description' => $this->description(
                     $user,
                     $action,
-                    $module
+                    $module,
+                    $subjectType,
+                    $subjectId
                 ),
                 'route_name' => $routeName,
                 'http_method' => $request->method(),
                 'subject_type' => $subjectType,
                 'subject_id' => $subjectId,
+                'old_values' => $oldValues,
                 'new_values' => $this->safeInput($request),
                 'ip_address' => $request->ip(),
                 'user_agent' => mb_substr(
@@ -69,8 +79,13 @@ class LogUserActivity
                 ),
                 'response_status' => $response->getStatusCode(),
             ]);
-        } catch (Throwable) {
-            // Activity logging must never interrupt an operational request.
+        } catch (Throwable $exception) {
+            Log::warning('Activity log could not be recorded.', [
+                'route_name' => $request->route()?->getName(),
+                'http_method' => $request->method(),
+                'user_id' => $userBefore?->id,
+                'error' => $exception->getMessage(),
+            ]);
         }
 
         return $response;
@@ -92,18 +107,47 @@ class LogUserActivity
         $routeName = (string) $request->route()?->getName();
 
         return match (true) {
-            $routeName === 'login.attempt' && $user !== null => 'login',
-            $routeName === 'login.attempt' => 'failed_login',
-            $routeName === 'logout' => 'logout',
-            str_contains($routeName, 'prediction.citywide') => 'run_prediction',
-            str_contains($routeName, 'prediction.run') => 'run_prediction',
-            str_contains($routeName, 'sms.send') => 'send_sms',
-            str_contains($routeName, 'sms.test') => 'test_sms',
-            str_contains($routeName, 'export') => 'export',
-            $request->isMethod('DELETE') => 'delete',
-            $request->isMethod('PUT') => 'update',
-            $request->isMethod('PATCH') => 'update',
-            $request->isMethod('POST') => 'create',
+            $routeName === 'login.attempt' && $user !== null =>
+                'login',
+
+            $routeName === 'login.attempt' =>
+                'failed_login',
+
+            $routeName === 'logout' =>
+                'logout',
+
+            str_contains($routeName, 'prediction.citywide'),
+            str_contains($routeName, 'prediction.run') =>
+                'run_prediction',
+
+            str_contains($routeName, 'sms.send') =>
+                'send_sms',
+
+            str_contains($routeName, 'sms.test') =>
+                'test_sms',
+
+            str_contains($routeName, 'training-status') =>
+                'change_training_status',
+
+            str_contains($routeName, '.status') =>
+                'change_status',
+
+            str_contains($routeName, 'reset-password') =>
+                'reset_password',
+
+            str_contains($routeName, 'export') =>
+                'export',
+
+            $request->isMethod('DELETE') =>
+                'delete',
+
+            $request->isMethod('PUT'),
+            $request->isMethod('PATCH') =>
+                'update',
+
+            $request->isMethod('POST') =>
+                'create',
+
             default => strtolower($request->method()),
         };
     }
@@ -119,30 +163,62 @@ class LogUserActivity
             'flood-operation', 'flood-dataset' => 'flood',
             'prediction' => 'prediction',
             'gis' => 'gis',
-            'sms' => 'sms',
+            'sms', 'sms-center' => 'sms',
             'users' => 'user-management',
             'reports' => 'reports',
             default => $prefix !== '' ? $prefix : 'system',
         };
     }
 
-    private function resolveSubject(Request $request): array
-    {
+    private function resolveSubjectBeforeAction(
+        Request $request
+    ): array {
         foreach (($request->route()?->parameters() ?? []) as $parameter) {
-            if ($parameter instanceof Model) {
-                return [get_class($parameter), (int) $parameter->getKey()];
+            if (! $parameter instanceof Model) {
+                continue;
+            }
+
+            $oldValues = null;
+
+            if (
+                $request->isMethod('PUT') ||
+                $request->isMethod('PATCH') ||
+                $request->isMethod('DELETE')
+            ) {
+                $oldValues = $this->safeModelAttributes(
+                    $parameter
+                );
+            }
+
+            return [
+                get_class($parameter),
+                (int) $parameter->getKey(),
+                $oldValues,
+            ];
+        }
+
+        return [null, null, null];
+    }
+
+    private function safeModelAttributes(Model $model): ?array
+    {
+        $attributes = $model->attributesToArray();
+
+        foreach (array_keys($attributes) as $key) {
+            if ($this->isSensitiveKey((string) $key)) {
+                unset($attributes[$key]);
             }
         }
 
-        return [null, null];
+        return $attributes === [] ? null : $attributes;
     }
 
     private function safeInput(Request $request): ?array
     {
         $input = $request->except(self::SENSITIVE_FIELDS);
 
-        foreach ($input as $key => $value) {
-            if (preg_match('/password|token|secret|credential|api.?key/i', $key)) {
+        foreach (array_keys($input) as $key) {
+            if ($this->isSensitiveKey((string) $key)) {
                 unset($input[$key]);
             }
         }
@@ -150,15 +226,52 @@ class LogUserActivity
         return $input === [] ? null : $input;
     }
 
+    private function isSensitiveKey(string $key): bool
+    {
+        return (bool) preg_match(
+            '/password|token|secret|credential|api.?key/i',
+            $key
+        );
+    }
+
+    private function userName(?User $user): ?string
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        return $user->full_name !== ''
+            ? $user->full_name
+            : $user->name;
+    }
+
+    private function roleName(?User $user): ?string
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        // Query the relationship directly because the users table still has
+        // a legacy "role" string column with the same name.
+        return $user->role()->value('name');
+    }
+
     private function description(
         ?User $user,
         string $action,
-        string $module
+        string $module,
+        ?string $subjectType,
+        ?int $subjectId
     ): string {
-        $name = $user?->full_name ?? $user?->name ?? 'Guest user';
+        $name = $this->userName($user) ?? 'Guest user';
         $readableAction = str_replace('_', ' ', $action);
         $readableModule = str_replace('-', ' ', $module);
 
-        return "{$name} performed {$readableAction} in {$readableModule}.";
+        $subject = $subjectType !== null && $subjectId !== null
+            ? ' Record #' . $subjectId . ' was affected.'
+            : '';
+
+        return "{$name} performed {$readableAction} " .
+            "in {$readableModule}.{$subject}";
     }
 }

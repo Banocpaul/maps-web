@@ -77,4 +77,5 @@ RUN printf '<Directory /var/www/html/public>\n\
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+# Run pending production database migrations before starting Apache.
+CMD ["sh", "-c", "php artisan migrate --force && exec apache2-foreground"]

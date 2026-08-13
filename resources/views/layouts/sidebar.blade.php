@@ -151,6 +151,90 @@
             'icon' => 'activity',
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Role-personalized navigation
+    |--------------------------------------------------------------------------
+    |
+    | Permissions continue to protect every route. These lists only remove
+    | unrelated menu items so each role receives a focused workspace.
+    |
+    */
+    $roleSlug = $currentRole?->slug;
+
+    $visibleOperations = match ($roleSlug) {
+        'administrator' => [
+            'Dashboard',
+            'SMS Center',
+        ],
+        'fire-responder' => [
+            'Dashboard',
+            'Fire Incidents',
+            'Fire Hydrants',
+            'GIS Mapping',
+        ],
+        'flood-analyst' => [
+            'Dashboard',
+            'Flood Prediction',
+            'Flood Operations',
+            'GIS Mapping',
+        ],
+        'operations-officer' => [
+            'Dashboard',
+            'Flood Prediction',
+            'Flood Operations',
+            'Fire Incidents',
+            'Fire Hydrants',
+            'GIS Mapping',
+            'SMS Center',
+        ],
+        default => ['Dashboard'],
+    };
+
+    $visibleManagement = match ($roleSlug) {
+        'administrator' => [
+            'Reports',
+            'User Management',
+            'Settings',
+            'Activity Logs',
+        ],
+        'fire-responder' => [
+            'Reports',
+            'Public Submissions',
+        ],
+        'flood-analyst' => [
+            'Reports',
+            'Public Submissions',
+        ],
+        'operations-officer' => [
+            'Reports',
+            'Public Submissions',
+        ],
+        default => [],
+    };
+
+    $operationsNavigation = collect($operationsNavigation)
+        ->whereIn('label', $visibleOperations)
+        ->values()
+        ->all();
+
+    $managementNavigation = collect($managementNavigation)
+        ->whereIn('label', $visibleManagement)
+        ->values()
+        ->all();
+
+    $operationsHeading = match ($roleSlug) {
+        'administrator' => 'System',
+        'fire-responder' => 'Fire Response',
+        'flood-analyst' => 'Flood Analytics',
+        'operations-officer' => 'Command Operations',
+        default => 'Operations',
+    };
+
+    $managementHeading = $roleSlug === 'administrator'
+        ? 'Administration'
+        : 'Resources';
 @endphp
 
 <aside
@@ -235,7 +319,7 @@
                 id="operations-navigation-heading"
                 class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
             >
-                Operations
+                {{ $operationsHeading }}
             </h2>
 
             <div class="space-y-0.5">
@@ -440,7 +524,7 @@
                 id="management-navigation-heading"
                 class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
             >
-                Management
+                {{ $managementHeading }}
             </h2>
 
             <div class="space-y-0.5">

@@ -21,7 +21,7 @@ class OperationsManagerAuthorizationTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('operational-records.index'))
+            ->get(route('operational-records.index', ['dataset' => 'fire-incidents']))
             ->assertOk()
             ->assertSee('Operational Database Records');
     }
@@ -31,7 +31,7 @@ class OperationsManagerAuthorizationTest extends TestCase
         $user = $this->userWithPermissions('system-viewer', []);
 
         $this->actingAs($user)
-            ->get(route('operational-records.index'))
+            ->get(route('operational-records.index', ['dataset' => 'fire-incidents']))
             ->assertForbidden();
     }
 

@@ -117,6 +117,13 @@
 
         <div class="flex flex-wrap gap-2">
             <a
+                href="{{ route('operational-records.index') }}"
+                class="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
+            >
+                Database Records
+            </a>
+
+            <a
                 href="{{ route('gis.index') }}"
                 class="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-800"
             >

@@ -45,6 +45,15 @@
             'icon' => 'dashboard',
         ],
         [
+            'label' => 'Database Records',
+            'route' => Route::has('operational-records.index')
+                ? 'operational-records.index'
+                : null,
+            'active' => ['operational-records.*'],
+            'permission' => 'records.view',
+            'icon' => 'records',
+        ],
+        [
             'label' => 'Flood Prediction',
             'route' => Route::has('prediction.index')
                 ? 'prediction.index'
@@ -180,8 +189,9 @@
             'Flood Operations',
             'GIS Mapping',
         ],
-        'operations-officer' => [
+        'operations-manager' => [
             'Dashboard',
+            'Database Records',
             'Flood Prediction',
             'Flood Operations',
             'Fire Incidents',
@@ -207,7 +217,7 @@
             'Reports',
             'Public Submissions',
         ],
-        'operations-officer' => [
+        'operations-manager' => [
             'Reports',
             'Public Submissions',
         ],
@@ -228,7 +238,7 @@
         'administrator' => 'System',
         'fire-responder' => 'Fire Response',
         'flood-analyst' => 'Flood Analytics',
-        'operations-officer' => 'Command Operations',
+        'operations-manager' => 'Command Operations',
         default => 'Operations',
     };
 
@@ -376,6 +386,13 @@
                                                 stroke-linejoin="round"
                                                 d="M4 4h6v6H4V4Zm10 0h6v6h-6V4Zm0 10h6v6h-6v-6ZM4 14h6v6H4v-6Z"
                                             />
+                                        </svg>
+                                        @break
+
+                                    @case('records')
+                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <ellipse cx="12" cy="5" rx="7" ry="3" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
                                         </svg>
                                         @break
 

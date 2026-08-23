@@ -93,8 +93,12 @@ class LogUserActivity
 
     private function shouldLog(Request $request): bool
     {
-        if ($request->isMethod('GET') || $request->isMethod('HEAD')) {
+        if ($request->isMethod('HEAD')) {
             return false;
+        }
+
+        if ($request->isMethod('GET')) {
+            return $request->routeIs('*.export');
         }
 
         return ! $request->routeIs('activity-logs.*');
@@ -166,6 +170,7 @@ class LogUserActivity
             'sms', 'sms-center' => 'sms',
             'users' => 'user-management',
             'reports' => 'reports',
+            'operational-records' => 'operational-records',
             default => $prefix !== '' ? $prefix : 'system',
         };
     }

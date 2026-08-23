@@ -19,9 +19,9 @@ class RolePermissionSeeder extends Seeder
                     'description' => 'Full system administration and unrestricted system access.',
                 ],
                 [
-                    'name' => 'Operations Officer',
-                    'slug' => 'operations-officer',
-                    'description' => 'Manages operational incidents, public submissions, GIS, and SMS alerts.',
+                    'name' => 'Operations Manager',
+                    'slug' => 'operations-manager',
+                    'description' => 'Manages citywide operational records, predictions, GIS data, communications, and controlled data exports.',
                 ],
                 [
                     'name' => 'Flood Analyst',
@@ -130,6 +130,18 @@ class RolePermissionSeeder extends Seeder
                     'description' => 'Manage validated data prepared for analytics and model use.',
                 ],
                 [
+                    'name' => 'View Operational Records',
+                    'slug' => 'records.view',
+                    'module' => 'records',
+                    'description' => 'Search and review approved operational database records.',
+                ],
+                [
+                    'name' => 'Export Operational Records',
+                    'slug' => 'records.export',
+                    'module' => 'records',
+                    'description' => 'Export filtered operational records in CSV format.',
+                ],
+                [
                     'name' => 'View GIS',
                     'slug' => 'gis.view',
                     'module' => 'gis',
@@ -158,6 +170,12 @@ class RolePermissionSeeder extends Seeder
                     'slug' => 'sms.recipients.manage',
                     'module' => 'sms',
                     'description' => 'Create, update, and remove SMS recipients.',
+                ],
+                [
+                    'name' => 'Manage SMS Automation Rules',
+                    'slug' => 'sms.automation.manage',
+                    'module' => 'sms',
+                    'description' => 'Create, update, enable, disable, and remove SMS automation rules.',
                 ],
                 [
                     'name' => 'View Reports',
@@ -234,22 +252,28 @@ class RolePermissionSeeder extends Seeder
             $rolePermissions = [
                 'administrator' => Permission::pluck('slug')->all(),
 
-                'operations-officer' => [
+                'operations-manager' => [
                     'dashboard.view',
                     'flood.view',
                     'flood.create',
                     'flood.edit',
+                    'flood.delete',
                     'fire.view',
                     'fire.create',
                     'fire.edit',
+                    'fire.delete',
                     'hydrants.manage',
                     'prediction.view',
                     'prediction.run',
+                    'prediction.data.manage',
+                    'records.view',
+                    'records.export',
                     'gis.view',
                     'gis.manage',
                     'sms.view',
                     'sms.send',
                     'sms.recipients.manage',
+                    'sms.automation.manage',
                     'reports.view',
                     'reports.export',
                     'public-submissions.view',

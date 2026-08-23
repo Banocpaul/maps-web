@@ -9,6 +9,7 @@ use App\Http\Controllers\FloodDatasetController;
 use App\Http\Controllers\FloodOperationController;
 use App\Http\Controllers\GisMapController;
 use App\Http\Controllers\PredictionController;
+use App\Http\Controllers\OperationalRecordController;
 use App\Http\Controllers\SmsController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\WeatherController;
@@ -111,7 +112,7 @@ Route::middleware('auth')->group(function (): void {
         [FloodDatasetController::class, 'store']
     )
         ->middleware([
-            'permission:prediction.run',
+            'permission:flood.create',
             'throttle:30,1',
         ])
         ->name('flood-dataset.store');
@@ -128,7 +129,7 @@ Route::middleware('auth')->group(function (): void {
         [FloodDatasetController::class, 'update']
     )
         ->middleware([
-            'permission:prediction.run',
+            'permission:flood.edit',
             'throttle:30,1',
         ])
         ->name('flood-dataset.update');
@@ -138,7 +139,7 @@ Route::middleware('auth')->group(function (): void {
         [FloodDatasetController::class, 'toggleTraining']
     )
         ->middleware([
-            'permission:prediction.run',
+            'permission:prediction.data.manage',
             'throttle:30,1',
         ])
         ->name('flood-dataset.training-status');
@@ -148,7 +149,7 @@ Route::middleware('auth')->group(function (): void {
         [FloodDatasetController::class, 'destroy']
     )
         ->middleware([
-            'permission:prediction.run',
+            'permission:flood.delete',
             'throttle:20,1',
         ])
         ->name('flood-dataset.destroy');
@@ -172,10 +173,18 @@ Route::middleware('auth')->group(function (): void {
     |--------------------------------------------------------------------------
     */
 
-    Route::resource(
-        'fire-incidents',
-        FireIncidentController::class
-    )->middleware('permission:fire.view');
+    Route::resource('fire-incidents', FireIncidentController::class)
+        ->only(['index', 'show'])
+        ->middleware('permission:fire.view');
+    Route::resource('fire-incidents', FireIncidentController::class)
+        ->only(['create', 'store'])
+        ->middleware('permission:fire.create');
+    Route::resource('fire-incidents', FireIncidentController::class)
+        ->only(['edit', 'update'])
+        ->middleware('permission:fire.edit');
+    Route::delete('/fire-incidents/{fire_incident}', [FireIncidentController::class, 'destroy'])
+        ->middleware('permission:fire.delete')
+        ->name('fire-incidents.destroy');
 
     /*
     |--------------------------------------------------------------------------
@@ -183,10 +192,20 @@ Route::middleware('auth')->group(function (): void {
     |--------------------------------------------------------------------------
     */
 
-    Route::resource(
-        'fire-hydrants',
-        FireHydrantController::class
-    )->middleware('permission:fire.view');
+    Route::resource('fire-hydrants', FireHydrantController::class)
+        ->only(['index', 'show'])
+        ->middleware('permission:fire.view');
+    Route::resource('fire-hydrants', FireHydrantController::class)
+        ->only(['create', 'store', 'edit', 'update', 'destroy'])
+        ->middleware('permission:hydrants.manage');
+
+    /* Operational database browser and controlled CSV exports. */
+    Route::get('/operational-records', [OperationalRecordController::class, 'index'])
+        ->middleware('permission:records.view')
+        ->name('operational-records.index');
+    Route::get('/operational-records/export', [OperationalRecordController::class, 'export'])
+        ->middleware(['permission:records.export', 'throttle:10,1'])
+        ->name('operational-records.export');
 
     /*
     |--------------------------------------------------------------------------

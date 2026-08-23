@@ -3,7 +3,7 @@
         'administrator' => 'Monitor users, security events, and essential system services.',
         'fire-responder' => 'Review active incidents and continue the next required response action.',
         'flood-analyst' => 'Review weather, flood intelligence, and the latest analytical records.',
-        'operations-officer' => 'Maintain citywide awareness across fire, flood, GIS, and communications.',
+        'operations-manager' => 'Maintain citywide awareness across fire, flood, GIS, and communications.',
     ];
 @endphp
 

@@ -40,7 +40,7 @@ class DashboardController extends Controller
             'administrator',
             'fire-responder',
             'flood-analyst',
-            'operations-officer',
+            'operations-manager',
         ], true), 403, 'This role does not have a personalized dashboard.');
 
         $validated = $request->validate([
@@ -72,12 +72,12 @@ class DashboardController extends Controller
 
         $needsFire = in_array($roleSlug, [
             'fire-responder',
-            'operations-officer',
+            'operations-manager',
         ], true);
 
         $needsFlood = in_array($roleSlug, [
             'flood-analyst',
-            'operations-officer',
+            'operations-manager',
         ], true);
 
         if ($needsFire) {
@@ -125,7 +125,7 @@ class DashboardController extends Controller
             $adminDashboard = $this->administratorDashboard();
         }
 
-        if ($roleSlug === 'operations-officer') {
+        if ($roleSlug === 'operations-manager') {
             $operationsSummary = $this->operationsSummary();
         }
 

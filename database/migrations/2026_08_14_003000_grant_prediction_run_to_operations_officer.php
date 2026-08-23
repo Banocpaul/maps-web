@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Grant Operations Officers permission to run flood predictions.
+     * Grant the legacy Operations Officer role permission to run flood predictions.
      */
     public function up(): void
     {

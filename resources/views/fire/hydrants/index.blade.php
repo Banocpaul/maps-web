@@ -256,9 +256,11 @@
                 <p>Manage hydrant availability, location, inspection dates, and GIS coordinates.</p>
             </div>
 
-            <a href="{{ route('fire-hydrants.create') }}" class="hydrant-button hydrant-button-primary">
-                Add Fire Hydrant
-            </a>
+            @if (auth()->user()?->hasPermission('hydrants.manage'))
+                <a href="{{ route('fire-hydrants.create') }}" class="hydrant-button hydrant-button-primary">
+                    Add Fire Hydrant
+                </a>
+            @endif
         </section>
 
         @if (session('success'))
@@ -391,25 +393,27 @@
                                                 View
                                             </a>
 
-                                            <a
-                                                href="{{ route('fire-hydrants.edit', $hydrant) }}"
-                                                class="hydrant-action-link hydrant-action-edit"
-                                            >
-                                                Edit
-                                            </a>
+                                            @if (auth()->user()?->hasPermission('hydrants.manage'))
+                                                <a
+                                                    href="{{ route('fire-hydrants.edit', $hydrant) }}"
+                                                    class="hydrant-action-link hydrant-action-edit"
+                                                >
+                                                    Edit
+                                                </a>
 
-                                            <form
-                                                method="POST"
-                                                action="{{ route('fire-hydrants.destroy', $hydrant) }}"
-                                                onsubmit="return confirm('Delete this fire hydrant? This action cannot be undone.');"
-                                            >
-                                                @csrf
-                                                @method('DELETE')
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('fire-hydrants.destroy', $hydrant) }}"
+                                                    onsubmit="return confirm('Delete this fire hydrant? This action cannot be undone.');"
+                                                >
+                                                    @csrf
+                                                    @method('DELETE')
 
-                                                <button type="submit" class="hydrant-delete-button">
-                                                    Delete
-                                                </button>
-                                            </form>
+                                                    <button type="submit" class="hydrant-delete-button">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

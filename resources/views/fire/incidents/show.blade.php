@@ -249,7 +249,7 @@
                     Back to Incidents
                 </a>
 
-                @if ($fireIncident->status !== 'Resolved')
+                @if ($fireIncident->status !== 'Resolved' && auth()->user()?->hasPermission('fire.edit'))
                     <a
                         href="{{ route('fire-incidents.edit', $fireIncident) }}"
                         class="incident-button incident-button-primary"
@@ -257,6 +257,9 @@
                         Edit Incident
                     </a>
 
+                @endif
+
+                @if ($fireIncident->status !== 'Resolved' && auth()->user()?->hasPermission('fire.delete'))
                     <form
                         method="POST"
                         action="{{ route('fire-incidents.destroy', $fireIncident) }}"

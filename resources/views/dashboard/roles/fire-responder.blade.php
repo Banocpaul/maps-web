@@ -34,7 +34,7 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div><h2 class="font-semibold text-slate-950">Response Shortcuts</h2><p class="mt-1 text-sm text-slate-500">Common actions for fire operations</p></div>
         <div class="flex flex-wrap gap-2">
-            @if (Route::has('fire-incidents.create'))
+            @if (Route::has('fire-incidents.create') && auth()->user()?->hasPermission('fire.create'))
                 <a href="{{ route('fire-incidents.create') }}" class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Report Fire Incident</a>
             @endif
             <a href="{{ route('fire-incidents.index') }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">View Incidents</a>

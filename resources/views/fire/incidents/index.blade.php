@@ -279,9 +279,11 @@
                 <p>Manage historical and operational fire incident records.</p>
             </div>
 
-            <a href="{{ route('fire-incidents.create') }}" class="fire-button fire-button-primary">
-                Add Fire Incident
-            </a>
+            @if (auth()->user()?->hasPermission('fire.create'))
+                <a href="{{ route('fire-incidents.create') }}" class="fire-button fire-button-primary">
+                    Add Fire Incident
+                </a>
+            @endif
         </section>
 
         @if (session('success'))
@@ -429,7 +431,7 @@
                                                 View
                                             </a>
 
-                                            @if ($incident->status !== 'Resolved')
+                                            @if ($incident->status !== 'Resolved' && auth()->user()?->hasPermission('fire.edit'))
                                                 <a
                                                     href="{{ route('fire-incidents.edit', $incident) }}"
                                                     class="fire-action-link fire-action-edit"
@@ -437,6 +439,9 @@
                                                     Edit
                                                 </a>
 
+                                            @endif
+
+                                            @if ($incident->status !== 'Resolved' && auth()->user()?->hasPermission('fire.delete'))
                                                 <form
                                                     method="POST"
                                                     action="{{ route('fire-incidents.destroy', $incident) }}"

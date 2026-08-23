@@ -17,13 +17,15 @@
             </p>
         </div>
 
-        <button
-            id="dataset-add-button"
-            type="button"
-            class="inline-flex items-center justify-center rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800"
-        >
-            Add Flood Record
-        </button>
+        @if (auth()->user()?->hasPermission('flood.create'))
+            <button
+                id="dataset-add-button"
+                type="button"
+                class="inline-flex items-center justify-center rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800"
+            >
+                Add Flood Record
+            </button>
+        @endif
     </div>
 
     <div class="grid grid-cols-2 gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-6 lg:grid-cols-5">
@@ -347,6 +349,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const endpoint = @json(route('flood-dataset.index'));
     const csrfToken = @json(csrf_token());
+    const canCreate = @json(auth()->user()?->hasPermission('flood.create') ?? false);
+    const canEdit = @json(auth()->user()?->hasPermission('flood.edit') ?? false);
+    const canDelete = @json(auth()->user()?->hasPermission('flood.delete') ?? false);
 
     const modal = document.getElementById('dataset-modal');
     const form = document.getElementById('dataset-form');
@@ -360,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     loadDataset();
 
-    document.getElementById('dataset-add-button').addEventListener('click', openCreateModal);
+    document.getElementById('dataset-add-button')?.addEventListener('click', openCreateModal);
     document.getElementById('dataset-close-button').addEventListener('click', closeModal);
     document.getElementById('dataset-cancel-button').addEventListener('click', closeModal);
     document.getElementById('dataset-refresh-button').addEventListener('click', () => loadDataset(currentPage));
@@ -447,8 +452,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '<span class="font-medium text-slate-500">Excluded</span>'}
                 </td>
                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm">
-                    <button type="button" data-edit="${record.id}" class="font-semibold text-sky-700 hover:text-sky-900">Edit</button>
-                    <button type="button" data-delete="${record.id}" class="ml-3 font-semibold text-red-600 hover:text-red-800">Delete</button>
+                    ${canEdit ? `<button type="button" data-edit="${record.id}" class="font-semibold text-sky-700 hover:text-sky-900">Edit</button>` : ''}
+                    ${canDelete ? `<button type="button" data-delete="${record.id}" class="ml-3 font-semibold text-red-600 hover:text-red-800">Delete</button>` : ''}
                 </td>
             `;
 

@@ -4,6 +4,9 @@
 
 @section('content')
 <div class="space-y-6">
+    @if (session('success'))
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
+    @endif
     <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">Operations Manager</p>
@@ -90,6 +93,9 @@
                 <h2 class="font-semibold text-slate-950">{{ $dataset['label'] }}</h2>
                 <p class="mt-1 text-sm text-slate-500">{{ number_format($records->total()) }} matching records</p>
             </div>
+            @if ($datasetKey === 'flood-records' && auth()->user()?->hasPermission('flood.create'))
+                <a href="{{ route('operational-records.flood.create') }}" class="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-800">Add flood record</a>
+            @endif
             <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Page {{ $records->currentPage() }} of {{ max($records->lastPage(), 1) }}</span>
         </div>
 
@@ -100,6 +106,9 @@
                         @foreach ($dataset['columns'] as $heading)
                             <th class="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{{ $heading }}</th>
                         @endforeach
+                        @if ($datasetKey === 'flood-records')
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -117,9 +126,22 @@
                                     @endif
                                 </td>
                             @endforeach
+                            @if ($datasetKey === 'flood-records')
+                                <td class="whitespace-nowrap px-4 py-3">
+                                    @if (auth()->user()?->hasPermission('flood.edit'))
+                                        <a class="font-semibold text-sky-700" href="{{ route('operational-records.flood.edit', $record->id) }}">Edit</a>
+                                    @endif
+                                    @if (auth()->user()?->hasPermission('flood.delete'))
+                                        <form class="ml-3 inline" method="POST" action="{{ route('operational-records.flood.destroy', $record->id) }}" onsubmit="return confirm('Remove this flood record? This action is logged.');">
+                                            @csrf @method('DELETE')
+                                            <button class="font-semibold text-red-600">Delete</button>
+                                        </form>
+                                    @endif
+                                </td>
+                            @endif
                         </tr>
                     @empty
-                        <tr><td colspan="{{ count($dataset['columns']) }}" class="px-5 py-12 text-center text-slate-500">No records match the selected filters.</td></tr>
+                        <tr><td colspan="{{ count($dataset['columns']) + ($datasetKey === 'flood-records' ? 1 : 0) }}" class="px-5 py-12 text-center text-slate-500">No records match the selected filters.</td></tr>
                     @endforelse
                 </tbody>
             </table>

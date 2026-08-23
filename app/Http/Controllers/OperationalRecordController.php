@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barangay;
+use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -12,6 +14,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OperationalRecordController extends Controller
 {
+    private const FLOOD_TABLE = 'flood_analytics_dataset';
+
     public function index(Request $request): View
     {
         $datasets = $this->datasets();
@@ -76,6 +80,92 @@ class OperationalRecordController extends Controller
 
             fclose($handle);
         }, $fileName, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function createFlood(): View
+    {
+        abort_unless(Schema::hasTable(self::FLOOD_TABLE), 404);
+
+        return view('operational-records.flood-form', [
+            'record' => null,
+            'barangays' => Barangay::query()->where('is_active', true)->orderBy('name')->get(),
+        ]);
+    }
+
+    public function storeFlood(Request $request): RedirectResponse
+    {
+        $data = $this->validatedFloodRecord($request);
+        $data['created_at'] = now();
+        DB::table(self::FLOOD_TABLE)->insert($data);
+
+        return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])
+            ->with('success', 'Flood analytics record created successfully.');
+    }
+
+    public function editFlood(int $id): View
+    {
+        $record = DB::table(self::FLOOD_TABLE)->where('id', $id)->whereNull('deleted_at')->first();
+        abort_if($record === null, 404);
+
+        return view('operational-records.flood-form', [
+            'record' => $record,
+            'barangays' => Barangay::query()->where('is_active', true)->orderBy('name')->get(),
+        ]);
+    }
+
+    public function updateFlood(Request $request, int $id): RedirectResponse
+    {
+        abort_unless(DB::table(self::FLOOD_TABLE)->where('id', $id)->whereNull('deleted_at')->exists(), 404);
+        DB::table(self::FLOOD_TABLE)->where('id', $id)->update($this->validatedFloodRecord($request, $id));
+
+        return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])
+            ->with('success', 'Flood analytics record updated successfully.');
+    }
+
+    public function destroyFlood(int $id): RedirectResponse
+    {
+        $updated = DB::table(self::FLOOD_TABLE)->where('id', $id)->whereNull('deleted_at')
+            ->update(['deleted_at' => now()]);
+        abort_if($updated === 0, 404);
+
+        return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])
+            ->with('success', 'Flood analytics record removed.');
+    }
+
+    private function validatedFloodRecord(Request $request, ?int $id = null): array
+    {
+        $validated = $request->validate([
+            'event_id' => ['required', 'string', 'max:50', 'unique:' . self::FLOOD_TABLE . ',event_id' . ($id ? ',' . $id : '')],
+            'event_date' => ['required', 'date'],
+            'barangay' => ['required', 'string', 'max:100'],
+            'nearest_waterway' => ['required', 'string', 'max:150'],
+            'storm_signal' => ['required', 'integer', 'min:0', 'max:5'],
+            'elevation_m' => ['required', 'numeric', 'min:-20', 'max:500'],
+            'distance_to_waterway_m' => ['required', 'numeric', 'min:0'],
+            'drainage_index' => ['required', 'numeric', 'min:0', 'max:1'],
+            'impervious_surface_ratio' => ['required', 'numeric', 'min:0', 'max:1'],
+            'population_density_per_km2' => ['required', 'numeric', 'min:0'],
+            'historical_flood_count_5y' => ['required', 'integer', 'min:0'],
+            'rainfall_24h_mm' => ['required', 'numeric', 'min:0'],
+            'rainfall_3d_mm' => ['required', 'numeric', 'min:0'],
+            'rainfall_7d_mm' => ['required', 'numeric', 'min:0'],
+            'temperature_c' => ['required', 'numeric', 'min:-10', 'max:60'],
+            'humidity_pct' => ['required', 'numeric', 'min:0', 'max:100'],
+            'wind_speed_kph' => ['required', 'numeric', 'min:0'],
+            'tide_level_m' => ['required', 'numeric', 'min:-5', 'max:10'],
+            'flood_depth_mm' => ['required', 'numeric', 'min:0'],
+            'duration_hours' => ['required', 'numeric', 'min:0'],
+            'risk_level' => ['required', 'in:Low,Medium,High'],
+        ]);
+
+        $date = Carbon::parse($validated['event_date']);
+        $validated['year'] = $date->year;
+        $validated['month'] = $date->month;
+        $validated['day_of_week'] = $date->format('l');
+        $validated['is_weekend'] = $date->isWeekend();
+        $validated['wet_season'] = $date->month >= 5 && $date->month <= 11;
+
+        return $validated;
     }
 
     private function filteredQuery(array $dataset, array $filters): Builder
@@ -238,34 +328,13 @@ class OperationalRecordController extends Controller
     {
         return [
             'flood-records' => [
-    'label' => 'Flood Analytics Dataset',
-    'table' => 'flood_analytics_dataset',
-    'date_column' => 'event_date',
-    'status_column' => 'risk_level',
-    'barangay_text_column' => 'barangay',
-    'order_column' => 'event_date',
-    'search_columns' => [
-        'event_id',
-        'barangay',
-        'nearest_waterway',
-    ],
-    'statuses' => ['Low', 'Medium', 'High'],
-    'crud_route' => 'flood-operation.index',
-    'columns' => [
-        'id' => 'ID',
-        'event_id' => 'Event ID',
-        'event_date' => 'Event Date',
-        'barangay' => 'Barangay',
-        'risk_level' => 'Risk Level',
-        'rainfall_24h_mm' => 'Rainfall 24h (mm)',
-        'rainfall_3d_mm' => 'Rainfall 3d (mm)',
-        'rainfall_7d_mm' => 'Rainfall 7d (mm)',
-        'flood_depth_mm' => 'Flood Depth (mm)',
-        'duration_hours' => 'Duration (hours)',
-        'nearest_waterway' => 'Nearest Waterway',
-        'storm_signal' => 'Storm Signal',
-    ],
-],
+                'label' => 'Flood Analytics Dataset', 'table' => self::FLOOD_TABLE,
+                'date_column' => 'event_date', 'status_column' => 'risk_level',
+                'barangay_text_column' => 'barangay', 'order_column' => 'event_date',
+                'search_columns' => ['event_id', 'barangay', 'nearest_waterway'],
+                'statuses' => ['Low', 'Medium', 'High'], 'crud_route' => null,
+                'columns' => ['id' => 'ID', 'event_id' => 'Event ID', 'event_date' => 'Event Date', 'barangay' => 'Barangay', 'risk_level' => 'Risk Level', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'rainfall_3d_mm' => 'Rainfall 3d (mm)', 'rainfall_7d_mm' => 'Rainfall 7d (mm)', 'flood_depth_mm' => 'Flood Depth (mm)', 'duration_hours' => 'Duration (hours)', 'nearest_waterway' => 'Nearest Waterway', 'storm_signal' => 'Storm Signal'],
+            ],
             'fire-incidents' => [
                 'label' => 'Fire Incidents', 'table' => 'fire_incidents',
                 'date_column' => 'reported_at', 'status_column' => 'status',

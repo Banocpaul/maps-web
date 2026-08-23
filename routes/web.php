@@ -206,6 +206,16 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/operational-records/export', [OperationalRecordController::class, 'export'])
         ->middleware(['permission:records.export', 'throttle:10,1'])
         ->name('operational-records.export');
+    Route::get('/operational-records/flood/create', [OperationalRecordController::class, 'createFlood'])
+        ->middleware('permission:flood.create')->name('operational-records.flood.create');
+    Route::post('/operational-records/flood', [OperationalRecordController::class, 'storeFlood'])
+        ->middleware(['permission:flood.create', 'throttle:30,1'])->name('operational-records.flood.store');
+    Route::get('/operational-records/flood/{id}/edit', [OperationalRecordController::class, 'editFlood'])
+        ->whereNumber('id')->middleware('permission:flood.edit')->name('operational-records.flood.edit');
+    Route::put('/operational-records/flood/{id}', [OperationalRecordController::class, 'updateFlood'])
+        ->whereNumber('id')->middleware(['permission:flood.edit', 'throttle:30,1'])->name('operational-records.flood.update');
+    Route::delete('/operational-records/flood/{id}', [OperationalRecordController::class, 'destroyFlood'])
+        ->whereNumber('id')->middleware(['permission:flood.delete', 'throttle:20,1'])->name('operational-records.flood.destroy');
 
     /*
     |--------------------------------------------------------------------------

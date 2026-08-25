@@ -9,12 +9,35 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OperationalRecordController extends Controller
 {
     private const FLOOD_TABLE = 'flood_analytics_dataset';
+
+    private const REPORT_DIMENSIONS = [
+        'barangay' => 'Barangay',
+        'year' => 'Year',
+        'month' => 'Month',
+        'risk_level' => 'Risk Level',
+        'storm_signal' => 'Storm Signal',
+        'nearest_waterway' => 'Nearest Waterway',
+        'wet_season' => 'Wet Season',
+        'day_of_week' => 'Day of Week',
+    ];
+
+    private const REPORT_MEASURES = [
+        'records' => 'Number of Records',
+        'rainfall_24h_mm' => 'Rainfall 24h (mm)',
+        'rainfall_3d_mm' => 'Rainfall 3d (mm)',
+        'rainfall_7d_mm' => 'Rainfall 7d (mm)',
+        'flood_depth_mm' => 'Flood Depth (mm)',
+        'duration_hours' => 'Flood Duration (hours)',
+        'elevation_m' => 'Elevation (m)',
+        'distance_to_waterway_m' => 'Distance to Waterway (m)',
+    ];
 
     public function index(Request $request): View
     {
@@ -80,6 +103,173 @@ class OperationalRecordController extends Controller
 
             fclose($handle);
         }, $fileName, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function reportBuilder(Request $request): View
+    {
+        abort_unless(Schema::hasTable(self::FLOOD_TABLE), 404);
+
+        $availableDimensions = collect(self::REPORT_DIMENSIONS)
+            ->filter(fn (string $label, string $column): bool =>
+                Schema::hasColumn(self::FLOOD_TABLE, $column)
+            )
+            ->all();
+        $availableMeasures = collect(self::REPORT_MEASURES)
+            ->filter(fn (string $label, string $column): bool =>
+                $column === 'records' || Schema::hasColumn(self::FLOOD_TABLE, $column)
+            )
+            ->all();
+
+        $validated = $request->validate([
+            'row_primary' => ['nullable', Rule::in(array_keys($availableDimensions))],
+            'row_secondary' => ['nullable', Rule::in(array_keys($availableDimensions))],
+            'column' => ['nullable', Rule::in(array_keys($availableDimensions))],
+            'measure' => ['nullable', Rule::in(array_keys($availableMeasures))],
+            'aggregation' => ['nullable', Rule::in(['count', 'avg', 'sum', 'min', 'max'])],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'barangay' => ['nullable', 'string', 'max:100'],
+            'risk_level' => ['nullable', Rule::in(['Low', 'Medium', 'High'])],
+        ]);
+
+        $configuration = [
+            'row_primary' => $validated['row_primary'] ?? 'barangay',
+            'row_secondary' => $request->has('row_secondary')
+                ? (string) ($validated['row_secondary'] ?? '')
+                : 'year',
+            'column' => $request->has('column')
+                ? (string) ($validated['column'] ?? '')
+                : 'risk_level',
+            'measure' => $validated['measure'] ?? 'records',
+            'aggregation' => $validated['aggregation'] ?? 'count',
+            'date_from' => $validated['date_from'] ?? '',
+            'date_to' => $validated['date_to'] ?? '',
+            'barangay' => trim((string) ($validated['barangay'] ?? '')),
+            'risk_level' => $validated['risk_level'] ?? '',
+        ];
+
+        if ($configuration['measure'] === 'records') {
+            $configuration['aggregation'] = 'count';
+        }
+
+        $rowDimensions = array_values(array_unique(array_filter([
+            $configuration['row_primary'],
+            $configuration['row_secondary'],
+        ])));
+        $columnDimension = $configuration['column'];
+
+        if (in_array($columnDimension, $rowDimensions, true)) {
+            $columnDimension = '';
+            $configuration['column'] = '';
+        }
+
+        $query = DB::table(self::FLOOD_TABLE);
+
+        if (Schema::hasColumn(self::FLOOD_TABLE, 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
+
+        if ($configuration['date_from'] !== '' && Schema::hasColumn(self::FLOOD_TABLE, 'event_date')) {
+            $query->whereDate('event_date', '>=', $configuration['date_from']);
+        }
+
+        if ($configuration['date_to'] !== '' && Schema::hasColumn(self::FLOOD_TABLE, 'event_date')) {
+            $query->whereDate('event_date', '<=', $configuration['date_to']);
+        }
+
+        if ($configuration['barangay'] !== '') {
+            $query->where('barangay', $configuration['barangay']);
+        }
+
+        if ($configuration['risk_level'] !== '') {
+            $query->where('risk_level', $configuration['risk_level']);
+        }
+
+        $groupDimensions = array_values(array_unique(array_filter([
+            ...$rowDimensions,
+            $columnDimension,
+        ])));
+        $grammar = DB::connection()->getQueryGrammar();
+
+        foreach ($groupDimensions as $index => $dimension) {
+            $query->addSelect($dimension . ' as dimension_' . $index);
+            $query->groupBy($dimension);
+            $query->orderBy($dimension);
+        }
+
+        $measure = $configuration['measure'];
+        $aggregation = strtoupper($configuration['aggregation']);
+        $expression = $measure === 'records'
+            ? 'COUNT(*)'
+            : $aggregation . '(' . $grammar->wrap($measure) . ')';
+
+        $results = $query->selectRaw($expression . ' as metric_value')
+            ->limit(2500)
+            ->get();
+
+        $pivotRows = [];
+        $columnKeys = [];
+        $maximumValue = 0.0;
+
+        foreach ($results as $result) {
+            $dimensions = [];
+
+            foreach ($groupDimensions as $index => $dimension) {
+                $dimensions[$dimension] = data_get($result, 'dimension_' . $index);
+            }
+
+            $rowValues = collect($rowDimensions)
+                ->mapWithKeys(fn (string $dimension): array => [
+                    $dimension => $this->reportLabel($dimension, $dimensions[$dimension] ?? null),
+                ])
+                ->all();
+            $rowKey = json_encode($rowValues, JSON_THROW_ON_ERROR);
+            $columnKey = $columnDimension !== ''
+                ? $this->reportLabel($columnDimension, $dimensions[$columnDimension] ?? null)
+                : 'Value';
+            $value = round((float) $result->metric_value, 2);
+
+            $pivotRows[$rowKey] ??= ['dimensions' => $rowValues, 'values' => []];
+            $pivotRows[$rowKey]['values'][$columnKey] = $value;
+            $columnKeys[$columnKey] = true;
+            $maximumValue = max($maximumValue, $value);
+        }
+
+        $columnKeys = array_keys($columnKeys);
+        $barangays = DB::table(self::FLOOD_TABLE)
+            ->whereNotNull('barangay')
+            ->distinct()
+            ->orderBy('barangay')
+            ->pluck('barangay');
+
+        return view('operational-records.report-builder', [
+            'availableDimensions' => $availableDimensions,
+            'availableMeasures' => $availableMeasures,
+            'configuration' => $configuration,
+            'rowDimensions' => $rowDimensions,
+            'columnDimension' => $columnDimension,
+            'pivotRows' => array_values($pivotRows),
+            'columnKeys' => $columnKeys,
+            'maximumValue' => $maximumValue,
+            'barangays' => $barangays,
+        ]);
+    }
+
+    private function reportLabel(string $dimension, mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return 'Not specified';
+        }
+
+        if ($dimension === 'month' && is_numeric($value)) {
+            return Carbon::create(null, (int) $value, 1)->format('F');
+        }
+
+        if ($dimension === 'wet_season') {
+            return (bool) $value ? 'Wet season' : 'Dry season';
+        }
+
+        return (string) $value;
     }
 
     public function createFlood(): View

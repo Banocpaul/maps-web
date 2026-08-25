@@ -204,6 +204,9 @@ Route::resource('fire-incidents', FireIncidentController::class)
     Route::get('/operational-records', [OperationalRecordController::class, 'index'])
         ->middleware('permission:records.view')
         ->name('operational-records.index');
+    Route::get('/operational-records/report-builder', [OperationalRecordController::class, 'reportBuilder'])
+        ->middleware('permission:records.view')
+        ->name('operational-records.report-builder');
     Route::get('/operational-records/export', [OperationalRecordController::class, 'export'])
         ->middleware(['permission:records.export', 'throttle:10,1'])
         ->name('operational-records.export');

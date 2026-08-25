@@ -7,7 +7,10 @@ use App\Models\FireIncident;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class OperationsManagerAuthorizationTest extends TestCase
@@ -37,6 +40,35 @@ class OperationsManagerAuthorizationTest extends TestCase
                 'dataset' => 'fire-incidents',
             ]))
             ->assertForbidden();
+    }
+
+    public function test_operations_manager_can_build_flood_pivot_report(): void
+    {
+        Schema::create('flood_analytics_dataset', function (Blueprint $table): void {
+            $table->id();
+            $table->string('barangay');
+            $table->unsignedSmallInteger('year');
+            $table->string('risk_level');
+            $table->softDeletes();
+        });
+
+        DB::table('flood_analytics_dataset')->insert([
+            ['barangay' => 'Addition Hills', 'year' => 2025, 'risk_level' => 'High'],
+            ['barangay' => 'Addition Hills', 'year' => 2025, 'risk_level' => 'High'],
+            ['barangay' => 'Hulo', 'year' => 2025, 'risk_level' => 'Low'],
+        ]);
+
+        $user = $this->userWithPermissions(
+            'operations-manager',
+            ['records.view']
+        );
+
+        $this->actingAs($user)
+            ->get(route('operational-records.report-builder'))
+            ->assertOk()
+            ->assertSee('Flood Report Builder')
+            ->assertSee('Addition Hills')
+            ->assertSee('Generated heatmap');
     }
 
     public function test_operations_manager_can_open_create_fire_incident_form(): void

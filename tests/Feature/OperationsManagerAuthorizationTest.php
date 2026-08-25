@@ -68,12 +68,14 @@ class OperationsManagerAuthorizationTest extends TestCase
         ]);
 
         foreach ($permissionSlugs as $permissionSlug) {
-            $permission = Permission::create([
-                'name' => str($permissionSlug)->headline()->toString(),
-                'slug' => $permissionSlug,
-                'module' => str($permissionSlug)->before('.')->toString(),
-                'is_active' => true,
-            ]);
+            $permission = Permission::firstOrCreate(
+    ['slug' => $permissionSlug],
+    [
+        'name' => str($permissionSlug)->headline()->toString(),
+        'module' => str($permissionSlug)->before('.')->toString(),
+        'is_active' => true,
+    ]
+);
             $role->permissions()->attach($permission);
         }
 

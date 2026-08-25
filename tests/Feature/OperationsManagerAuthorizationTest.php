@@ -21,7 +21,9 @@ class OperationsManagerAuthorizationTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('operational-records.index', ['dataset' => 'fire-incidents']))
+            ->get(route('operational-records.index', [
+                'dataset' => 'fire-incidents',
+            ]))
             ->assertOk()
             ->assertSee('Operational Database Records');
     }
@@ -31,36 +33,64 @@ class OperationsManagerAuthorizationTest extends TestCase
         $user = $this->userWithPermissions('system-viewer', []);
 
         $this->actingAs($user)
-            ->get(route('operational-records.index', ['dataset' => 'fire-incidents']))
+            ->get(route('operational-records.index', [
+                'dataset' => 'fire-incidents',
+            ]))
             ->assertForbidden();
+    }
+
+    public function test_operations_manager_can_open_create_fire_incident_form(): void
+    {
+        $user = $this->userWithPermissions(
+            'operations-manager',
+            ['fire.create']
+        );
+
+        $this->actingAs($user)
+            ->get(route('fire-incidents.create'))
+            ->assertOk();
     }
 
     public function test_fire_view_permission_does_not_allow_deletion(): void
     {
-        $user = $this->userWithPermissions('system-viewer', ['fire.view']);
+        $user = $this->userWithPermissions(
+            'system-viewer',
+            ['fire.view']
+        );
+
         $incident = $this->fireIncident();
 
         $this->actingAs($user)
             ->delete(route('fire-incidents.destroy', $incident))
             ->assertForbidden();
 
-        $this->assertDatabaseHas('fire_incidents', ['id' => $incident->id]);
+        $this->assertDatabaseHas('fire_incidents', [
+            'id' => $incident->id,
+        ]);
     }
 
     public function test_operations_manager_can_soft_delete_fire_incident(): void
     {
-        $user = $this->userWithPermissions('operations-manager', ['fire.delete']);
+        $user = $this->userWithPermissions(
+            'operations-manager',
+            ['fire.delete']
+        );
+
         $incident = $this->fireIncident();
 
         $this->actingAs($user)
             ->delete(route('fire-incidents.destroy', $incident))
             ->assertRedirect(route('fire-incidents.index'));
 
-        $this->assertSoftDeleted('fire_incidents', ['id' => $incident->id]);
+        $this->assertSoftDeleted('fire_incidents', [
+            'id' => $incident->id,
+        ]);
     }
 
-    private function userWithPermissions(string $roleSlug, array $permissionSlugs): User
-    {
+    private function userWithPermissions(
+        string $roleSlug,
+        array $permissionSlugs
+    ): User {
         $role = Role::create([
             'name' => str($roleSlug)->headline()->toString(),
             'slug' => $roleSlug,
@@ -69,14 +99,21 @@ class OperationsManagerAuthorizationTest extends TestCase
 
         foreach ($permissionSlugs as $permissionSlug) {
             $permission = Permission::firstOrCreate(
-    ['slug' => $permissionSlug],
-    [
-        'name' => str($permissionSlug)->headline()->toString(),
-        'module' => str($permissionSlug)->before('.')->toString(),
-        'is_active' => true,
-    ]
-);
-            $role->permissions()->attach($permission);
+                ['slug' => $permissionSlug],
+                [
+                    'name' => str($permissionSlug)
+                        ->headline()
+                        ->toString(),
+                    'module' => str($permissionSlug)
+                        ->before('.')
+                        ->toString(),
+                    'is_active' => true,
+                ]
+            );
+
+            $role->permissions()->syncWithoutDetaching([
+                $permission->id,
+            ]);
         }
 
         return User::factory()->create([

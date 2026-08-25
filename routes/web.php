@@ -174,11 +174,12 @@ Route::middleware('auth')->group(function (): void {
     */
 
     Route::resource('fire-incidents', FireIncidentController::class)
-        ->only(['index', 'show'])
-        ->middleware('permission:fire.view');
-    Route::resource('fire-incidents', FireIncidentController::class)
-        ->only(['create', 'store'])
-        ->middleware('permission:fire.create');
+    ->only(['create', 'store'])
+    ->middleware('permission:fire.create');
+
+Route::resource('fire-incidents', FireIncidentController::class)
+    ->only(['index', 'show'])
+    ->middleware('permission:fire.view');
     Route::resource('fire-incidents', FireIncidentController::class)
         ->only(['edit', 'update'])
         ->middleware('permission:fire.edit');

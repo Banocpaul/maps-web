@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\DailyWeatherSnapshot;
 use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -23,10 +25,57 @@ class LiveWeatherService
     private int $connectTimeoutSeconds = 10;
 
     /**
+     * Retrieve today's saved Mandaluyong weather snapshot. Open-Meteo is
+     * called only when the Manila calendar date has no stored snapshot.
+     */
+    public function getCurrentWeather(): array
+    {
+        $snapshotDate = now(self::TIMEZONE)->toDateString();
+        $snapshot = $this->findSnapshot($snapshotDate);
+
+        if ($snapshot !== null) {
+            return $this->snapshotResponse($snapshot, 'database');
+        }
+
+        return Cache::lock(
+            'daily-weather-snapshot:' . $snapshotDate,
+            60
+        )->block(15, function () use ($snapshotDate): array {
+            $snapshot = $this->findSnapshot($snapshotDate);
+
+            if ($snapshot !== null) {
+                return $this->snapshotResponse($snapshot, 'database');
+            }
+
+            return $this->refreshCurrentWeather();
+        });
+    }
+
+    /**
+     * Force a fresh Open-Meteo request and replace today's snapshot.
+     */
+    public function refreshCurrentWeather(): array
+    {
+        $weather = $this->fetchCurrentWeather();
+        $fetchedAt = now(self::TIMEZONE);
+        $snapshot = DailyWeatherSnapshot::query()->updateOrCreate(
+            ['snapshot_date' => $fetchedAt->toDateString()],
+            [
+                'source' => 'Open-Meteo',
+                'weather_data' => $weather,
+                'fetched_at' => $fetchedAt,
+                'expires_at' => $fetchedAt->copy()->endOfDay(),
+            ]
+        );
+
+        return $this->snapshotResponse($snapshot, 'open-meteo');
+    }
+
+    /**
      * Retrieve current Mandaluyong weather, recent rainfall, and the
      * upcoming 24-hour forecast used by citywide prediction.
      */
-    public function getCurrentWeather(): array
+    private function fetchCurrentWeather(): array
     {
         try {
             $response = Http::acceptJson()
@@ -92,6 +141,36 @@ class LiveWeatherService
         }
 
         return $this->processResponse($response);
+    }
+
+    private function findSnapshot(string $snapshotDate): ?DailyWeatherSnapshot
+    {
+        return DailyWeatherSnapshot::query()
+            ->where('snapshot_date', $snapshotDate)
+            ->first();
+    }
+
+    private function snapshotResponse(
+        DailyWeatherSnapshot $snapshot,
+        string $retrievedFrom
+    ): array {
+        $weather = $snapshot->weather_data;
+
+        if (! is_array($weather)) {
+            throw new RuntimeException(
+                'The stored daily weather snapshot is invalid.'
+            );
+        }
+
+        return array_merge($weather, [
+            'daily_snapshot_date' =>
+                $snapshot->snapshot_date->format('Y-m-d'),
+            'weather_fetched_at' =>
+                $snapshot->fetched_at->toIso8601String(),
+            'weather_expires_at' =>
+                $snapshot->expires_at->toIso8601String(),
+            'weather_retrieved_from' => $retrievedFrom,
+        ]);
     }
 
     public function isAvailable(): bool

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\DailyWeatherSnapshot;
 use App\Services\LiveWeatherService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,6 +37,12 @@ class DailyWeatherSnapshotTest extends TestCase
         $this->assertSame('database', $second['weather_retrieved_from']);
         $this->assertSame('2026-08-26', $second['daily_snapshot_date']);
         $this->assertDatabaseCount('daily_weather_snapshots', 1);
+
+        $snapshot = DailyWeatherSnapshot::query()->sole();
+        $this->assertSame(
+            '2026-08-26 15:59:59',
+            $snapshot->getRawOriginal('expires_at')
+        );
     }
 
     public function test_forced_refresh_replaces_today_snapshot_without_duplicate_row(): void

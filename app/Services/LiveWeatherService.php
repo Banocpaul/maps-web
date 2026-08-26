@@ -57,14 +57,15 @@ class LiveWeatherService
     public function refreshCurrentWeather(): array
     {
         $weather = $this->fetchCurrentWeather();
-        $fetchedAt = now(self::TIMEZONE);
+        $manilaNow = now(self::TIMEZONE);
+        $fetchedAt = now();
         $snapshot = DailyWeatherSnapshot::query()->updateOrCreate(
-            ['snapshot_date' => $fetchedAt->toDateString()],
+            ['snapshot_date' => $manilaNow->toDateString()],
             [
                 'source' => 'Open-Meteo',
                 'weather_data' => $weather,
                 'fetched_at' => $fetchedAt,
-                'expires_at' => $fetchedAt->copy()->endOfDay(),
+                'expires_at' => $manilaNow->copy()->endOfDay()->utc(),
             ]
         );
 

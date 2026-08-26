@@ -103,6 +103,11 @@
 
         <div class="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-5">
             <button class="rounded-xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-800">Generate report</button>
+            @if (auth()->user()?->hasPermission('records.export'))
+                <a href="{{ route('operational-records.report-builder.export', request()->query()) }}" class="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">
+                    Export Excel
+                </a>
+            @endif
             <a href="{{ route('operational-records.report-builder') }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reset</a>
             <p class="text-xs text-slate-500">The report uses approved fields only and never alters database records.</p>
         </div>

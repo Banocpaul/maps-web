@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use ZipArchive;
 
 class OperationalRecordController extends Controller
 {
@@ -253,6 +255,235 @@ class OperationalRecordController extends Controller
             'maximumValue' => $maximumValue,
             'barangays' => $barangays,
         ]);
+    }
+
+    public function exportReport(Request $request): BinaryFileResponse
+    {
+        abort_unless(class_exists(ZipArchive::class), 500, 'Excel export requires the PHP ZIP extension.');
+
+        $report = $this->reportBuilder($request)->getData();
+        $configuration = $report['configuration'];
+        $rowDimensions = $report['rowDimensions'];
+        $columnKeys = $report['columnKeys'];
+        $availableDimensions = $report['availableDimensions'];
+        $availableMeasures = $report['availableMeasures'];
+        $pivotRows = $report['pivotRows'];
+        $tableColumnCount = max(count($rowDimensions) + count($columnKeys), 1);
+        $columnCount = max($tableColumnCount, 4);
+        $lastColumn = $this->excelColumnName($columnCount);
+        $lastTableColumn = $this->excelColumnName($tableColumnCount);
+
+        $rows = [];
+        $rows[] = $this->xlsxRow(1, [
+            $this->xlsxCell('A1', 'M.A.P.S. Flood Report', 1),
+        ]);
+        $rows[] = $this->xlsxRow(2, [
+            $this->xlsxCell('A2', 'Generated: ' . now()->format('Y-m-d H:i:s')),
+        ]);
+        $rows[] = $this->xlsxRow(3, [
+            $this->xlsxCell('A3', 'Measure', 2),
+            $this->xlsxCell('B3', $availableMeasures[$configuration['measure']]),
+            $this->xlsxCell('C3', 'Calculation', 2),
+            $this->xlsxCell('D3', ucfirst($configuration['aggregation'])),
+        ]);
+        $rows[] = $this->xlsxRow(4, [
+            $this->xlsxCell('A4', 'Barangay filter', 2),
+            $this->xlsxCell('B4', $configuration['barangay'] ?: 'All barangays'),
+            $this->xlsxCell('C4', 'Risk filter', 2),
+            $this->xlsxCell('D4', $configuration['risk_level'] ?: 'All risk levels'),
+        ]);
+        $rows[] = $this->xlsxRow(5, [
+            $this->xlsxCell('A5', 'Date range', 2),
+            $this->xlsxCell('B5', ($configuration['date_from'] ?: 'Beginning') . ' to ' . ($configuration['date_to'] ?: 'Latest')),
+        ]);
+
+        $headerCells = [];
+        $columnIndex = 1;
+
+        foreach ($rowDimensions as $dimension) {
+            $headerCells[] = $this->xlsxCell(
+                $this->excelColumnName($columnIndex) . '7',
+                $availableDimensions[$dimension],
+                3
+            );
+            $columnIndex++;
+        }
+
+        foreach ($columnKeys as $columnKey) {
+            $headerCells[] = $this->xlsxCell(
+                $this->excelColumnName($columnIndex) . '7',
+                $columnKey,
+                3
+            );
+            $columnIndex++;
+        }
+
+        $rows[] = $this->xlsxRow(7, $headerCells);
+        $excelRow = 8;
+
+        foreach ($pivotRows as $pivotRow) {
+            $cells = [];
+            $columnIndex = 1;
+
+            foreach ($rowDimensions as $dimension) {
+                $cells[] = $this->xlsxCell(
+                    $this->excelColumnName($columnIndex) . $excelRow,
+                    $pivotRow['dimensions'][$dimension] ?? ''
+                );
+                $columnIndex++;
+            }
+
+            foreach ($columnKeys as $columnKey) {
+                $value = $pivotRow['values'][$columnKey] ?? null;
+                $cells[] = $this->xlsxCell(
+                    $this->excelColumnName($columnIndex) . $excelRow,
+                    $value,
+                    $configuration['aggregation'] === 'count' ? 4 : 5
+                );
+                $columnIndex++;
+            }
+
+            $rows[] = $this->xlsxRow($excelRow, $cells);
+            $excelRow++;
+        }
+
+        $lastDataRow = max($excelRow - 1, 7);
+        $worksheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<dimension ref="A1:' . $lastColumn . $lastDataRow . '"/>'
+            . '<sheetViews><sheetView workbookViewId="0"><pane ySplit="7" topLeftCell="A8" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+            . '<cols><col min="1" max="' . $columnCount . '" width="18" customWidth="1"/></cols>'
+            . '<sheetData>' . implode('', $rows) . '</sheetData>'
+            . '<mergeCells count="1"><mergeCell ref="A1:' . $lastColumn . '1"/></mergeCells>'
+            . '<autoFilter ref="A7:' . $lastTableColumn . $lastDataRow . '"/>'
+            . '</worksheet>';
+
+        $temporaryFile = tempnam(sys_get_temp_dir(), 'maps-report-');
+        abort_if($temporaryFile === false, 500, 'Unable to create the Excel report.');
+
+        $zip = new ZipArchive();
+        abort_unless($zip->open($temporaryFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true, 500, 'Unable to create the Excel workbook.');
+
+        $zip->addFromString('[Content_Types].xml', $this->xlsxContentTypes());
+        $zip->addFromString('_rels/.rels', $this->xlsxRootRelationships());
+        $zip->addFromString('docProps/core.xml', $this->xlsxCoreProperties());
+        $zip->addFromString('docProps/app.xml', $this->xlsxAppProperties());
+        $zip->addFromString('xl/workbook.xml', $this->xlsxWorkbook());
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $this->xlsxWorkbookRelationships());
+        $zip->addFromString('xl/styles.xml', $this->xlsxStyles());
+        $zip->addFromString('xl/worksheets/sheet1.xml', $worksheet);
+        $zip->close();
+
+        $fileName = 'maps-flood-report-' . now()->format('Y-m-d-His') . '.xlsx';
+
+        return response()->download(
+            $temporaryFile,
+            $fileName,
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        )->deleteFileAfterSend(true);
+    }
+
+    private function xlsxRow(int $rowNumber, array $cells): string
+    {
+        return '<row r="' . $rowNumber . '">' . implode('', $cells) . '</row>';
+    }
+
+    private function xlsxCell(string $reference, mixed $value, int $style = 0): string
+    {
+        $styleAttribute = $style > 0 ? ' s="' . $style . '"' : '';
+
+        if ($value !== null && is_numeric($value)) {
+            return '<c r="' . $reference . '"' . $styleAttribute . '><v>' . (float) $value . '</v></c>';
+        }
+
+        $escaped = htmlspecialchars((string) ($value ?? ''), ENT_XML1 | ENT_QUOTES, 'UTF-8');
+
+        return '<c r="' . $reference . '" t="inlineStr"' . $styleAttribute . '><is><t xml:space="preserve">' . $escaped . '</t></is></c>';
+    }
+
+    private function excelColumnName(int $number): string
+    {
+        $name = '';
+
+        while ($number > 0) {
+            $number--;
+            $name = chr(65 + ($number % 26)) . $name;
+            $number = intdiv($number, 26);
+        }
+
+        return $name;
+    }
+
+    private function xlsxContentTypes(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            . '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'
+            . '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>'
+            . '</Types>';
+    }
+
+    private function xlsxRootRelationships(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>'
+            . '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>'
+            . '</Relationships>';
+    }
+
+    private function xlsxWorkbook(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<sheets><sheet name="Flood Report" sheetId="1" r:id="rId1"/></sheets></workbook>';
+    }
+
+    private function xlsxWorkbookRelationships(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            . '</Relationships>';
+    }
+
+    private function xlsxStyles(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<numFmts count="1"><numFmt numFmtId="164" formatCode="0.00"/></numFmts>'
+            . '<fonts count="3"><font><sz val="11"/><name val="Aptos"/></font><font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Aptos Display"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Aptos"/></font></fonts>'
+            . '<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF14532D"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0369A1"/><bgColor indexed="64"/></patternFill></fill></fills>'
+            . '<borders count="2"><border/><border><left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right><top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom></border></borders>'
+            . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            . '<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/></cellXfs>'
+            . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+            . '</styleSheet>';
+    }
+
+    private function xlsxCoreProperties(): string
+    {
+        $timestamp = now()->utc()->format('Y-m-d\\TH:i:s\\Z');
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
+            . '<dc:title>M.A.P.S. Flood Report</dc:title><dc:creator>M.A.P.S.</dc:creator>'
+            . '<dcterms:created xsi:type="dcterms:W3CDTF">' . $timestamp . '</dcterms:created>'
+            . '</cp:coreProperties>';
+    }
+
+    private function xlsxAppProperties(): string
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
+            . '<Application>M.A.P.S.</Application></Properties>';
     }
 
     private function reportLabel(string $dimension, mixed $value): string

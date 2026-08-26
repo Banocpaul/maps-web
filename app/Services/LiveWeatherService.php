@@ -164,7 +164,7 @@ class LiveWeatherService
 
         return array_merge($weather, [
             'daily_snapshot_date' =>
-                $snapshot->snapshot_date->format('Y-m-d'),
+                (string) $snapshot->snapshot_date,
             'weather_fetched_at' =>
                 $snapshot->fetched_at->toIso8601String(),
             'weather_expires_at' =>

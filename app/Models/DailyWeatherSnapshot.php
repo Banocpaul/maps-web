@@ -17,7 +17,6 @@ class DailyWeatherSnapshot extends Model
     protected function casts(): array
     {
         return [
-            'snapshot_date' => 'date',
             'weather_data' => 'array',
             'fetched_at' => 'datetime',
             'expires_at' => 'datetime',

@@ -58,7 +58,7 @@ class FireIncidentAutomaticSmsTest extends TestCase
             'latitude' => 14.5852,
             'longitude' => 121.0348,
             'severity' => 'Major',
-            'status' => 'Reported',
+            'status' => 'Responding',
             'reported_at' => '2026-08-26 10:15:00',
         ]);
 
@@ -105,7 +105,7 @@ class FireIncidentAutomaticSmsTest extends TestCase
             'latitude' => 14.5852,
             'longitude' => 121.0348,
             'severity' => 'Moderate',
-            'status' => 'Reported',
+            'status' => 'Responding',
             'reported_at' => '2026-08-26 10:15:00',
         ])->assertSessionHas('success', fn (string $message): bool =>
             str_contains($message, '0 sent, 1 failed')
@@ -134,7 +134,7 @@ class FireIncidentAutomaticSmsTest extends TestCase
             'latitude' => 14.5852,
             'longitude' => 121.0348,
             'severity' => 'Major',
-            'status' => 'Reported',
+            'status' => 'Responding',
             'reported_at' => now(),
         ]);
 
@@ -182,12 +182,14 @@ class FireIncidentAutomaticSmsTest extends TestCase
             'slug' => 'operations-manager',
             'is_active' => true,
         ]);
-        $permission = Permission::create([
-            'name' => 'Create Fire Incidents',
-            'slug' => $permissionSlug,
-            'module' => 'fire',
-            'is_active' => true,
-        ]);
+        $permission = Permission::firstOrCreate(
+            ['slug' => $permissionSlug],
+            [
+                'name' => 'Create Fire Incidents',
+                'module' => 'fire',
+                'is_active' => true,
+            ]
+        );
         $role->permissions()->attach($permission);
 
         return User::factory()->create([

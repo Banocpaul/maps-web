@@ -115,17 +115,18 @@ class SmsController extends Controller
             $validated['phone_number']
         );
 
-        $request->validate([
-            'phone_number' => [
-                Rule::unique('sms_recipients', 'phone_number')
-                    ->where(
-                        fn ($query) => $query->where(
-                            'phone_number',
-                            $phoneNumber
-                        )
-                    ),
-            ],
-        ]);
+        $duplicateExists = SmsRecipient::query()
+            ->where('phone_number', $phoneNumber)
+            ->exists();
+
+        if ($duplicateExists) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'phone_number' =>
+                        'This phone number is already registered.',
+                ]);
+        }
 
         SmsRecipient::create([
             'full_name' => $validated['full_name'],

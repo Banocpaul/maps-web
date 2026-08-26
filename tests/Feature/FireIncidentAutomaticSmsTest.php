@@ -148,6 +148,55 @@ class FireIncidentAutomaticSmsTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_duplicate_normalized_recipient_phone_returns_validation_error(): void
+    {
+        $barangay = $this->barangay('Addition Hills');
+        $this->recipient($barangay, true, true, '+639171234567');
+        $user = $this->userWithPermission('sms.recipients.manage');
+
+        $response = $this->actingAs($user)
+            ->from(route('sms.index'))
+            ->post(route('sms.recipients.store'), [
+                'full_name' => 'Duplicate Recipient',
+                'phone_number' => '0917 123 4567',
+                'barangay_id' => $barangay->id,
+                'receive_fire_alerts' => '1',
+                'is_active' => '1',
+            ]);
+
+        $response
+            ->assertRedirect(route('sms.index'))
+            ->assertSessionHasErrors('phone_number');
+        $this->assertDatabaseCount('sms_recipients', 1);
+    }
+
+    public function test_recipient_can_be_saved_with_barangay_fire_alert_assignment(): void
+    {
+        $barangay = $this->barangay('Addition Hills');
+        $user = $this->userWithPermission('sms.recipients.manage');
+
+        $response = $this->actingAs($user)
+            ->from(route('sms.index'))
+            ->post(route('sms.recipients.store'), [
+                'full_name' => 'Addition Hills Fire Contact',
+                'phone_number' => '0917 555 0101',
+                'office_or_barangay' => 'Addition Hills',
+                'barangay_id' => $barangay->id,
+                'receive_fire_alerts' => '1',
+                'is_active' => '1',
+            ]);
+
+        $response
+            ->assertRedirect(route('sms.index'))
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('sms_recipients', [
+            'phone_number' => '+639175550101',
+            'barangay_id' => $barangay->id,
+            'receive_fire_alerts' => true,
+            'is_active' => true,
+        ]);
+    }
+
     private function barangay(string $name): Barangay
     {
         return Barangay::create([

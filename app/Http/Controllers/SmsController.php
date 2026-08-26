@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Barangay;
 use App\Models\SmsAutomationRule;
 use App\Models\SmsLog;
 use App\Models\SmsRecipient;
@@ -18,7 +19,13 @@ class SmsController extends Controller
     public function index(): View
     {
         $recipients = SmsRecipient::query()
+            ->with('barangay')
             ->latest()
+            ->get();
+
+        $barangays = Barangay::query()
+            ->where('is_active', true)
+            ->orderBy('name')
             ->get();
 
         $automationRules = SmsAutomationRule::query()
@@ -59,7 +66,8 @@ class SmsController extends Controller
             'recipients',
             'automationRules',
             'logs',
-            'statistics'
+            'statistics',
+            'barangays'
         ));
     }
 
@@ -95,6 +103,12 @@ class SmsController extends Controller
                 'string',
                 'max:255',
             ],
+
+            'barangay_id' => [
+                'nullable',
+                'integer',
+                'exists:barangays,id',
+            ],
         ]);
 
         $phoneNumber = $this->normalizePhoneNumber(
@@ -119,6 +133,7 @@ class SmsController extends Controller
             'position' => $validated['position'] ?? null,
             'office_or_barangay' =>
                 $validated['office_or_barangay'] ?? null,
+            'barangay_id' => $validated['barangay_id'] ?? null,
 
             'receive_flood_alerts' =>
                 $request->boolean('receive_flood_alerts'),
@@ -169,6 +184,12 @@ class SmsController extends Controller
                 'string',
                 'max:255',
             ],
+
+            'barangay_id' => [
+                'nullable',
+                'integer',
+                'exists:barangays,id',
+            ],
         ]);
 
         $phoneNumber = $this->normalizePhoneNumber(
@@ -195,6 +216,7 @@ class SmsController extends Controller
             'position' => $validated['position'] ?? null,
             'office_or_barangay' =>
                 $validated['office_or_barangay'] ?? null,
+            'barangay_id' => $validated['barangay_id'] ?? null,
 
             'receive_flood_alerts' =>
                 $request->boolean('receive_flood_alerts'),

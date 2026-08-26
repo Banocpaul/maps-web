@@ -416,6 +416,40 @@
                                 </span>
                             @enderror
                         </div>
+
+                        <div class="incident-field">
+                            <label for="street">Street</label>
+
+                            <input
+                                id="street"
+                                name="street"
+                                type="text"
+                                maxlength="255"
+                                value="{{ old('street') }}"
+                                placeholder="Example: Martinez Street"
+                            >
+
+                            @error('street')
+                                <span class="incident-error">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <div class="incident-field">
+                            <label for="corner">Corner / Intersection</label>
+
+                            <input
+                                id="corner"
+                                name="corner"
+                                type="text"
+                                maxlength="255"
+                                value="{{ old('corner') }}"
+                                placeholder="Example: San Rafael Street"
+                            >
+
+                            @error('corner')
+                                <span class="incident-error">{{ $message }}</span>
+                            @enderror
+                        </div>
                     </div>
                 </section>
 

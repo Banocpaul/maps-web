@@ -13,11 +13,13 @@ class SmsLog extends Model
     protected $fillable = [
         'sms_recipient_id',
         'automation_rule_id',
+        'fire_incident_id',
         'sent_by',
         'recipient_name',
         'phone_number',
         'message',
         'source',
+        'alert_key',
         'status',
         'condition_data',
         'http_status',
@@ -27,10 +29,19 @@ class SmsLog extends Model
     ];
 
     protected $casts = [
+        'fire_incident_id' => 'integer',
         'condition_data' => 'array',
         'http_status' => 'integer',
         'sent_at' => 'datetime',
     ];
+
+    public function fireIncident(): BelongsTo
+    {
+        return $this->belongsTo(
+            FireIncident::class,
+            'fire_incident_id'
+        );
+    }
 
     public function recipient(): BelongsTo
     {

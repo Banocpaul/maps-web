@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Barangay;
 use App\Models\FireIncident;
+use App\Services\FireIncidentAlertService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -136,7 +137,10 @@ class FireIncidentController extends Controller
     /**
      * Store a new fire incident.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(
+        Request $request,
+        FireIncidentAlertService $fireIncidentAlertService
+    ): RedirectResponse
     {
         $validated = $request->validate(
             $this->validationRules(),
@@ -152,6 +156,24 @@ class FireIncidentController extends Controller
             }
         );
 
+        try {
+            $alertSummary = $fireIncidentAlertService->sendCreatedAlert(
+                $fireIncident,
+                auth()->id()
+            );
+            $smsStatus = $alertSummary['eligible'] === 0
+                ? ' No active fire-alert recipients are assigned to this barangay.'
+                : sprintf(
+                    ' SMS alerts: %d sent, %d failed, %d duplicate skipped.',
+                    $alertSummary['sent'],
+                    $alertSummary['failed'],
+                    $alertSummary['skipped']
+                );
+        } catch (\Throwable $exception) {
+            report($exception);
+            $smsStatus = ' The incident was saved, but automatic SMS processing could not be completed. Check the SMS logs.';
+        }
+
         return redirect()
             ->route(
                 'fire-incidents.show',
@@ -159,7 +181,7 @@ class FireIncidentController extends Controller
             )
             ->with(
                 'success',
-                'Fire incident recorded successfully. The location is now available on the GIS map.'
+                'Fire incident recorded successfully. The location is now available on the GIS map.' . $smsStatus
             );
     }
 
@@ -282,6 +304,18 @@ class FireIncidentController extends Controller
 
             'location' => [
                 'required',
+                'string',
+                'max:255',
+            ],
+
+            'street' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'corner' => [
+                'nullable',
                 'string',
                 'max:255',
             ],

@@ -149,6 +149,28 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-slate-700">
+                            Assigned Barangay for Automatic Alerts
+                        </label>
+
+                        <select
+                            name="barangay_id"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2"
+                        >
+                            <option value="">No barangay assignment</option>
+                            @foreach ($barangays as $barangay)
+                                <option value="{{ $barangay->id }}" @selected((string) old('barangay_id') === (string) $barangay->id)>
+                                    {{ $barangay->name }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        <p class="mt-1 text-xs text-slate-500">
+                            Required for automatic barangay-specific fire alerts.
+                        </p>
+                    </div>
+
                     <div class="grid gap-3 sm:grid-cols-2">
                         <label class="flex items-center gap-2 text-sm text-slate-700">
                             <input
@@ -337,7 +359,7 @@
                             </td>
 
                             <td class="px-6 py-4 text-sm text-slate-700">
-                                {{ $recipient->office_or_barangay ?: '—' }}
+                                {{ $recipient->barangay?->name ?: ($recipient->office_or_barangay ?: '—') }}
                             </td>
 
                             <td class="px-6 py-4 text-sm text-slate-700">

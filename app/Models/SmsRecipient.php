@@ -16,6 +16,7 @@ class SmsRecipient extends Model
         'phone_number',
         'position',
         'office_or_barangay',
+        'barangay_id',
         'receive_flood_alerts',
         'receive_fire_alerts',
         'receive_general_alerts',
@@ -25,11 +26,17 @@ class SmsRecipient extends Model
     ];
 
     protected $casts = [
+        'barangay_id' => 'integer',
         'receive_flood_alerts' => 'boolean',
         'receive_fire_alerts' => 'boolean',
         'receive_general_alerts' => 'boolean',
         'is_active' => 'boolean',
     ];
+
+    public function barangay(): BelongsTo
+    {
+        return $this->belongsTo(Barangay::class);
+    }
 
     public function creator(): BelongsTo
     {

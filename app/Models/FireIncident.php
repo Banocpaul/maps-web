@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FireIncident extends Model
@@ -17,6 +18,8 @@ class FireIncident extends Model
         'incident_number',
         'incident_type',
         'location',
+        'street',
+        'corner',
         'latitude',
         'longitude',
         'severity',
@@ -99,6 +102,11 @@ class FireIncident extends Model
     public function barangay(): BelongsTo
     {
         return $this->belongsTo(Barangay::class);
+    }
+
+    public function smsLogs(): HasMany
+    {
+        return $this->hasMany(SmsLog::class, 'fire_incident_id');
     }
 
     /*

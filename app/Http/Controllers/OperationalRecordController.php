@@ -11,9 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use ZipArchive;
 
 class OperationalRecordController extends Controller
 {
@@ -257,10 +255,8 @@ class OperationalRecordController extends Controller
         ]);
     }
 
-    public function exportReport(Request $request): BinaryFileResponse
+    public function exportReport(Request $request): StreamedResponse
     {
-        abort_unless(class_exists(ZipArchive::class), 500, 'Excel export requires the PHP ZIP extension.');
-
         $report = $this->reportBuilder($request)->getData();
         $configuration = $report['configuration'];
         $rowDimensions = $report['rowDimensions'];
@@ -268,119 +264,83 @@ class OperationalRecordController extends Controller
         $availableDimensions = $report['availableDimensions'];
         $availableMeasures = $report['availableMeasures'];
         $pivotRows = $report['pivotRows'];
-        $tableColumnCount = max(count($rowDimensions) + count($columnKeys), 1);
-        $columnCount = max($tableColumnCount, 4);
-        $lastColumn = $this->excelColumnName($columnCount);
-        $lastTableColumn = $this->excelColumnName($tableColumnCount);
+        $columnCount = max(count($rowDimensions) + count($columnKeys), 4);
+        $fileName = 'maps-flood-report-' . now()->format('Y-m-d-His') . '.xls';
 
-        $rows = [];
-        $rows[] = $this->xlsxRow(1, [
-            $this->xlsxCell('A1', 'M.A.P.S. Flood Report', 1),
-        ]);
-        $rows[] = $this->xlsxRow(2, [
-            $this->xlsxCell('A2', 'Generated: ' . now()->format('Y-m-d H:i:s')),
-        ]);
-        $rows[] = $this->xlsxRow(3, [
-            $this->xlsxCell('A3', 'Measure', 2),
-            $this->xlsxCell('B3', $availableMeasures[$configuration['measure']]),
-            $this->xlsxCell('C3', 'Calculation', 2),
-            $this->xlsxCell('D3', ucfirst($configuration['aggregation'])),
-        ]);
-        $rows[] = $this->xlsxRow(4, [
-            $this->xlsxCell('A4', 'Barangay filter', 2),
-            $this->xlsxCell('B4', $configuration['barangay'] ?: 'All barangays'),
-            $this->xlsxCell('C4', 'Risk filter', 2),
-            $this->xlsxCell('D4', $configuration['risk_level'] ?: 'All risk levels'),
-        ]);
-        $rows[] = $this->xlsxRow(5, [
-            $this->xlsxCell('A5', 'Date range', 2),
-            $this->xlsxCell('B5', ($configuration['date_from'] ?: 'Beginning') . ' to ' . ($configuration['date_to'] ?: 'Latest')),
-        ]);
-
-        $headerCells = [];
-        $columnIndex = 1;
-
-        foreach ($rowDimensions as $dimension) {
-            $headerCells[] = $this->xlsxCell(
-                $this->excelColumnName($columnIndex) . '7',
-                $availableDimensions[$dimension],
-                3
+        return response()->streamDownload(function () use (
+            $availableDimensions,
+            $availableMeasures,
+            $columnCount,
+            $columnKeys,
+            $configuration,
+            $pivotRows,
+            $rowDimensions
+        ): void {
+            $escape = static fn (mixed $value): string => htmlspecialchars(
+                (string) ($value ?? ''),
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8'
             );
-            $columnIndex++;
-        }
 
-        foreach ($columnKeys as $columnKey) {
-            $headerCells[] = $this->xlsxCell(
-                $this->excelColumnName($columnIndex) . '7',
-                $columnKey,
-                3
-            );
-            $columnIndex++;
-        }
-
-        $rows[] = $this->xlsxRow(7, $headerCells);
-        $excelRow = 8;
-
-        foreach ($pivotRows as $pivotRow) {
-            $cells = [];
-            $columnIndex = 1;
-
+            echo "\xEF\xBB\xBF";
+            echo '<!DOCTYPE html><html><head><meta charset="UTF-8">';
+            echo '<style>';
+            echo 'body{font-family:Arial,sans-serif;color:#172033}table{border-collapse:collapse}td,th{border:1px solid #d1d5db;padding:7px 10px;min-width:120px}';
+            echo '.title{background:#14532d;color:#fff;font-size:18px;font-weight:bold;text-align:left}.label{background:#dcfce7;color:#14532d;font-weight:bold}.header{background:#0369a1;color:#fff;font-weight:bold;text-align:center}.number{text-align:right}';
+            echo '</style></head><body><table>';
+            echo '<tr><th colspan="' . $columnCount . '" class="title">M.A.P.S. Flood Report</th></tr>';
+            echo '<tr><td class="label">Generated</td><td>' . $escape(now()->format('Y-m-d H:i:s')) . '</td></tr>';
+            echo '<tr><td class="label">Measure</td><td>' . $escape($availableMeasures[$configuration['measure']]) . '</td><td class="label">Calculation</td><td>' . $escape(ucfirst($configuration['aggregation'])) . '</td></tr>';
+            echo '<tr><td class="label">Barangay filter</td><td>' . $escape($configuration['barangay'] ?: 'All barangays') . '</td><td class="label">Risk filter</td><td>' . $escape($configuration['risk_level'] ?: 'All risk levels') . '</td></tr>';
+            echo '<tr><td class="label">Date range</td><td>' . $escape(($configuration['date_from'] ?: 'Beginning') . ' to ' . ($configuration['date_to'] ?: 'Latest')) . '</td></tr>';
+            echo '<tr><td colspan="' . $columnCount . '"></td></tr>';
+            echo '<tr>';
             foreach ($rowDimensions as $dimension) {
-                $cells[] = $this->xlsxCell(
-                    $this->excelColumnName($columnIndex) . $excelRow,
-                    $pivotRow['dimensions'][$dimension] ?? ''
-                );
-                $columnIndex++;
+                echo '<th class="header">' . $escape($availableDimensions[$dimension]) . '</th>';
             }
-
             foreach ($columnKeys as $columnKey) {
-                $value = $pivotRow['values'][$columnKey] ?? null;
-                $cells[] = $this->xlsxCell(
-                    $this->excelColumnName($columnIndex) . $excelRow,
-                    $value,
-                    $configuration['aggregation'] === 'count' ? 4 : 5
-                );
-                $columnIndex++;
+                echo '<th class="header">' . $escape($columnKey) . '</th>';
+            }
+            echo '</tr>';
+
+            foreach ($pivotRows as $pivotRow) {
+                echo '<tr>';
+                foreach ($rowDimensions as $dimension) {
+                    echo '<td>' . $escape($pivotRow['dimensions'][$dimension] ?? '') . '</td>';
+                }
+                foreach ($columnKeys as $columnKey) {
+                    $value = $pivotRow['values'][$columnKey] ?? null;
+                    $displayValue = $value === null
+                        ? ''
+                        : number_format((float) $value, $configuration['aggregation'] === 'count' ? 0 : 2, '.', '');
+                    echo '<td class="number">' . $escape($displayValue) . '</td>';
+                }
+                echo '</tr>';
             }
 
-            $rows[] = $this->xlsxRow($excelRow, $cells);
-            $excelRow++;
+            if ($pivotRows === []) {
+                echo '<tr><td colspan="' . $columnCount . '">No flood records match this report configuration.</td></tr>';
+            }
+
+            echo '</table></body></html>';
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
+    }
+
+    private function excelXmlRow(array $cells): string
+    {
+        $xml = '<Row>';
+
+        foreach ($cells as [$value, $style]) {
+            $styleAttribute = $style ? ' ss:StyleID="' . $style . '"' : '';
+            $type = $value !== null && is_numeric($value) ? 'Number' : 'String';
+            $escaped = htmlspecialchars((string) ($value ?? ''), ENT_XML1 | ENT_QUOTES, 'UTF-8');
+            $xml .= '<Cell' . $styleAttribute . '><Data ss:Type="' . $type . '">' . $escaped . '</Data></Cell>';
         }
 
-        $lastDataRow = max($excelRow - 1, 7);
-        $worksheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<dimension ref="A1:' . $lastColumn . $lastDataRow . '"/>'
-            . '<sheetViews><sheetView workbookViewId="0"><pane ySplit="7" topLeftCell="A8" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
-            . '<cols><col min="1" max="' . $columnCount . '" width="18" customWidth="1"/></cols>'
-            . '<sheetData>' . implode('', $rows) . '</sheetData>'
-            . '<mergeCells count="1"><mergeCell ref="A1:' . $lastColumn . '1"/></mergeCells>'
-            . '<autoFilter ref="A7:' . $lastTableColumn . $lastDataRow . '"/>'
-            . '</worksheet>';
-
-        $temporaryFile = tempnam(sys_get_temp_dir(), 'maps-report-');
-        abort_if($temporaryFile === false, 500, 'Unable to create the Excel report.');
-
-        $zip = new ZipArchive();
-        abort_unless($zip->open($temporaryFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true, 500, 'Unable to create the Excel workbook.');
-
-        $zip->addFromString('[Content_Types].xml', $this->xlsxContentTypes());
-        $zip->addFromString('_rels/.rels', $this->xlsxRootRelationships());
-        $zip->addFromString('docProps/core.xml', $this->xlsxCoreProperties());
-        $zip->addFromString('docProps/app.xml', $this->xlsxAppProperties());
-        $zip->addFromString('xl/workbook.xml', $this->xlsxWorkbook());
-        $zip->addFromString('xl/_rels/workbook.xml.rels', $this->xlsxWorkbookRelationships());
-        $zip->addFromString('xl/styles.xml', $this->xlsxStyles());
-        $zip->addFromString('xl/worksheets/sheet1.xml', $worksheet);
-        $zip->close();
-
-        $fileName = 'maps-flood-report-' . now()->format('Y-m-d-His') . '.xlsx';
-
-        return response()->download(
-            $temporaryFile,
-            $fileName,
-            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
-        )->deleteFileAfterSend(true);
+        return $xml . '</Row>';
     }
 
     private function xlsxRow(int $rowNumber, array $cells): string

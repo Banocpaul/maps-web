@@ -13,11 +13,6 @@
         <a href="{{ route('operational-records.index', ['dataset' => 'flood-records']) }}" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Back to records</a>
     </header>
 
-    <nav class="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm" aria-label="Database record views">
-        <a href="{{ route('operational-records.index', ['dataset' => 'flood-records']) }}" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Records</a>
-        <span class="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white">Report Builder</span>
-    </nav>
-
     <form method="GET" action="{{ route('operational-records.report-builder') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
             <section>

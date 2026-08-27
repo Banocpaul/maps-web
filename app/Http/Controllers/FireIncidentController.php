@@ -442,14 +442,16 @@ class FireIncidentController extends Controller
         $year = now()->format('Y');
         $prefix = "FI-{$year}-";
 
-        $lastIncident = FireIncident::query()
+        $lastIncident = FireIncident::withTrashed()
             ->where(
                 'incident_number',
                 'like',
                 "{$prefix}%"
             )
             ->lockForUpdate()
-            ->orderByDesc('incident_number')
+            ->orderByRaw(
+                "CAST(SUBSTRING_INDEX(incident_number, '-', -1) AS UNSIGNED) DESC"
+            )
             ->first();
 
         $nextNumber = 1;

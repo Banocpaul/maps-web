@@ -14,6 +14,8 @@ use Throwable;
 
 class LiveWeatherService
 {
+    private const FRESH_MINUTES = 15;
+
     private const LATITUDE = 14.5794;
     private const LONGITUDE = 121.0359;
     private const TIMEZONE = 'Asia/Manila';
@@ -33,7 +35,7 @@ class LiveWeatherService
         $snapshotDate = now(self::TIMEZONE)->toDateString();
         $snapshot = $this->findSnapshot($snapshotDate);
 
-        if ($snapshot !== null) {
+        if ($this->isFresh($snapshot)) {
             return $this->snapshotResponse($snapshot, 'database');
         }
 
@@ -43,11 +45,28 @@ class LiveWeatherService
         )->block(15, function () use ($snapshotDate): array {
             $snapshot = $this->findSnapshot($snapshotDate);
 
-            if ($snapshot !== null) {
+            if ($this->isFresh($snapshot)) {
                 return $this->snapshotResponse($snapshot, 'database');
             }
 
-            return $this->refreshCurrentWeather();
+            try {
+                return $this->refreshCurrentWeather();
+            } catch (Throwable $exception) {
+                if ($snapshot === null) {
+                    throw $exception;
+                }
+
+                Log::warning('Open-Meteo refresh failed; serving stale weather.', [
+                    'message' => $exception->getMessage(),
+                    'snapshot_date' => $snapshotDate,
+                ]);
+
+                return $this->snapshotResponse(
+                    $snapshot,
+                    'stale-database',
+                    true
+                );
+            }
         });
     }
 
@@ -151,9 +170,19 @@ class LiveWeatherService
             ->first();
     }
 
+    private function isFresh(?DailyWeatherSnapshot $snapshot): bool
+    {
+        return $snapshot !== null
+            && $snapshot->fetched_at !== null
+            && $snapshot->fetched_at->greaterThan(
+                now()->subMinutes(self::FRESH_MINUTES)
+            );
+    }
+
     private function snapshotResponse(
         DailyWeatherSnapshot $snapshot,
-        string $retrievedFrom
+        string $retrievedFrom,
+        bool $isStale = false
     ): array {
         $weather = $snapshot->weather_data;
 
@@ -171,6 +200,7 @@ class LiveWeatherService
             'weather_expires_at' =>
                 $snapshot->expires_at->toIso8601String(),
             'weather_retrieved_from' => $retrievedFrom,
+            'weather_is_stale' => $isStale,
         ]);
     }
 

@@ -45,6 +45,63 @@ class DailyWeatherSnapshotTest extends TestCase
         );
     }
 
+    public function test_stale_snapshot_is_refreshed_after_fifteen_minutes(): void
+    {
+        $this->freezeManilaTime();
+        Http::fake([
+            'https://api.open-meteo.com/v1/forecast*' =>
+                Http::response($this->openMeteoResponse(), 200),
+        ]);
+
+        $service = app(LiveWeatherService::class);
+        $service->getCurrentWeather();
+
+        Carbon::setTestNow(
+            now('Asia/Manila')->addMinutes(16)
+        );
+
+        $refreshed = $service->getCurrentWeather();
+
+        Http::assertSentCount(2);
+        $this->assertSame(
+            'open-meteo',
+            $refreshed['weather_retrieved_from']
+        );
+        $this->assertFalse($refreshed['weather_is_stale']);
+        $this->assertDatabaseCount('daily_weather_snapshots', 1);
+    }
+
+    public function test_stale_snapshot_is_returned_when_open_meteo_is_unavailable(): void
+    {
+        $this->freezeManilaTime();
+        $attempts = 0;
+
+        Http::fake(function () use (&$attempts) {
+            $attempts++;
+
+            return $attempts === 1
+                ? Http::response($this->openMeteoResponse(), 200)
+                : Http::response(['error' => 'offline'], 503);
+        });
+
+        $service = app(LiveWeatherService::class);
+        $first = $service->getCurrentWeather();
+
+        Carbon::setTestNow(
+            now('Asia/Manila')->addMinutes(16)
+        );
+
+        $stale = $service->getCurrentWeather();
+
+        $this->assertSame('open-meteo', $first['weather_retrieved_from']);
+        $this->assertSame(
+            'stale-database',
+            $stale['weather_retrieved_from']
+        );
+        $this->assertTrue($stale['weather_is_stale']);
+        $this->assertGreaterThanOrEqual(2, $attempts);
+        $this->assertDatabaseCount('daily_weather_snapshots', 1);
+    }
     public function test_forced_refresh_replaces_today_snapshot_without_duplicate_row(): void
     {
         $this->freezeManilaTime();

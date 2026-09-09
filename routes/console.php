@@ -8,7 +8,7 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('weather:refresh-daily')
-    ->dailyAt('00:05')
+Schedule::command('weather:refresh-daily --force')
+    ->everyFifteenMinutes()
     ->timezone('Asia/Manila')
     ->withoutOverlapping();

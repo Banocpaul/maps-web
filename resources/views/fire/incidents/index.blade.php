@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Fire Incidents | M.A.P.S.')
+@section('title', 'Fire Incidents | Mandaluyong Flood & Fire')
 @section('page-title', 'Fire Incident Management')
 @section('page-description', 'View, search, filter, and manage fire incident records')
 

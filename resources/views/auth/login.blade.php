@@ -13,7 +13,7 @@
         content="{{ csrf_token() }}"
     >
 
-    <title>Sign In | M.A.P.S.</title>
+    <title>Sign In | Mandaluyong Flood & Fire</title>
 
     @vite([
         'resources/css/app.css',
@@ -94,11 +94,11 @@
 
                             <div>
                                 <p class="text-2xl font-bold tracking-[0.18em]">
-                                    M.A.P.S.
+                                    Mandaluyong Flood & Fire
                                 </p>
 
                                 <p class="mt-1 text-xs leading-5 text-blue-100">
-                                    Mandaluyong Analytics Predictive System
+                                    Mandaluyong Flood Prediction and Fire Response System
                                 </p>
                             </div>
                         </header>
@@ -314,11 +314,11 @@
 
                                 <div>
                                     <p class="text-xl font-bold tracking-[0.16em] text-slate-900">
-                                        M.A.P.S.
+                                        Mandaluyong Flood & Fire
                                     </p>
 
                                     <p class="mt-1 text-xs text-slate-500">
-                                        Mandaluyong Analytics Predictive System
+                                        Mandaluyong Flood Prediction and Fire Response System
                                     </p>
                                 </div>
                             </div>
@@ -333,7 +333,7 @@
                             </p>
 
                             <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-                                Sign in to M.A.P.S.
+                                Sign in to Mandaluyong Flood & Fire
                             </h2>
 
                             <p class="mt-3 text-sm leading-6 text-slate-500">
@@ -599,7 +599,7 @@
                             <div
                                 class="flex flex-col gap-2 text-center text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:text-left"
                             >
-                                <span>M.A.P.S. Version 1.0</span>
+                                <span>Mandaluyong Flood & Fire Version 1.0</span>
 
                                 <span>CDRRMO Operations System</span>
                             </div>

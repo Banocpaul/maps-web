@@ -17,7 +17,7 @@
                 Welcome back, {{ $user->first_name }}.
             </h1>
             <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                {{ $roleMessages[$roleSlug] ?? 'Here is your current M.A.P.S. overview.' }}
+                {{ $roleMessages[$roleSlug] ?? 'Here is your current Mandaluyong Flood & Fire overview.' }}
             </p>
         </div>
 

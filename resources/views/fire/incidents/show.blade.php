@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'View Fire Incident | M.A.P.S.')
+@section('title', 'View Fire Incident | Mandaluyong Flood & Fire')
 @section('page-title', 'Fire Incident Details')
 @section('page-description', 'Review the complete fire incident record')
 
@@ -382,7 +382,7 @@
                     </strong>
 
                     <p>
-                        These coordinates will later be displayed on the M.A.P.S. GIS module.
+                        These coordinates will later be displayed on the Mandaluyong Flood & Fire GIS module.
                     </p>
                 @else
                     <strong>No coordinates recorded</strong>

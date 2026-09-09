@@ -14,7 +14,7 @@
     >
 
     <title>
-        @yield('title', 'M.A.P.S.')
+        @yield('title', 'Mandaluyong Flood & Fire')
     </title>
 
     @vite([

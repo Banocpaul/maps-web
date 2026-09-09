@@ -122,7 +122,7 @@
 
                             <p class="field-help">
                                 This email address will be used when logging in
-                                to M.A.P.S.
+                                to Mandaluyong Flood & Fire
                             </p>
 
                             @error('email')
@@ -252,7 +252,7 @@
                             </select>
 
                             <p class="field-help">
-                                The selected role controls which M.A.P.S.
+                                The selected role controls which Mandaluyong Flood & Fire
                                 modules and actions the user can access.
                             </p>
 

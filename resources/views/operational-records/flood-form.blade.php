@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ($record ? 'Edit' : 'Add') . ' Flood Analytics Record | M.A.P.S.')
+@section('title', ($record ? 'Edit' : 'Add') . ' Flood Analytics Record | Mandaluyong Flood & Fire')
 
 @section('content')
 @php

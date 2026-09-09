@@ -279,7 +279,7 @@
 
             <div class="min-w-0">
                 <p class="truncate text-lg font-semibold tracking-[0.08em] text-white">
-                    M.A.P.S.
+                    Mandaluyong Flood & Fire
                 </p>
 
                 <p class="truncate text-[11px] text-slate-300">

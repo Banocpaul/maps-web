@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Activity Logs | M.A.P.S.')
+@section('title', 'Activity Logs | Mandaluyong Flood & Fire')
 @section('page-title', 'Activity Logs')
 @section('page-description', 'Administrator-only security and system audit trail')
 

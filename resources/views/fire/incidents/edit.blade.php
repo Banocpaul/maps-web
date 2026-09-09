@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Fire Incident | M.A.P.S.')
+@section('title', 'Edit Fire Incident | Mandaluyong Flood & Fire')
 @section('page-title', 'Edit Fire Incident')
 @section('page-description', 'Update an existing fire incident record')
 

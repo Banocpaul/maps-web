@@ -13,7 +13,7 @@
         content="{{ csrf_token() }}"
     >
 
-    <title>Public Information | M.A.P.S.</title>
+    <title>Public Information | Mandaluyong Flood & Fire</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -44,11 +44,11 @@
 
                 <div>
                     <p class="text-xl font-black tracking-[0.16em]">
-                        M.A.P.S.
+                        Mandaluyong Flood & Fire
                     </p>
 
                     <p class="text-xs text-slate-400">
-                        Mandaluyong Analytics Predictive System
+                        Mandaluyong Flood Prediction and Fire Response System
                     </p>
                 </div>
             </div>
@@ -426,7 +426,7 @@
     <footer class="border-t border-slate-200 bg-white">
         <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-center text-sm text-slate-500 sm:px-6 lg:px-8">
             <p class="font-semibold text-slate-700">
-                M.A.P.S. — Mandaluyong Analytics Predictive System
+                Mandaluyong Flood & Fire — Mandaluyong Flood Prediction and Fire Response System
             </p>
 
             <p>

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Fire Hydrants | M.A.P.S.')
+@section('title', 'Fire Hydrants | Mandaluyong Flood & Fire')
 @section('page-title', 'Fire Hydrant Management')
 @section('page-description', 'Manage hydrant records, operational status, and GIS coordinates')
 

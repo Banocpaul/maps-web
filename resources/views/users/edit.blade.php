@@ -189,7 +189,7 @@
 
                             <p class="field-help">
                                 This email address is used when the user logs in
-                                to M.A.P.S.
+                                to Mandaluyong Flood & Fire
                             </p>
 
                             @error('email')
@@ -267,7 +267,7 @@
 
                             <p class="field-help">
                                 The selected role determines the user's
-                                permissions inside M.A.P.S.
+                                permissions inside Mandaluyong Flood & Fire
                             </p>
 
                             @error('role_id')

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'GIS Mapping | M.A.P.S.')
+@section('title', 'GIS Mapping | Mandaluyong Flood & Fire')
 @section('page-title', 'GIS Mapping')
 @section('page-description', 'Interactive fire incident and hydrant response map')
 

@@ -35,7 +35,7 @@
                 <p class="text-sm text-slate-500">
                     @yield(
                         'page-description',
-                        'Mandaluyong Analytics Predictive System'
+                        'Mandaluyong Flood Prediction and Fire Response System'
                     )
                 </p>
 

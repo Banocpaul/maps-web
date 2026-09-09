@@ -449,9 +449,7 @@ class FireIncidentController extends Controller
                 "{$prefix}%"
             )
             ->lockForUpdate()
-            ->orderByRaw(
-                "CAST(SUBSTRING_INDEX(incident_number, '-', -1) AS UNSIGNED) DESC"
-            )
+            ->orderByDesc('incident_number')
             ->first();
 
         $nextNumber = 1;

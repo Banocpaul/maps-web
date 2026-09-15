@@ -65,7 +65,9 @@ class FloodFieldObservationTest extends TestCase
                 'flood_level_code' => 'A',
                 'flood_status' => 'Active',
             ])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['geometry_type', 'geometry_geojson', 'latitude', 'longitude']);
+            ->assertStatus(422)
+            ->assertJsonStructure([
+                'errors' => ['geometry_type', 'geometry_geojson', 'latitude', 'longitude'],
+            ]);
     }
 }

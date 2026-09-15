@@ -19,8 +19,9 @@ class FloodDatasetController extends Controller
             ->search(
                 $request->string('search')->toString()
             )
-            ->riskLevel(
-                $request->string('risk_level')->toString()
+            ->when(
+                $request->filled('flood_level_code') && $request->string('flood_level_code')->toString() !== 'all',
+                fn ($query) => $query->where('flood_level_code', $request->string('flood_level_code')->toString())
             )
             ->latest('observed_at')
             ->paginate(
@@ -40,17 +41,10 @@ class FloodDatasetController extends Controller
                 ->includedInTraining()
                 ->count(),
 
-            'high' => FloodTrainingRecord::query()
-                ->where('risk_level', 'High')
-                ->count(),
-
-            'medium' => FloodTrainingRecord::query()
-                ->where('risk_level', 'Medium')
-                ->count(),
-
-            'low' => FloodTrainingRecord::query()
-                ->where('risk_level', 'Low')
-                ->count(),
+            'level_a' => FloodTrainingRecord::where('flood_level_code', 'A')->count(),
+            'level_b' => FloodTrainingRecord::where('flood_level_code', 'B')->count(),
+            'level_c' => FloodTrainingRecord::where('flood_level_code', 'C')->count(),
+            'level_d' => FloodTrainingRecord::where('flood_level_code', 'D')->count(),
         ];
 
         return response()->json([
@@ -87,7 +81,7 @@ class FloodDatasetController extends Controller
 
         return response()->json([
             'message' =>
-                'Flood training record added successfully.',
+                'Flood observation added successfully.',
 
             'record' => $record,
         ], 201);
@@ -130,7 +124,7 @@ class FloodDatasetController extends Controller
 
         return response()->json([
             'message' =>
-                'Flood training record updated successfully.',
+                'Flood observation updated successfully.',
 
             'record' => $floodTrainingRecord->fresh(),
         ]);
@@ -203,9 +197,8 @@ class FloodDatasetController extends Controller
     private function prepareValidatedData(
         array $validated
     ): array {
-        $timestamp = strtotime(
-            $validated['observed_at']
-        );
+        $validated['observed_at'] ??= now()->toDateTimeString();
+        $timestamp = strtotime($validated['observed_at']);
 
         $validated['month'] = (int) date(
             'n',
@@ -218,25 +211,21 @@ class FloodDatasetController extends Controller
             true
         );
 
-        $validated['wet_season'] = (bool)
-            $validated['wet_season'];
+        $validated['wet_season'] = in_array((int) date('n', $timestamp), [5, 6, 7, 8, 9, 10, 11], true);
+        $validated['storm_signal'] = (int) ($validated['storm_signal'] ?? 0);
 
-        $validated['storm_signal'] = (int)
-            $validated['storm_signal'];
+        $level = [
+            'A' => ['risk' => 'Low', 'depth' => 152.4],
+            'B' => ['risk' => 'Medium', 'depth' => 457.2],
+            'C' => ['risk' => 'High', 'depth' => 914.4],
+            'D' => ['risk' => 'High', 'depth' => 1219.2],
+        ][$validated['flood_level_code']];
 
-        $validated['include_in_training'] =
-            array_key_exists(
-                'include_in_training',
-                $validated
-            )
-                ? (bool) $validated['include_in_training']
-                : true;
-
-        if (
-            $validated['include_in_training'] === true
-        ) {
-            $validated['exclusion_reason'] = null;
-        }
+        $validated['risk_level'] = $level['risk'];
+        $validated['flood_depth_mm'] = $level['depth'];
+        $validated['geometry_type'] = $validated['geometry_geojson']['type'];
+        $validated['include_in_training'] = false;
+        $validated['exclusion_reason'] = 'Field observation pending predictor enrichment.';
 
         return $validated;
     }
@@ -247,155 +236,19 @@ class FloodDatasetController extends Controller
     private function validationRules(): array
     {
         return [
-            'observed_at' => [
-                'required',
-                'date',
-            ],
-
-            'barangay' => [
-                'required',
-                'string',
-                'max:100',
-            ],
-
-            'data_source' => [
-                'nullable',
-                'string',
-                'max:150',
-            ],
-
-            'remarks' => [
-                'nullable',
-                'string',
-                'max:2000',
-            ],
-
-            'wet_season' => [
-                'required',
-                'boolean',
-            ],
-
-            'storm_signal' => [
-                'required',
-                'integer',
-                'between:0,5',
-            ],
-
-            'nearest_waterway' => [
-                'nullable',
-                'string',
-                'max:150',
-            ],
-
-            'elevation_m' => [
-                'required',
-                'numeric',
-                'between:0,1000',
-            ],
-
-            'distance_to_waterway_m' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
-            'drainage_index' => [
-                'required',
-                'numeric',
-                'between:0,1',
-            ],
-
-            'impervious_surface_ratio' => [
-                'required',
-                'numeric',
-                'between:0,1',
-            ],
-
-            'population_density_per_km2' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
-            'historical_flood_count_5y' => [
-                'required',
-                'integer',
-                'min:0',
-            ],
-
-            'rainfall_24h_mm' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
-            'rainfall_3d_mm' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
-            'rainfall_7d_mm' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
-            'temperature_c' => [
-                'required',
-                'numeric',
-                'between:0,60',
-            ],
-
-            'humidity_pct' => [
-                'required',
-                'numeric',
-                'between:0,100',
-            ],
-
-            'wind_speed_kph' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
-            'tide_level_m' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
-            'risk_level' => [
-                'required',
-                Rule::in([
-                    'Low',
-                    'Medium',
-                    'High',
-                ]),
-            ],
-
-            'flood_depth_mm' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
-            'duration_hours' => [
-                'required',
-                'numeric',
-                'min:0',
-            ],
-
-            'include_in_training' => [
-                'nullable',
-                'boolean',
-            ],
-
-            'exclusion_reason' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
+            'observed_at' => ['nullable', 'date'],
+            'barangay' => ['required', 'string', 'max:100'],
+            'location_name' => ['required', 'string', 'max:255'],
+            'flood_level_code' => ['required', Rule::in(['A', 'B', 'C', 'D'])],
+            'flood_status' => ['required', Rule::in(['Active', 'Subsiding', 'Cleared'])],
+            'geometry_type' => ['required', Rule::in(['Point', 'LineString', 'Polygon'])],
+            'geometry_geojson' => ['required', 'array'],
+            'geometry_geojson.type' => ['required', Rule::in(['Point', 'LineString', 'Polygon'])],
+            'geometry_geojson.coordinates' => ['required', 'array'],
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'extent_length_m' => ['nullable', 'numeric', 'min:0'],
+            'affected_area_m2' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

@@ -16,6 +16,13 @@ class FloodTrainingRecord extends Model
     protected $fillable = [
         'observed_at',
         'barangay',
+        'location_name',
+        'geometry_type',
+        'geometry_geojson',
+        'latitude',
+        'longitude',
+        'extent_length_m',
+        'affected_area_m2',
         'data_source',
         'remarks',
 
@@ -41,6 +48,8 @@ class FloodTrainingRecord extends Model
         'tide_level_m',
 
         'risk_level',
+        'flood_level_code',
+        'flood_status',
         'flood_depth_mm',
         'duration_hours',
 
@@ -53,6 +62,11 @@ class FloodTrainingRecord extends Model
     {
         return [
             'observed_at' => 'datetime',
+            'geometry_geojson' => 'array',
+            'latitude' => 'float',
+            'longitude' => 'float',
+            'extent_length_m' => 'float',
+            'affected_area_m2' => 'float',
 
             'month' => 'integer',
             'is_weekend' => 'boolean',
@@ -129,6 +143,7 @@ class FloodTrainingRecord extends Model
         return $query->where(function (Builder $builder) use ($search): void {
             $builder
                 ->where('barangay', 'like', "%{$search}%")
+                ->orWhere('location_name', 'like', "%{$search}%")
                 ->orWhere('nearest_waterway', 'like', "%{$search}%")
                 ->orWhere('data_source', 'like', "%{$search}%")
                 ->orWhere('remarks', 'like', "%{$search}%");

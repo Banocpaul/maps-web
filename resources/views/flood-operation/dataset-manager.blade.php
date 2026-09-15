@@ -28,13 +28,14 @@
         @endif
     </div>
 
-    <div class="grid grid-cols-2 gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-6 lg:grid-cols-5">
+    <div class="grid grid-cols-2 gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-6 lg:grid-cols-6">
         @foreach ([
             ['id' => 'dataset-total', 'label' => 'Total Records', 'class' => 'text-slate-950'],
             ['id' => 'dataset-included', 'label' => 'Included', 'class' => 'text-sky-700'],
-            ['id' => 'dataset-high', 'label' => 'High Risk', 'class' => 'text-red-600'],
-            ['id' => 'dataset-medium', 'label' => 'Medium Risk', 'class' => 'text-amber-600'],
-            ['id' => 'dataset-low', 'label' => 'Low Risk', 'class' => 'text-emerald-600'],
+            ['id' => 'dataset-level-a', 'label' => 'Level A', 'class' => 'text-emerald-600'],
+            ['id' => 'dataset-level-b', 'label' => 'Level B', 'class' => 'text-amber-600'],
+            ['id' => 'dataset-level-c', 'label' => 'Level C', 'class' => 'text-orange-600'],
+            ['id' => 'dataset-level-d', 'label' => 'Level D', 'class' => 'text-red-600'],
         ] as $card)
             <article class="rounded-xl border border-slate-200 bg-white p-4">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -52,7 +53,7 @@
         <input
             id="dataset-search"
             type="search"
-            placeholder="Search barangay, source, waterway, or remarks..."
+            placeholder="Search barangay or flood location..."
             class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 lg:max-w-md"
         >
 
@@ -60,10 +61,11 @@
             id="dataset-risk-filter"
             class="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
         >
-            <option value="all">All risk levels</option>
-            <option value="High">High risk</option>
-            <option value="Medium">Medium risk</option>
-            <option value="Low">Low risk</option>
+            <option value="all">All flood levels</option>
+            <option value="A">Level A</option>
+            <option value="B">Level B</option>
+            <option value="C">Level C</option>
+            <option value="D">Level D</option>
         </select>
 
         <button
@@ -85,11 +87,10 @@
                 <tr>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Barangay</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Rainfall 24h</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Depth</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Duration</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Risk</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Training</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Location</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Flood Level</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Mapped Extent</th>
                     <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
                 </tr>
             </thead>
@@ -161,20 +162,15 @@
                 class="mb-5 hidden rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
             ></div>
 
-            <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700" for="record-observed_at">
-                        Observation Date and Time
-                    </label>
-                    <input
-                        id="record-observed_at"
-                        name="observed_at"
-                        type="datetime-local"
-                        required
-                        class="mt-2 block w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
-                    >
-                </div>
+            <input id="record-observed_at" name="observed_at" type="hidden">
+            <input id="record-geometry_type" name="geometry_type" type="hidden">
+            <input id="record-geometry_geojson" name="geometry_geojson" type="hidden">
+            <input id="record-latitude" name="latitude" type="hidden">
+            <input id="record-longitude" name="longitude" type="hidden">
+            <input id="record-extent_length_m" name="extent_length_m" type="hidden">
+            <input id="record-affected_area_m2" name="affected_area_m2" type="hidden">
 
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
                     <label class="block text-sm font-medium text-slate-700" for="record-barangay">
                         Barangay
@@ -201,123 +197,66 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-slate-700" for="record-data_source">
-                        Data Source
+                    <label class="block text-sm font-medium text-slate-700" for="record-location_name">
+                        Specific Location
                     </label>
                     <input
-                        id="record-data_source"
-                        name="data_source"
+                        id="record-location_name"
+                        name="location_name"
                         type="text"
-                        placeholder="CDRRMO field report"
+                        required
+                        placeholder="Street, corner, or landmark"
                         class="mt-2 block w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
                     >
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-slate-700" for="record-risk_level">
-                        Verified Risk Level
+                    <label class="block text-sm font-medium text-slate-700" for="record-flood_level_code">
+                        Flood Level
                     </label>
                     <select
-                        id="record-risk_level"
-                        name="risk_level"
+                        id="record-flood_level_code"
+                        name="flood_level_code"
                         required
                         class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
                     >
-                        <option value="Low">Low</option>
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
+                        <option value="A">A — 0.5 ft</option>
+                        <option value="B">B — 1.5 ft</option>
+                        <option value="C">C — 3.0 ft</option>
+                        <option value="D">D — 4.0 ft</option>
                     </select>
                 </div>
 
-                @foreach ([
-                    ['rainfall_24h_mm', 'Rainfall 24 Hours', '0.01'],
-                    ['rainfall_3d_mm', 'Rainfall 3 Days', '0.01'],
-                    ['rainfall_7d_mm', 'Rainfall 7 Days', '0.01'],
-                    ['temperature_c', 'Temperature', '0.01'],
-                    ['humidity_pct', 'Humidity', '0.01'],
-                    ['wind_speed_kph', 'Wind Speed', '0.01'],
-                    ['tide_level_m', 'Tide Level', '0.01'],
-                    ['flood_depth_mm', 'Actual Flood Depth', '0.01'],
-                    ['duration_hours', 'Actual Duration', '0.01'],
-                    ['elevation_m', 'Elevation', '0.01'],
-                    ['distance_to_waterway_m', 'Distance to Waterway', '0.01'],
-                    ['drainage_index', 'Drainage Index', '0.0001'],
-                    ['impervious_surface_ratio', 'Impervious Surface Ratio', '0.0001'],
-                    ['population_density_per_km2', 'Population Density', '0.01'],
-                    ['historical_flood_count_5y', 'Historical Flood Count (5y)', '1'],
-                ] as [$name, $label, $step])
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700" for="record-{{ $name }}">
-                            {{ $label }}
-                        </label>
-                        <input
-                            id="record-{{ $name }}"
-                            name="{{ $name }}"
-                            type="number"
-                            min="0"
-                            step="{{ $step }}"
-                            required
-                            class="mt-2 block w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
-                        >
+                <div>
+                    <label class="block text-sm font-medium text-slate-700" for="record-flood_status">
+                        Flood Status
+                    </label>
+                    <select
+                        id="record-flood_status"
+                        name="flood_status"
+                        required
+                        class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                    >
+                        <option value="Active">Active</option>
+                        <option value="Subsiding">Subsiding</option>
+                        <option value="Cleared">Cleared</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-2">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <p class="text-sm font-medium text-slate-700">Flood Extent on GIS Map</p>
+                            <p class="mt-1 text-xs text-slate-500">Use a marker for one location, a line for flooded-road length, or a polygon for affected area.</p>
+                        </div>
+                        <button id="dataset-clear-map" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Clear drawing</button>
                     </div>
-                @endforeach
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700" for="record-storm_signal">
-                        Storm Signal
-                    </label>
-                    <select
-                        id="record-storm_signal"
-                        name="storm_signal"
-                        required
-                        class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
-                    >
-                        <option value="0">No Signal</option>
-                        <option value="1">Signal No. 1</option>
-                        <option value="2">Signal No. 2</option>
-                        <option value="3">Signal No. 3</option>
-                        <option value="4">Signal No. 4</option>
-                        <option value="5">Signal No. 5</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700" for="record-wet_season">
-                        Wet Season
-                    </label>
-                    <select
-                        id="record-wet_season"
-                        name="wet_season"
-                        required
-                        class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
-                    >
-                        <option value="1">Yes</option>
-                        <option value="0">No</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700" for="record-nearest_waterway">
-                        Nearest Waterway
-                    </label>
-                    <input
-                        id="record-nearest_waterway"
-                        name="nearest_waterway"
-                        type="text"
-                        class="mt-2 block w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
-                    >
-                </div>
-
-                <div class="md:col-span-2 xl:col-span-4">
-                    <label class="block text-sm font-medium text-slate-700" for="record-remarks">
-                        Remarks
-                    </label>
-                    <textarea
-                        id="record-remarks"
-                        name="remarks"
-                        rows="3"
-                        class="mt-2 block w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
-                    ></textarea>
+                    <div id="dataset-flood-map" class="mt-3 h-96 w-full rounded-xl border border-slate-300"></div>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-3">
+                        <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm"><span class="text-slate-500">Geometry:</span> <strong id="dataset-geometry-label">Not drawn</strong></p>
+                        <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm"><span class="text-slate-500">Length:</span> <strong id="dataset-length-label">—</strong></p>
+                        <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm"><span class="text-slate-500">Area:</span> <strong id="dataset-area-label">—</strong></p>
+                    </div>
                 </div>
             </div>
 
@@ -342,7 +281,14 @@
     </div>
 </div>
 
+@push('styles')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+@endpush
+
 @push('scripts')
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
@@ -362,6 +308,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentPage = 1;
     let lastPage = 1;
     let searchTimer = null;
+    let floodMap = null;
+    let drawnItems = null;
 
     loadDataset();
 
@@ -386,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const query = new URLSearchParams({
             page,
             search: search.value.trim(),
-            risk_level: riskFilter.value,
+            flood_level_code: riskFilter.value,
             per_page: 10
         });
 
@@ -426,9 +374,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderStatistics(stats) {
         document.getElementById('dataset-total').textContent = stats.total || 0;
         document.getElementById('dataset-included').textContent = stats.included || 0;
-        document.getElementById('dataset-high').textContent = stats.high || 0;
-        document.getElementById('dataset-medium').textContent = stats.medium || 0;
-        document.getElementById('dataset-low').textContent = stats.low || 0;
+        document.getElementById('dataset-level-a').textContent = stats.level_a || 0;
+        document.getElementById('dataset-level-b').textContent = stats.level_b || 0;
+        document.getElementById('dataset-level-c').textContent = stats.level_c || 0;
+        document.getElementById('dataset-level-d').textContent = stats.level_d || 0;
     }
 
     function renderRecords(records) {
@@ -442,15 +391,10 @@ document.addEventListener('DOMContentLoaded', function () {
             row.innerHTML = `
                 <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${escapeHtml(formatDate(record.observed_at))}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm font-medium text-slate-950">${escapeHtml(record.barangay)}</td>
-                <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${formatNumber(record.rainfall_24h_mm)} mm</td>
-                <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${formatNumber(record.flood_depth_mm)} mm</td>
-                <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${formatNumber(record.duration_hours)} hrs</td>
-                <td class="whitespace-nowrap px-4 py-4">${riskBadge(record.risk_level)}</td>
-                <td class="whitespace-nowrap px-4 py-4 text-sm">
-                    ${record.include_in_training
-                        ? '<span class="font-medium text-emerald-700">Included</span>'
-                        : '<span class="font-medium text-slate-500">Excluded</span>'}
-                </td>
+                <td class="max-w-xs px-4 py-4 text-sm text-slate-600">${escapeHtml(record.location_name || '—')}</td>
+                <td class="whitespace-nowrap px-4 py-4">${levelBadge(record.flood_level_code)}</td>
+                <td class="whitespace-nowrap px-4 py-4 text-sm">${statusBadge(record.flood_status)}</td>
+                <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${extentLabel(record)}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm">
                     ${canEdit ? `<button type="button" data-edit="${record.id}" class="font-semibold text-sky-700 hover:text-sky-900">Edit</button>` : ''}
                     ${canDelete ? `<button type="button" data-delete="${record.id}" class="ml-3 font-semibold text-red-600 hover:text-red-800">Delete</button>` : ''}
@@ -474,8 +418,9 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('dataset-record-id').value = '';
         document.getElementById('dataset-modal-title').textContent = 'Add Flood Record';
         document.getElementById('record-observed_at').value = toLocalDateTime(new Date());
-        document.getElementById('record-risk_level').value = 'Low';
-        document.getElementById('record-wet_season').value = '1';
+        document.getElementById('record-flood_level_code').value = 'A';
+        document.getElementById('record-flood_status').value = 'Active';
+        clearMapDrawing();
         hideErrors();
         showModal();
     }
@@ -510,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            document.getElementById('record-wet_season').value = record.wet_season ? '1' : '0';
+            loadGeometry(record.geometry_geojson);
 
             hideErrors();
             showModal();
@@ -530,9 +475,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const id = document.getElementById('dataset-record-id').value;
         const payload = Object.fromEntries(new FormData(form).entries());
 
-        payload.wet_season = Number(payload.wet_season);
-        payload.storm_signal = Number(payload.storm_signal);
-        payload.include_in_training = true;
+        payload.geometry_geojson = JSON.parse(payload.geometry_geojson || 'null');
 
         try {
             const response = await fetch(id ? endpoint + '/' + id : endpoint, {
@@ -598,12 +541,90 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         document.body.classList.add('overflow-hidden');
+        initializeFloodMap();
+        setTimeout(() => floodMap.invalidateSize(), 100);
     }
 
     function closeModal() {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         document.body.classList.remove('overflow-hidden');
+    }
+
+    function initializeFloodMap() {
+        if (floodMap) return;
+
+        floodMap = L.map('dataset-flood-map').setView([14.5794, 121.0359], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 20,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(floodMap);
+
+        drawnItems = new L.FeatureGroup().addTo(floodMap);
+        floodMap.addControl(new L.Control.Draw({
+            position: 'topleft',
+            draw: { marker: true, polyline: true, polygon: true, rectangle: false, circle: false, circlemarker: false },
+            edit: { featureGroup: drawnItems, remove: true }
+        }));
+
+        floodMap.on(L.Draw.Event.CREATED, event => {
+            drawnItems.clearLayers();
+            drawnItems.addLayer(event.layer);
+            storeGeometry(event.layer);
+        });
+        floodMap.on(L.Draw.Event.EDITED, event => event.layers.eachLayer(storeGeometry));
+        floodMap.on(L.Draw.Event.DELETED, clearGeometryFields);
+        document.getElementById('dataset-clear-map').addEventListener('click', clearMapDrawing);
+    }
+
+    function storeGeometry(layer) {
+        const geometry = layer.toGeoJSON().geometry;
+        const center = layer instanceof L.Marker ? layer.getLatLng() : layer.getBounds().getCenter();
+        let length = null;
+        let area = null;
+
+        if (geometry.type === 'LineString') {
+            const points = layer.getLatLngs();
+            length = points.slice(1).reduce((total, point, index) => total + points[index].distanceTo(point), 0);
+        } else if (geometry.type === 'Polygon') {
+            area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+        }
+
+        document.getElementById('record-geometry_type').value = geometry.type;
+        document.getElementById('record-geometry_geojson').value = JSON.stringify(geometry);
+        document.getElementById('record-latitude').value = center.lat.toFixed(7);
+        document.getElementById('record-longitude').value = center.lng.toFixed(7);
+        document.getElementById('record-extent_length_m').value = length === null ? '' : length.toFixed(2);
+        document.getElementById('record-affected_area_m2').value = area === null ? '' : area.toFixed(2);
+        updateMeasurementLabels(geometry.type, length, area);
+    }
+
+    function loadGeometry(geometry) {
+        initializeFloodMap();
+        clearMapDrawing();
+        if (!geometry) return;
+        const layer = L.geoJSON({ type: 'Feature', properties: {}, geometry }).getLayers()[0];
+        if (!layer) return;
+        drawnItems.addLayer(layer);
+        storeGeometry(layer);
+        floodMap.fitBounds(layer instanceof L.Marker ? L.latLngBounds([layer.getLatLng()]) : layer.getBounds(), { maxZoom: 18, padding: [20, 20] });
+    }
+
+    function clearMapDrawing() {
+        if (drawnItems) drawnItems.clearLayers();
+        clearGeometryFields();
+    }
+
+    function clearGeometryFields() {
+        ['geometry_type', 'geometry_geojson', 'latitude', 'longitude', 'extent_length_m', 'affected_area_m2']
+            .forEach(name => document.getElementById(`record-${name}`).value = '');
+        updateMeasurementLabels('', null, null);
+    }
+
+    function updateMeasurementLabels(type, length, area) {
+        document.getElementById('dataset-geometry-label').textContent = type || 'Not drawn';
+        document.getElementById('dataset-length-label').textContent = length === null ? '—' : `${length.toFixed(1)} m`;
+        document.getElementById('dataset-area-label').textContent = area === null ? '—' : area >= 10000 ? `${(area / 10000).toFixed(2)} ha` : `${area.toFixed(1)} m²`;
     }
 
     function showErrors(errors) {
@@ -637,14 +658,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function riskBadge(risk) {
-        const classes = risk === 'High'
-            ? 'bg-red-100 text-red-800'
-            : risk === 'Medium'
-                ? 'bg-amber-100 text-amber-800'
-                : 'bg-emerald-100 text-emerald-800';
+    function levelBadge(level) {
+        const classes = { A: 'bg-emerald-100 text-emerald-800', B: 'bg-amber-100 text-amber-800', C: 'bg-orange-100 text-orange-800', D: 'bg-red-100 text-red-800' };
+        return `<span class="rounded-full px-2.5 py-1 text-xs font-semibold ${classes[level] || 'bg-slate-100 text-slate-700'}">${escapeHtml(level || 'Legacy')}</span>`;
+    }
 
-        return `<span class="rounded-full px-2.5 py-1 text-xs font-semibold ${classes}">${escapeHtml(risk)}</span>`;
+    function statusBadge(status) {
+        const classes = status === 'Active' ? 'text-red-700' : status === 'Subsiding' ? 'text-amber-700' : 'text-emerald-700';
+        return `<span class="font-semibold ${classes}">${escapeHtml(status || '—')}</span>`;
+    }
+
+    function extentLabel(record) {
+        if (record.geometry_type === 'LineString') return `${formatNumber(record.extent_length_m)} m`;
+        if (record.geometry_type === 'Polygon') return Number(record.affected_area_m2) >= 10000 ? `${(Number(record.affected_area_m2) / 10000).toFixed(2)} ha` : `${formatNumber(record.affected_area_m2)} m²`;
+        return record.geometry_type === 'Point' ? 'Point' : '—';
     }
 
     function formatNumber(value) {

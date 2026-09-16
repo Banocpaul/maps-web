@@ -6,6 +6,7 @@ use App\Models\FloodTrainingRecord;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class FloodDatasetController extends Controller
@@ -58,9 +59,18 @@ class FloodDatasetController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate(
+        $validator = Validator::make(
+            $request->all(),
             $this->validationRules()
         );
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse(
+                $validator->errors()->toArray()
+            );
+        }
+
+        $validated = $validator->validated();
 
         $validated = $this->prepareValidatedData(
             $validated
@@ -105,9 +115,18 @@ class FloodDatasetController extends Controller
         Request $request,
         FloodTrainingRecord $floodTrainingRecord
     ): JsonResponse {
-        $validated = $request->validate(
+        $validator = Validator::make(
+            $request->all(),
             $this->validationRules()
         );
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse(
+                $validator->errors()->toArray()
+            );
+        }
+
+        $validated = $validator->validated();
 
         $validated = $this->prepareValidatedData(
             $validated
@@ -254,5 +273,16 @@ class FloodDatasetController extends Controller
             'extent_length_m' => ['required', 'numeric', 'gt:0'],
             'affected_area_m2' => ['nullable', 'numeric', 'min:0'],
         ];
+    }
+
+    /**
+     * Return validation errors in the format used by the flood modal.
+     */
+    private function validationErrorResponse(array $errors): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Please review the flood record details.',
+            'errors' => $errors,
+        ], 422);
     }
 }

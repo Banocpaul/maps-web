@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\FloodTrainingRecord;
+use App\Services\FloodObservationEnrichmentService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,7 +59,10 @@ class FloodDatasetController extends Controller
     /**
      * Store a newly verified flood training record.
      */
-    public function store(Request $request): JsonResponse
+    public function store(
+        Request $request,
+        FloodObservationEnrichmentService $enrichmentService
+    ): JsonResponse
     {
         $validator = Validator::make(
             $request->all(),
@@ -73,7 +78,8 @@ class FloodDatasetController extends Controller
         $validated = $validator->validated();
 
         $validated = $this->prepareValidatedData(
-            $validated
+            $validated,
+            true
         );
 
         $validated['created_by'] = auth()->id();
@@ -88,6 +94,8 @@ class FloodDatasetController extends Controller
                 $validated
             );
         });
+
+        $record = $enrichmentService->enrich($record);
 
         return response()->json([
             'message' =>
@@ -113,7 +121,8 @@ class FloodDatasetController extends Controller
      */
     public function update(
         Request $request,
-        FloodTrainingRecord $floodTrainingRecord
+        FloodTrainingRecord $floodTrainingRecord,
+        FloodObservationEnrichmentService $enrichmentService
     ): JsonResponse {
         $validator = Validator::make(
             $request->all(),
@@ -129,8 +138,28 @@ class FloodDatasetController extends Controller
         $validated = $validator->validated();
 
         $validated = $this->prepareValidatedData(
-            $validated
+            $validated,
+            false
         );
+
+        if (($validated['flood_status'] ?? 'Active') === 'Subsided') {
+            $subsidedAt = $floodTrainingRecord->subsided_at ?? now();
+            $observedAt = Carbon::parse($validated['observed_at']);
+            $validated['subsided_at'] = $subsidedAt;
+            $validated['duration_hours'] = round(
+                max(1, $observedAt->diffInMinutes($subsidedAt)) / 60,
+                2
+            );
+        } else {
+            $validated['subsided_at'] = null;
+            $validated['duration_hours'] = 0;
+        }
+
+        $validated['include_in_training'] = false;
+        $validated['review_status'] = 'Pending';
+        $validated['reviewed_by'] = null;
+        $validated['reviewed_at'] = null;
+        $validated['model_version'] = null;
 
         DB::transaction(function () use (
             $validated,
@@ -141,10 +170,82 @@ class FloodDatasetController extends Controller
             );
         });
 
+        $floodTrainingRecord = $enrichmentService->enrich(
+            $floodTrainingRecord->fresh()
+        );
+
         return response()->json([
             'message' =>
                 'Flood observation updated successfully.',
 
+            'record' => $floodTrainingRecord,
+        ]);
+    }
+
+    public function retryEnrichment(
+        FloodTrainingRecord $floodTrainingRecord,
+        FloodObservationEnrichmentService $enrichmentService
+    ): JsonResponse {
+        $record = $enrichmentService->enrich($floodTrainingRecord);
+
+        return response()->json([
+            'message' => $record->enrichment_status === 'Enriched'
+                ? 'Predictors enriched successfully.'
+                : 'The record still needs weather or barangay predictor data.',
+            'record' => $record,
+        ]);
+    }
+
+    public function review(
+        Request $request,
+        FloodTrainingRecord $floodTrainingRecord
+    ): JsonResponse {
+        $validator = Validator::make($request->all(), [
+            'action' => ['required', Rule::in(['approve', 'reject'])],
+            'reason' => [Rule::requiredIf($request->string('action')->toString() === 'reject'), 'nullable', 'string', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse(
+                $validator->errors()->toArray()
+            );
+        }
+
+        $validated = $validator->validated();
+
+        if ($validated['action'] === 'approve') {
+            if (
+                $floodTrainingRecord->enrichment_status !== 'Enriched'
+                || $floodTrainingRecord->review_status !== 'Ready for Review'
+                || $floodTrainingRecord->flood_status !== 'Subsided'
+                || $floodTrainingRecord->duration_hours <= 0
+            ) {
+                return response()->json([
+                    'message' => 'Only enriched, subsided records that are ready for review can be approved.',
+                ], 422);
+            }
+
+            $floodTrainingRecord->update([
+                'review_status' => 'Approved',
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+                'include_in_training' => true,
+                'exclusion_reason' => null,
+            ]);
+        } else {
+            $floodTrainingRecord->update([
+                'review_status' => 'Rejected',
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+                'include_in_training' => false,
+                'exclusion_reason' => $validated['reason'],
+            ]);
+        }
+
+        return response()->json([
+            'message' => $validated['action'] === 'approve'
+                ? 'Flood observation approved for future model training.'
+                : 'Flood observation rejected from model training.',
             'record' => $floodTrainingRecord->fresh(),
         ]);
     }
@@ -191,6 +292,12 @@ class FloodDatasetController extends Controller
         $includeInTraining = (bool)
             $validated['include_in_training'];
 
+        if ($includeInTraining) {
+            return response()->json([
+                'message' => 'Use the training review action to approve this record.',
+            ], 422);
+        }
+
         $floodTrainingRecord->update([
             'include_in_training' =>
                 $includeInTraining,
@@ -214,7 +321,8 @@ class FloodDatasetController extends Controller
      * Add calculated date-related values before saving.
      */
     private function prepareValidatedData(
-        array $validated
+        array $validated,
+        bool $isNewRecord
     ): array {
         $validated['observed_at'] ??= now()->toDateTimeString();
         $validated['location_name'] ??= $validated['barangay'].' flood extent';
@@ -245,8 +353,12 @@ class FloodDatasetController extends Controller
         $validated['risk_level'] = $level['risk'];
         $validated['flood_depth_mm'] = $level['depth'];
         $validated['geometry_type'] = $validated['geometry_geojson']['type'];
-        $validated['include_in_training'] = false;
-        $validated['exclusion_reason'] = 'Field observation pending predictor enrichment.';
+        if ($isNewRecord) {
+            $validated['include_in_training'] = false;
+            $validated['enrichment_status'] = 'Pending Enrichment';
+            $validated['review_status'] = 'Pending';
+            $validated['exclusion_reason'] = 'Field observation pending predictor enrichment.';
+        }
 
         return $validated;
     }

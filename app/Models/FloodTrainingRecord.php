@@ -54,6 +54,13 @@ class FloodTrainingRecord extends Model
         'duration_hours',
 
         'include_in_training',
+        'enrichment_status',
+        'enriched_at',
+        'subsided_at',
+        'review_status',
+        'reviewed_by',
+        'reviewed_at',
+        'model_version',
         'exclusion_reason',
         'created_by',
     ];
@@ -92,6 +99,9 @@ class FloodTrainingRecord extends Model
             'duration_hours' => 'float',
 
             'include_in_training' => 'boolean',
+            'enriched_at' => 'datetime',
+            'subsided_at' => 'datetime',
+            'reviewed_at' => 'datetime',
         ];
     }
 
@@ -101,6 +111,11 @@ class FloodTrainingRecord extends Model
             User::class,
             'created_by'
         );
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     public function scopeIncludedInTraining(

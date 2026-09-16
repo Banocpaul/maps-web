@@ -266,6 +266,12 @@ class LiveWeatherService
             end: $currentDateTime
         );
 
+        $pastRainfall24Hours = $this->sumRainfallBetween(
+            records: $hourlyRecords,
+            start: $currentDateTime->copy()->subHours(24),
+            end: $currentDateTime
+        );
+
         $pastRainfall7Days = $this->sumRainfallBetween(
             records: $hourlyRecords,
             start: $currentDateTime->copy()->subHours(168),
@@ -378,6 +384,9 @@ class LiveWeatherService
 
             'forecast_rainfall_24h_mm' =>
                 round((float) $forecastRainfall, 2),
+
+            'rainfall_24h_mm' =>
+                round($pastRainfall24Hours, 2),
 
             'rainfall_3d_mm' =>
                 round($pastRainfall3Days, 2),

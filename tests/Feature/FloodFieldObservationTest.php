@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Barangay;
+use App\Models\DailyWeatherSnapshot;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -167,6 +169,102 @@ class FloodFieldObservationTest extends TestCase
         $this->assertDatabaseHas('flood_training_records', [
             'id' => $recordId,
             'flood_status' => 'Subsided',
+        ]);
+    }
+
+    public function test_enriched_subsided_observation_can_be_approved_for_training(): void
+    {
+        $role = Role::create(['name' => 'Flood Analyst', 'slug' => 'flood-analyst', 'is_active' => true]);
+        $permissions = collect([
+            ['Create Flood', 'flood.create'],
+            ['Edit Flood', 'flood.edit'],
+            ['Manage Prediction Data', 'prediction.data.manage'],
+        ])->map(fn (array $permission) => Permission::create([
+            'name' => $permission[0],
+            'slug' => $permission[1],
+            'module' => 'flood',
+            'is_active' => true,
+        ]));
+        $role->permissions()->attach($permissions->pluck('id'));
+        $user = User::factory()->create(['role_id' => $role->id, 'is_active' => true]);
+
+        Barangay::create([
+            'name' => 'Hulo',
+            'district' => 1,
+            'latitude' => 14.5794,
+            'longitude' => 121.0359,
+            'elevation_m' => 8,
+            'nearest_waterway' => 'Pasig River',
+            'distance_to_waterway_m' => 120,
+            'drainage_index' => 0.55,
+            'impervious_surface_ratio' => 0.82,
+            'population_density_per_km2' => 28000,
+            'historical_flood_count_5y' => 7,
+            'is_active' => true,
+        ]);
+
+        $observedAt = now('Asia/Manila')->subHours(2);
+
+        DailyWeatherSnapshot::create([
+            'snapshot_date' => $observedAt->toDateString(),
+            'source' => 'Open-Meteo',
+            'weather_data' => [
+                'rainfall_24h_mm' => 42.5,
+                'rainfall_3d_mm' => 75.2,
+                'rainfall_7d_mm' => 110.4,
+                'avg_temp_mean_c' => 28.4,
+                'avg_rh_pct' => 86.0,
+                'avg_wind_speed' => 3.2,
+            ],
+            'fetched_at' => now(),
+            'expires_at' => now()->addHour(),
+        ]);
+
+        $geometry = [
+            'type' => 'LineString',
+            'coordinates' => [[121.0359, 14.5794], [121.0370, 14.5800]],
+        ];
+
+        $payload = [
+            'observed_at' => $observedAt->toDateTimeString(),
+            'barangay' => 'Hulo',
+            'flood_level_code' => 'C',
+            'geometry_type' => 'LineString',
+            'geometry_geojson' => $geometry,
+            'latitude' => 14.5797,
+            'longitude' => 121.03645,
+            'extent_length_m' => 137.25,
+        ];
+
+        $createResponse = $this->actingAs($user)
+            ->postJson(route('flood-dataset.store'), $payload)
+            ->assertCreated()
+            ->assertJsonPath('record.enrichment_status', 'Enriched')
+            ->assertJsonPath('record.review_status', 'Pending');
+
+        $recordId = $createResponse->json('record.id');
+
+        $this->putJson(route('flood-dataset.update', $recordId), [
+            ...$payload,
+            'flood_status' => 'Subsided',
+        ])
+            ->assertOk()
+            ->assertJsonPath('record.review_status', 'Ready for Review');
+
+        $this->postJson(route('flood-dataset.review', $recordId), [
+            'action' => 'approve',
+        ])
+            ->assertOk()
+            ->assertJsonPath('record.review_status', 'Approved')
+            ->assertJsonPath('record.include_in_training', true);
+
+        $this->assertDatabaseHas('flood_training_records', [
+            'id' => $recordId,
+            'enrichment_status' => 'Enriched',
+            'review_status' => 'Approved',
+            'include_in_training' => true,
+            'rainfall_24h_mm' => 42.5,
+            'historical_flood_count_5y' => 7,
         ]);
     }
 }

@@ -145,6 +145,26 @@ Route::middleware('auth')->group(function (): void {
         ])
         ->name('flood-dataset.training-status');
 
+    Route::post(
+        '/flood-operation/dataset/{floodTrainingRecord}/enrich',
+        [FloodDatasetController::class, 'retryEnrichment']
+    )
+        ->middleware([
+            'permission:prediction.data.manage',
+            'throttle:20,1',
+        ])
+        ->name('flood-dataset.enrich');
+
+    Route::post(
+        '/flood-operation/dataset/{floodTrainingRecord}/review',
+        [FloodDatasetController::class, 'review']
+    )
+        ->middleware([
+            'permission:prediction.data.manage',
+            'throttle:20,1',
+        ])
+        ->name('flood-dataset.review');
+
     Route::delete(
         '/flood-operation/dataset/{floodTrainingRecord}',
         [FloodDatasetController::class, 'destroy']

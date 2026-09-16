@@ -5,15 +5,15 @@
     <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">
-                Training Data
+                Flood Operations
             </p>
 
             <h2 class="mt-1 text-xl font-semibold text-slate-950">
-                Flood Dataset Management
+                Recorded Flood Observations
             </h2>
 
             <p class="mt-1 text-sm text-slate-600">
-                Add, review, edit, or remove verified flood observations for future model retraining.
+                Record verified flooding by barangay, level, and mapped road extent.
             </p>
         </div>
 
@@ -53,7 +53,7 @@
         <input
             id="dataset-search"
             type="search"
-            placeholder="Search barangay or flood location..."
+            placeholder="Search barangay..."
             class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 lg:max-w-md"
         >
 
@@ -87,7 +87,6 @@
                 <tr>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Barangay</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Location</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Flood Level</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Mapped Extent</th>
@@ -140,7 +139,7 @@
                 </h2>
 
                 <p class="mt-1 text-sm text-slate-500">
-                    Enter an actual and verified flood observation.
+                    Select the barangay and flood level, then draw the flooded road extent.
                 </p>
             </div>
 
@@ -182,32 +181,10 @@
                         class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
                     >
                         <option value="">Select barangay</option>
-                        @foreach ([
-                            'Addition Hills', 'Bagong Silang', 'Barangka Ibaba', 'Barangka Ilaya',
-                            'Barangka Itaas', 'Buayang Bato', 'Burol', 'Daang Bakal',
-                            'Hagdan Bato Itaas', 'Hagdan Bato Libis', 'Harapin ang Bukas',
-                            'Highway Hills', 'Hulo', 'Mabini-J. Rizal', 'Malamig', 'Mauway',
-                            'Namayan', 'New Zañiga', 'Old Zañiga', 'Pag-Asa', 'Plainview',
-                            'Pleasant Hills', 'Poblacion', 'San Jose', 'Vergara',
-                            'Wack-Wack Greenhills'
-                        ] as $barangay)
+                        @foreach ($barangayNames as $barangay)
                             <option value="{{ $barangay }}">{{ $barangay }}</option>
                         @endforeach
                     </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700" for="record-location_name">
-                        Specific Location
-                    </label>
-                    <input
-                        id="record-location_name"
-                        name="location_name"
-                        type="text"
-                        required
-                        placeholder="Street, corner, or landmark"
-                        class="mt-2 block w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
-                    >
                 </div>
 
                 <div>
@@ -227,35 +204,18 @@
                     </select>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-slate-700" for="record-flood_status">
-                        Flood Status
-                    </label>
-                    <select
-                        id="record-flood_status"
-                        name="flood_status"
-                        required
-                        class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
-                    >
-                        <option value="Active">Active</option>
-                        <option value="Subsiding">Subsiding</option>
-                        <option value="Cleared">Cleared</option>
-                    </select>
-                </div>
-
                 <div class="md:col-span-2">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div>
                             <p class="text-sm font-medium text-slate-700">Flood Extent on GIS Map</p>
-                            <p class="mt-1 text-xs text-slate-500">Use a marker for one location, a line for flooded-road length, or a polygon for affected area.</p>
+                            <p class="mt-1 text-xs text-slate-500">Select the line tool, then click along the flooded road. Double-click the final point to finish.</p>
                         </div>
                         <button id="dataset-clear-map" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Clear drawing</button>
                     </div>
                     <div id="dataset-flood-map" class="mt-3 h-96 w-full rounded-xl border border-slate-300"></div>
-                    <div class="mt-3 grid gap-3 sm:grid-cols-3">
-                        <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm"><span class="text-slate-500">Geometry:</span> <strong id="dataset-geometry-label">Not drawn</strong></p>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm"><span class="text-slate-500">Map:</span> <strong id="dataset-geometry-label">No extent drawn</strong></p>
                         <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm"><span class="text-slate-500">Length:</span> <strong id="dataset-length-label">—</strong></p>
-                        <p class="rounded-lg bg-slate-50 px-3 py-2 text-sm"><span class="text-slate-500">Area:</span> <strong id="dataset-area-label">—</strong></p>
                     </div>
                 </div>
             </div>
@@ -391,7 +351,6 @@ document.addEventListener('DOMContentLoaded', function () {
             row.innerHTML = `
                 <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${escapeHtml(formatDate(record.observed_at))}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm font-medium text-slate-950">${escapeHtml(record.barangay)}</td>
-                <td class="max-w-xs px-4 py-4 text-sm text-slate-600">${escapeHtml(record.location_name || '—')}</td>
                 <td class="whitespace-nowrap px-4 py-4">${levelBadge(record.flood_level_code)}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm">${statusBadge(record.flood_status)}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${extentLabel(record)}</td>
@@ -419,7 +378,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('dataset-modal-title').textContent = 'Add Flood Record';
         document.getElementById('record-observed_at').value = toLocalDateTime(new Date());
         document.getElementById('record-flood_level_code').value = 'A';
-        document.getElementById('record-flood_status').value = 'Active';
         clearMapDrawing();
         hideErrors();
         showModal();
@@ -563,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function () {
         drawnItems = new L.FeatureGroup().addTo(floodMap);
         floodMap.addControl(new L.Control.Draw({
             position: 'topleft',
-            draw: { marker: true, polyline: true, polygon: true, rectangle: false, circle: false, circlemarker: false },
+            draw: { marker: false, polyline: true, polygon: false, rectangle: false, circle: false, circlemarker: false },
             edit: { featureGroup: drawnItems, remove: true }
         }));
 
@@ -622,9 +580,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateMeasurementLabels(type, length, area) {
-        document.getElementById('dataset-geometry-label').textContent = type || 'Not drawn';
+        document.getElementById('dataset-geometry-label').textContent = type === 'LineString' ? 'Flood extent line' : 'No extent drawn';
         document.getElementById('dataset-length-label').textContent = length === null ? '—' : `${length.toFixed(1)} m`;
-        document.getElementById('dataset-area-label').textContent = area === null ? '—' : area >= 10000 ? `${(area / 10000).toFixed(2)} ha` : `${area.toFixed(1)} m²`;
     }
 
     function showErrors(errors) {

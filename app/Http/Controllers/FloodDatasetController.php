@@ -198,6 +198,8 @@ class FloodDatasetController extends Controller
         array $validated
     ): array {
         $validated['observed_at'] ??= now()->toDateTimeString();
+        $validated['location_name'] ??= $validated['barangay'].' flood extent';
+        $validated['flood_status'] = 'Active';
         $timestamp = strtotime($validated['observed_at']);
 
         $validated['month'] = (int) date(
@@ -238,16 +240,18 @@ class FloodDatasetController extends Controller
         return [
             'observed_at' => ['nullable', 'date'],
             'barangay' => ['required', 'string', 'max:100'],
-            'location_name' => ['required', 'string', 'max:255'],
+            'location_name' => ['nullable', 'string', 'max:255'],
             'flood_level_code' => ['required', Rule::in(['A', 'B', 'C', 'D'])],
-            'flood_status' => ['required', Rule::in(['Active', 'Subsiding', 'Cleared'])],
-            'geometry_type' => ['required', Rule::in(['Point', 'LineString', 'Polygon'])],
+            'flood_status' => ['nullable', Rule::in(['Active'])],
+            'geometry_type' => ['required', Rule::in(['LineString'])],
             'geometry_geojson' => ['required', 'array'],
-            'geometry_geojson.type' => ['required', Rule::in(['Point', 'LineString', 'Polygon'])],
-            'geometry_geojson.coordinates' => ['required', 'array'],
+            'geometry_geojson.type' => ['required', Rule::in(['LineString'])],
+            'geometry_geojson.coordinates' => ['required', 'array', 'min:2'],
+            'geometry_geojson.coordinates.*' => ['required', 'array', 'size:2'],
+            'geometry_geojson.coordinates.*.*' => ['required', 'numeric'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'extent_length_m' => ['nullable', 'numeric', 'min:0'],
+            'extent_length_m' => ['required', 'numeric', 'gt:0'],
             'affected_area_m2' => ['nullable', 'numeric', 'min:0'],
         ];
     }

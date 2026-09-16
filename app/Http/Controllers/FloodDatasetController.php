@@ -218,7 +218,7 @@ class FloodDatasetController extends Controller
     ): array {
         $validated['observed_at'] ??= now()->toDateTimeString();
         $validated['location_name'] ??= $validated['barangay'].' flood extent';
-        $validated['flood_status'] = 'Active';
+        $validated['flood_status'] ??= 'Active';
         $timestamp = strtotime($validated['observed_at']);
 
         $validated['month'] = (int) date(
@@ -261,7 +261,7 @@ class FloodDatasetController extends Controller
             'barangay' => ['required', 'string', 'max:100'],
             'location_name' => ['nullable', 'string', 'max:255'],
             'flood_level_code' => ['required', Rule::in(['A', 'B', 'C', 'D'])],
-            'flood_status' => ['nullable', Rule::in(['Active'])],
+            'flood_status' => ['nullable', Rule::in(['Active', 'Subsided'])],
             'geometry_type' => ['required', Rule::in(['LineString'])],
             'geometry_geojson' => ['required', 'array'],
             'geometry_geojson.type' => ['required', Rule::in(['LineString'])],

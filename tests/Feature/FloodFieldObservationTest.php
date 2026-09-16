@@ -122,4 +122,51 @@ class FloodFieldObservationTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['geometry_type', 'geometry_geojson.type', 'extent_length_m']);
     }
+
+    public function test_authorized_operator_can_mark_an_active_flood_as_subsided(): void
+    {
+        $role = Role::create(['name' => 'Operations Manager', 'slug' => 'operations-manager', 'is_active' => true]);
+        $createPermission = Permission::create(['name' => 'Create Flood', 'slug' => 'flood.create', 'module' => 'flood', 'is_active' => true]);
+        $editPermission = Permission::create(['name' => 'Edit Flood', 'slug' => 'flood.edit', 'module' => 'flood', 'is_active' => true]);
+        $role->permissions()->attach([$createPermission->id, $editPermission->id]);
+        $user = User::factory()->create(['role_id' => $role->id, 'is_active' => true]);
+
+        $geometry = [
+            'type' => 'LineString',
+            'coordinates' => [[121.0359, 14.5794], [121.0370, 14.5800]],
+        ];
+
+        $createResponse = $this->actingAs($user)
+            ->postJson(route('flood-dataset.store'), [
+                'barangay' => 'Hulo',
+                'flood_level_code' => 'C',
+                'geometry_type' => 'LineString',
+                'geometry_geojson' => $geometry,
+                'latitude' => 14.5797,
+                'longitude' => 121.03645,
+                'extent_length_m' => 137.25,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('record.flood_status', 'Active');
+
+        $recordId = $createResponse->json('record.id');
+
+        $this->putJson(route('flood-dataset.update', $recordId), [
+            'barangay' => 'Hulo',
+            'flood_level_code' => 'C',
+            'flood_status' => 'Subsided',
+            'geometry_type' => 'LineString',
+            'geometry_geojson' => $geometry,
+            'latitude' => 14.5797,
+            'longitude' => 121.03645,
+            'extent_length_m' => 137.25,
+        ])
+            ->assertOk()
+            ->assertJsonPath('record.flood_status', 'Subsided');
+
+        $this->assertDatabaseHas('flood_training_records', [
+            'id' => $recordId,
+            'flood_status' => 'Subsided',
+        ]);
+    }
 }

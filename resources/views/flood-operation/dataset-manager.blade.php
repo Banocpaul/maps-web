@@ -204,6 +204,23 @@
                     </select>
                 </div>
 
+                <div id="record-status-group" class="hidden">
+                    <label class="block text-sm font-medium text-slate-700" for="record-flood_status">
+                        Flood Status
+                    </label>
+                    <select
+                        id="record-flood_status"
+                        name="flood_status"
+                        class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                    >
+                        <option value="Active">Active</option>
+                        <option value="Subsided">Subsided</option>
+                    </select>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Change to Subsided after the floodwater has receded.
+                    </p>
+                </div>
+
                 <div class="md:col-span-2">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div>
@@ -378,6 +395,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('dataset-modal-title').textContent = 'Add Flood Record';
         document.getElementById('record-observed_at').value = toLocalDateTime(new Date());
         document.getElementById('record-flood_level_code').value = 'A';
+        document.getElementById('record-flood_status').value = 'Active';
+        document.getElementById('record-status-group').classList.add('hidden');
         clearMapDrawing();
         hideErrors();
         showModal();
@@ -403,10 +422,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
             document.getElementById('dataset-record-id').value = record.id;
             document.getElementById('dataset-modal-title').textContent = 'Edit Flood Record';
+            document.getElementById('record-status-group').classList.remove('hidden');
 
             Object.entries(record).forEach(([name, value]) => {
                 const field = form.elements.namedItem(name);
                 if (field) {
+                    if (name === 'flood_status' && ['Subsiding', 'Cleared'].includes(value)) {
+                        field.value = 'Subsided';
+                        return;
+                    }
+
                     field.value = name === 'observed_at'
                         ? toLocalDateTime(value)
                         : (value ?? '');

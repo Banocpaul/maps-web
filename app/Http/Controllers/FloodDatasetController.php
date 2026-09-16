@@ -324,23 +324,23 @@ class FloodDatasetController extends Controller
         array $validated,
         bool $isNewRecord
     ): array {
-        $validated['observed_at'] ??= now()->toDateTimeString();
+        $observationTime = isset($validated['observed_at'])
+            ? Carbon::parse($validated['observed_at'], 'Asia/Manila')
+            : now('Asia/Manila');
+
+        $validated['observed_at'] = $observationTime
+            ->copy()
+            ->utc()
+            ->toDateTimeString();
         $validated['location_name'] ??= $validated['barangay'].' flood extent';
         $validated['flood_status'] ??= 'Active';
-        $timestamp = strtotime($validated['observed_at']);
+        $manilaObservation = $observationTime->copy()->timezone('Asia/Manila');
 
-        $validated['month'] = (int) date(
-            'n',
-            $timestamp
-        );
+        $validated['month'] = $manilaObservation->month;
 
-        $validated['is_weekend'] = in_array(
-            (int) date('N', $timestamp),
-            [6, 7],
-            true
-        );
+        $validated['is_weekend'] = $manilaObservation->isWeekend();
 
-        $validated['wet_season'] = in_array((int) date('n', $timestamp), [5, 6, 7, 8, 9, 10, 11], true);
+        $validated['wet_season'] = in_array($manilaObservation->month, [5, 6, 7, 8, 9, 10, 11], true);
         $validated['storm_signal'] = (int) ($validated['storm_signal'] ?? 0);
 
         $level = [

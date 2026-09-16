@@ -249,9 +249,10 @@
                 <button
                     id="dataset-save-button"
                     type="submit"
-                    class="rounded-xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
+                    disabled
+                    class="rounded-xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Save Record
+                    Finish Line to Save
                 </button>
             </div>
         </form>
@@ -488,8 +489,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             showErrors({general: [error.message]});
         } finally {
-            saveButton.disabled = false;
-            saveButton.textContent = 'Save Record';
+            syncSaveButtonState();
         }
     }
 
@@ -580,6 +580,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('record-extent_length_m').value = length === null ? '' : length.toFixed(2);
         document.getElementById('record-affected_area_m2').value = area === null ? '' : area.toFixed(2);
         updateMeasurementLabels(geometry.type, length, area);
+        syncSaveButtonState();
     }
 
     function loadGeometry(geometry) {
@@ -602,6 +603,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ['geometry_type', 'geometry_geojson', 'latitude', 'longitude', 'extent_length_m', 'affected_area_m2']
             .forEach(name => document.getElementById(`record-${name}`).value = '');
         updateMeasurementLabels('', null, null);
+        syncSaveButtonState();
     }
 
     function updateMeasurementLabels(type, length, area) {
@@ -611,13 +613,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function showErrors(errors) {
         const box = document.getElementById('dataset-form-errors');
-        const messages = Object.values(errors).flat();
+        const geometryFields = [
+            'geometry_type',
+            'geometry_geojson',
+            'geometry_geojson.type',
+            'geometry_geojson.coordinates',
+            'latitude',
+            'longitude',
+            'extent_length_m'
+        ];
+        const entries = Object.entries(errors);
+        const hasGeometryError = entries.some(([field]) =>
+            geometryFields.some(geometryField =>
+                field === geometryField || field.startsWith(geometryField + '.')
+            )
+        );
+        const messages = entries
+            .filter(([field]) => !geometryFields.some(geometryField =>
+                field === geometryField || field.startsWith(geometryField + '.')
+            ))
+            .flatMap(([, fieldMessages]) => fieldMessages);
+
+        if (hasGeometryError) {
+            messages.unshift('Please draw and finish the flood extent line on the GIS map before saving.');
+        }
 
         box.innerHTML = messages
             .map(message => `<div>• ${escapeHtml(message)}</div>`)
             .join('');
 
         box.classList.remove('hidden');
+    }
+
+    function syncSaveButtonState() {
+        const saveButton = document.getElementById('dataset-save-button');
+        const hasFinishedLine = document.getElementById('record-geometry_type').value === 'LineString'
+            && Number(document.getElementById('record-extent_length_m').value) > 0;
+
+        saveButton.disabled = !hasFinishedLine;
+        saveButton.textContent = hasFinishedLine ? 'Save Record' : 'Finish Line to Save';
+        saveButton.title = hasFinishedLine
+            ? 'Save this flood record'
+            : 'Draw and finish the flood extent line first';
     }
 
     function hideErrors() {

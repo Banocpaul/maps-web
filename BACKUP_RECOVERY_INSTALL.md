@@ -7,7 +7,7 @@ This module is restricted to active users with the `administrator` role.
 Run this once from the Laravel project directory:
 
 ```powershell
-composer require league/flysystem-aws-s3-v3:"^3.0"
+composer require league/flysystem-aws-s3-v3 --with-all-dependencies
 ```
 
 ## 2. Generate the backup encryption key
@@ -36,6 +36,11 @@ BACKUP_RETENTION_MONTHLY=6
 
 Local backups are stored under `storage/app/backups`. Local storage is only
 for development and is not safe as the only Render backup destination.
+
+The TiDB dump deliberately uses `--skip-lock-tables` and `--skip-add-locks`
+without MariaDB's `--single-transaction` option. MariaDB's dump client issues
+savepoint commands for that option, and TiDB rejects its savepoint rollback.
+Schedule production backups during the lowest-write period (02:00 Manila).
 
 ## 3. Run the migration and tests
 

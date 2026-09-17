@@ -292,9 +292,9 @@ class DatabaseBackupService
         $process = new Process([
             (string) config('backup.dump_binary'),
             '--defaults-extra-file='.$credentialsPath,
-            '--single-transaction',
             '--quick',
             '--skip-lock-tables',
+            '--skip-add-locks',
             '--hex-blob',
             '--default-character-set=utf8mb4',
             '--no-tablespaces',

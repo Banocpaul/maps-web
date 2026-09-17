@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DatabaseBackupController;
 use App\Http\Controllers\FireHydrantController;
 use App\Http\Controllers\FireIncidentController;
 use App\Http\Controllers\FloodDatasetController;
@@ -441,6 +442,32 @@ Route::resource('fire-incidents', FireIncidentController::class)
             'permission:activity-logs.view',
         ])
         ->name('activity-logs.index');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Administrator-only Backup & Recovery
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('admin/backups')
+        ->middleware('admin')
+        ->name('admin.backups.')
+        ->group(function (): void {
+            Route::get('/', [DatabaseBackupController::class, 'index'])
+                ->name('index');
+            Route::post('/', [DatabaseBackupController::class, 'store'])
+                ->middleware('throttle:3,10')
+                ->name('store');
+            Route::post('/{databaseBackup}/verify', [DatabaseBackupController::class, 'verify'])
+                ->middleware('throttle:5,10')
+                ->name('verify');
+            Route::post('/{databaseBackup}/download', [DatabaseBackupController::class, 'download'])
+                ->middleware('throttle:5,10')
+                ->name('download');
+            Route::delete('/{databaseBackup}', [DatabaseBackupController::class, 'destroy'])
+                ->middleware('throttle:3,10')
+                ->name('destroy');
+        });
 
     /*
     |--------------------------------------------------------------------------

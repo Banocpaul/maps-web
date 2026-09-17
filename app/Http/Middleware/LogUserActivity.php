@@ -142,6 +142,18 @@ class LogUserActivity
             str_contains($routeName, 'export') =>
                 'export',
 
+            $routeName === 'admin.backups.store' =>
+                'create_backup',
+
+            $routeName === 'admin.backups.verify' =>
+                'verify_backup',
+
+            $routeName === 'admin.backups.download' =>
+                'download_backup',
+
+            $routeName === 'admin.backups.destroy' =>
+                'delete_backup',
+
             $request->isMethod('DELETE') =>
                 'delete',
 
@@ -171,6 +183,9 @@ class LogUserActivity
             'users' => 'user-management',
             'reports' => 'reports',
             'operational-records' => 'operational-records',
+            'admin' => str_contains((string) $routeName, 'backups')
+                ? 'backup-recovery'
+                : 'administration',
             default => $prefix !== '' ? $prefix : 'system',
         };
     }

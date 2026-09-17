@@ -151,6 +151,16 @@
 
     if ($currentUser?->isAdministrator()) {
         $managementNavigation[] = [
+            'label' => 'Backup & Recovery',
+            'route' => Route::has('admin.backups.index')
+                ? 'admin.backups.index'
+                : null,
+            'active' => ['admin.backups.*'],
+            'permission' => null,
+            'icon' => 'backup',
+        ];
+
+        $managementNavigation[] = [
             'label' => 'Activity Logs',
             'route' => Route::has('activity-logs.index')
                 ? 'activity-logs.index'
@@ -207,6 +217,7 @@
             'Reports',
             'User Management',
             'Settings',
+            'Backup & Recovery',
             'Activity Logs',
         ],
         'fire-responder' => [
@@ -672,6 +683,21 @@
                                                 stroke-linejoin="round"
                                                 d="M9 5h6m-7 4h8m-8 4h5m-5 4h8M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
                                             />
+                                        </svg>
+                                        @break
+
+                                    @case('backup')
+                                        <svg
+                                            class="h-5 w-5"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                            aria-hidden="true"
+                                        >
+                                            <ellipse cx="12" cy="5" rx="7" ry="3" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m16.5 17.5 1.5 1.5 3-3" />
                                         </svg>
                                         @break
                                 @endswitch

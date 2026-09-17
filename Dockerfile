@@ -32,7 +32,9 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libonig-dev \
     libxml2-dev \
+    libsodium-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && (php -m | grep -qi '^sodium$' || docker-php-ext-install sodium) \
     && docker-php-ext-install \
         pdo_mysql \
         mbstring \

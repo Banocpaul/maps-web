@@ -5,153 +5,230 @@ namespace Database\Seeders;
 use App\Models\Barangay;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use SplFileObject;
 
 class BarangayFloodProfileSeeder extends Seeder
 {
-    /**
-     * CSV column names required for generating barangay profiles.
-     */
-    private const REQUIRED_COLUMNS = [
-        'barangay',
-        'nearest_waterway',
-        'elevation_m',
-        'distance_to_waterway_m',
-        'drainage_index',
-        'impervious_surface_ratio',
+    private const NUMERIC_FIELDS = [
+        'elevation_m' => 2,
+        'distance_to_waterway_m' => 2,
+        'drainage_index' => 2,
+        'impervious_surface_ratio' => 2,
+        'population_density_per_km2' => 0,
+        'historical_flood_count_5y' => 0,
+    ];
+
+    private const INTEGER_FIELDS = [
         'population_density_per_km2',
         'historical_flood_count_5y',
     ];
 
-    /**
-     * Resolve naming differences between the CSV and database.
-     */
-    private const BARANGAY_ALIASES = [
+    // Names on the right match your actual barangays table.
+    private const ALIASES = [
         'New Zaniga' => 'New Zañiga',
-        'New Zañiga' => 'New Zañiga',
-
         'Old Zaniga' => 'Old Zañiga',
-        'Old Zañiga' => 'Old Zañiga',
-
         'Pag Asa' => 'Pag-Asa',
-        'Pag-Asa' => 'Pag-Asa',
-
         'Mabini J. Rizal' => 'Mabini-J. Rizal',
         'Mabini-J Rizal' => 'Mabini-J. Rizal',
-
         'Harapin Ang Bukas' => 'Harapin ang Bukas',
-
-        'Wack-Wack Greenhills East' =>
-            'Wack-Wack Greenhills',
-
-        'Wack-Wack Greenhills' =>
-            'Wack-Wack Greenhills',
+        'Hagdan Bato Itaas' => 'Hagdang Bato Itaas',
+        'Hagdan Bato Libis' => 'Hagdang Bato Libis',
+        'Wack-Wack Greenhills' => 'Wack-Wack Greenhills East',
     ];
 
     public function run(): void
     {
-        $csvPath = storage_path(
-            'app/datasets/dataset-flood.csv'
-        );
+        $selectedPath = getenv('FLOOD_PROFILE_DATASET');
 
-        if (! file_exists($csvPath)) {
+        $path = is_string($selectedPath) && trim($selectedPath) !== ''
+            ? trim($selectedPath)
+            : storage_path('app/datasets/dataset-flood.csv');
+
+        if (! is_file($path) || ! is_readable($path)) {
             throw new RuntimeException(
-                "Dataset file not found: {$csvPath}"
+                "Dataset file is missing or unreadable: {$path}"
             );
         }
 
-        $rows = $this->readCsv($csvPath);
+        $rows = $this->readCsv($path);
 
         if ($rows->isEmpty()) {
-            throw new RuntimeException(
-                'The flood dataset contains no valid records.'
-            );
+            throw new RuntimeException('The dataset contains no records.');
         }
 
-        $profiles = $rows
-            ->groupBy('barangay')
-            ->map(
-                fn (Collection $records, string $barangay): array =>
-                    $this->buildProfile(
-                        $barangay,
-                        $records
-                    )
-            );
+        $updates = [];
+        $unmatched = [];
 
-        $updated = 0;
-        $missing = [];
-
-        foreach ($profiles as $barangay => $profile) {
-            $databaseBarangay = Barangay::query()
+        // Validate every proposed change before writing to the database.
+        foreach ($rows->groupBy('barangay') as $name => $records) {
+            $barangay = Barangay::query()
                 ->whereRaw(
                     'LOWER(TRIM(name)) = ?',
-                    [mb_strtolower(trim($barangay))]
+                    [mb_strtolower(trim($name))]
                 )
                 ->first();
 
-            if (! $databaseBarangay) {
-                $missing[] = $barangay;
-
-                Log::warning(
-                    'Barangay from flood dataset was not found.',
-                    ['barangay' => $barangay]
-                );
-
+            if ($barangay === null) {
+                $unmatched[] = $name;
                 continue;
             }
 
-            $databaseBarangay->update([
-                'elevation_m' =>
-                    $profile['elevation_m'],
+            $changes = [];
 
-                'nearest_waterway' =>
-                    $profile['nearest_waterway'],
+            if ($this->isMissing($barangay->nearest_waterway)) {
+                $values = $records
+                    ->pluck('nearest_waterway')
+                    ->map(fn ($value) => trim((string) $value))
+                    ->reject(fn ($value) => $this->isMissing($value));
 
-                'distance_to_waterway_m' =>
-                    $profile['distance_to_waterway_m'],
+                if ($values->isEmpty()) {
+                    throw new RuntimeException(
+                        "{$name}: nearest_waterway is missing in the CSV."
+                    );
+                }
 
-                'drainage_index' =>
-                    $profile['drainage_index'],
+                $changes['nearest_waterway'] = (string) $values
+                    ->countBy()
+                    ->sortDesc()
+                    ->keys()
+                    ->first();
+            }
 
-                'impervious_surface_ratio' =>
-                    $profile['impervious_surface_ratio'],
+            foreach (self::NUMERIC_FIELDS as $field => $precision) {
+                if (! $this->isMissing($barangay->{$field})) {
+                    continue;
+                }
 
-                'population_density_per_km2' =>
-                    $profile[
-                        'population_density_per_km2'
-                    ],
+                $values = $records
+                    ->pluck($field)
+                    ->reject(fn ($value) => $this->isMissing($value));
 
-                'historical_flood_count_5y' =>
-                    $profile[
-                        'historical_flood_count_5y'
-                    ],
-            ]);
+                if ($values->isEmpty()) {
+                    throw new RuntimeException(
+                        "{$name}: {$field} is missing in the CSV."
+                    );
+                }
 
-            $updated++;
+                foreach ($values as $value) {
+                    if (
+                        ! is_numeric($value)
+                        || ! is_finite((float) $value)
+                    ) {
+                        throw new RuntimeException(
+                            "{$name}: {$field} contains an invalid number."
+                        );
+                    }
+
+                    if ($field !== 'elevation_m' && (float) $value < 0) {
+                        throw new RuntimeException(
+                            "{$name}: {$field} contains a negative value."
+                        );
+                    }
+                }
+
+                $median = (float) $values
+                    ->map(fn ($value) => (float) $value)
+                    ->median();
+
+                $changes[$field] = in_array(
+                    $field,
+                    self::INTEGER_FIELDS,
+                    true
+                )
+                    ? (int) round($median)
+                    : round($median, $precision);
+            }
+
+            if ($changes !== []) {
+                $updates[] = [
+                    'id' => (int) $barangay->id,
+                    'values' => $changes,
+                ];
+            }
         }
 
+        $updated = DB::transaction(function () use ($updates): int {
+            $count = 0;
+
+            foreach ($updates as $update) {
+                $barangay = Barangay::query()
+                    ->lockForUpdate()
+                    ->findOrFail($update['id']);
+
+                $changes = [];
+
+                foreach ($update['values'] as $field => $value) {
+                    // Preserve any existing or concurrently populated values.
+                    if ($this->isMissing($barangay->{$field})) {
+                        $changes[$field] = $value;
+                    }
+                }
+
+                if ($changes === []) {
+                    continue;
+                }
+
+                $changes['updated_at'] = now();
+
+                DB::table('barangays')
+                    ->where('id', (int) $barangay->id)
+                    ->update($changes);
+
+                $count++;
+            }
+
+            return $count;
+        });
+
         $this->command?->info(
-            "Updated {$updated} barangay flood profiles."
+            "Updated missing predictors for {$updated} barangays."
         );
 
-        if ($missing !== []) {
+        if ($unmatched !== []) {
             $this->command?->warn(
-                'Unmatched barangays: ' .
-                implode(', ', $missing)
+                'Unmatched CSV barangays: '.implode(', ', $unmatched)
+            );
+        }
+
+        $incomplete = Barangay::query()
+            ->active()
+            ->get()
+            ->filter(function (Barangay $barangay): bool {
+                foreach ($this->profileFields() as $field) {
+                    if ($this->isMissing($barangay->{$field})) {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            ->pluck('name');
+
+        if ($incomplete->isNotEmpty()) {
+            $this->command?->warn(
+                'Still missing predictors: '.$incomplete->implode(', ')
+            );
+        } else {
+            $this->command?->info(
+                'All active barangays have populated predictor fields.'
             );
         }
     }
 
-    /**
-     * Read and normalize CSV records.
-     */
-    private function readCsv(
-        string $csvPath
-    ): Collection {
-        $file = new SplFileObject($csvPath);
+    private function profileFields(): array
+    {
+        return array_merge(
+            ['nearest_waterway'],
+            array_keys(self::NUMERIC_FIELDS)
+        );
+    }
 
+    private function readCsv(string $path): Collection
+    {
+        $file = new SplFileObject($path, 'r');
+        $file->setCsvControl(',', '"', '');
         $file->setFlags(
             SplFileObject::READ_CSV
             | SplFileObject::SKIP_EMPTY
@@ -161,294 +238,83 @@ class BarangayFloodProfileSeeder extends Seeder
         $header = null;
         $records = collect();
 
-        foreach ($file as $row) {
-            if (
-                ! is_array($row)
-                || $row === [null]
-                || count($row) === 0
-            ) {
+        foreach ($file as $index => $row) {
+            if (! is_array($row) || $row === [null] || $row === []) {
                 continue;
             }
 
             if ($header === null) {
                 $header = array_map(
-                    fn ($column): string =>
-                        trim(
-                            preg_replace(
-                                '/^\xEF\xBB\xBF/',
-                                '',
-                                (string) $column
-                            )
-                        ),
+                    fn ($column) => trim(
+                        preg_replace(
+                            '/^\xEF\xBB\xBF/',
+                            '',
+                            (string) $column
+                        )
+                    ),
                     $row
                 );
 
-                $this->validateHeader($header);
+                $required = array_merge(
+                    ['barangay'],
+                    $this->profileFields()
+                );
+
+                $missing = array_diff($required, $header);
+
+                if ($missing !== []) {
+                    throw new RuntimeException(
+                        'Missing CSV columns: '.implode(', ', $missing)
+                    );
+                }
+
+                if (count($header) !== count(array_unique($header))) {
+                    throw new RuntimeException(
+                        'The CSV contains duplicate column names.'
+                    );
+                }
 
                 continue;
             }
 
             if (count($row) !== count($header)) {
-                continue;
+                $line = $index + 1;
+
+                throw new RuntimeException(
+                    "Unexpected column count near CSV line {$line}."
+                );
             }
 
-            $record = array_combine(
-                $header,
-                $row
+            $record = array_combine($header, $row);
+
+            $name = trim(
+                preg_replace('/\s+/', ' ', (string) $record['barangay'])
             );
 
-            if (! is_array($record)) {
-                continue;
+            if ($name === '') {
+                throw new RuntimeException(
+                    'A CSV record has no barangay name.'
+                );
             }
 
-            $barangay = $this->normalizeBarangayName(
-                (string) (
-                    $record['barangay'] ?? ''
-                )
-            );
-
-            if ($barangay === '') {
-                continue;
-            }
-
-            $records->push([
-                'barangay' => $barangay,
-
-                'nearest_waterway' =>
-                    $this->nullableString(
-                        $record['nearest_waterway'] ?? null
-                    ),
-
-                'elevation_m' =>
-                    $this->nullableFloat(
-                        $record['elevation_m'] ?? null
-                    ),
-
-                'distance_to_waterway_m' =>
-                    $this->nullableFloat(
-                        $record[
-                            'distance_to_waterway_m'
-                        ] ?? null
-                    ),
-
-                'drainage_index' =>
-                    $this->nullableFloat(
-                        $record['drainage_index'] ?? null
-                    ),
-
-                'impervious_surface_ratio' =>
-                    $this->nullableFloat(
-                        $record[
-                            'impervious_surface_ratio'
-                        ] ?? null
-                    ),
-
-                'population_density_per_km2' =>
-                    $this->nullableFloat(
-                        $record[
-                            'population_density_per_km2'
-                        ] ?? null
-                    ),
-
-                'historical_flood_count_5y' =>
-                    $this->nullableFloat(
-                        $record[
-                            'historical_flood_count_5y'
-                        ] ?? null
-                    ),
-            ]);
+            $record['barangay'] = self::ALIASES[$name] ?? $name;
+            $records->push($record);
         }
 
         return $records;
     }
 
-    /**
-     * Generate one stable reference profile per barangay.
-     */
-    private function buildProfile(
-        string $barangay,
-        Collection $records
-    ): array {
-        return [
-            'barangay' => $barangay,
+    private function isMissing(mixed $value): bool
+    {
+        if ($value === null) {
+            return true;
+        }
 
-            // Categorical profile: most frequent value.
-            'nearest_waterway' =>
-                $this->mode(
-                    $records->pluck(
-                        'nearest_waterway'
-                    )
-                ),
-
-            // Numeric profiles: median prevents extreme records
-            // from distorting the barangay's master values.
-            'elevation_m' => round(
-                $this->median(
-                    $records->pluck('elevation_m')
-                ),
-                2
-            ),
-
-            'distance_to_waterway_m' => round(
-                $this->median(
-                    $records->pluck(
-                        'distance_to_waterway_m'
-                    )
-                ),
-                2
-            ),
-
-            'drainage_index' => round(
-                $this->median(
-                    $records->pluck(
-                        'drainage_index'
-                    )
-                ),
-                4
-            ),
-
-            'impervious_surface_ratio' => round(
-                $this->median(
-                    $records->pluck(
-                        'impervious_surface_ratio'
-                    )
-                ),
-                4
-            ),
-
-            'population_density_per_km2' => round(
-                $this->median(
-                    $records->pluck(
-                        'population_density_per_km2'
-                    )
-                ),
-                2
-            ),
-
-            'historical_flood_count_5y' => (int) round(
-                $this->median(
-                    $records->pluck(
-                        'historical_flood_count_5y'
-                    )
-                )
-            ),
-        ];
-    }
-
-    private function validateHeader(
-        array $header
-    ): void {
-        $missing = array_diff(
-            self::REQUIRED_COLUMNS,
-            $header
-        );
-
-        if ($missing !== []) {
-            throw new RuntimeException(
-                'Dataset is missing columns: ' .
-                implode(', ', $missing)
+        return is_string($value)
+            && in_array(
+                strtolower(trim($value)),
+                ['', 'null', 'nan', 'n/a', 'unknown'],
+                true
             );
-        }
-    }
-
-    private function normalizeBarangayName(
-        string $name
-    ): string {
-        $normalized = trim(
-            preg_replace('/\s+/', ' ', $name)
-        );
-
-        return self::BARANGAY_ALIASES[
-            $normalized
-        ] ?? $normalized;
-    }
-
-    private function nullableString(
-        mixed $value
-    ): ?string {
-        $value = trim((string) $value);
-
-        if (
-            $value === ''
-            || strtolower($value) === 'null'
-            || strtolower($value) === 'nan'
-        ) {
-            return null;
-        }
-
-        return $value;
-    }
-
-    private function nullableFloat(
-        mixed $value
-    ): ?float {
-        if (
-            $value === null
-            || $value === ''
-            || ! is_numeric($value)
-        ) {
-            return null;
-        }
-
-        return (float) $value;
-    }
-
-    private function median(
-        Collection $values
-    ): float {
-        $values = $values
-            ->filter(
-                fn ($value): bool =>
-                    $value !== null
-                    && is_numeric($value)
-            )
-            ->map(
-                fn ($value): float =>
-                    (float) $value
-            )
-            ->sort()
-            ->values();
-
-        $count = $values->count();
-
-        if ($count === 0) {
-            return 0.0;
-        }
-
-        $middle = intdiv($count, 2);
-
-        if ($count % 2 === 1) {
-            return $values[$middle];
-        }
-
-        return (
-            $values[$middle - 1]
-            + $values[$middle]
-        ) / 2;
-    }
-
-    private function mode(
-        Collection $values
-    ): ?string {
-        $values = $values
-            ->filter(
-                fn ($value): bool =>
-                    is_string($value)
-                    && trim($value) !== ''
-            )
-            ->map(
-                fn (string $value): string =>
-                    trim($value)
-            );
-
-        if ($values->isEmpty()) {
-            return null;
-        }
-
-        return $values
-            ->countBy()
-            ->sortDesc()
-            ->keys()
-            ->first();
     }
 }

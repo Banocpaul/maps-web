@@ -9,6 +9,7 @@ use App\Http\Controllers\FloodDatasetController;
 use App\Http\Controllers\FloodOperationController;
 use App\Http\Controllers\GisMapController;
 use App\Http\Controllers\PredictionController;
+use App\Http\Controllers\PublicFloodMapController;
 use App\Http\Controllers\PublicPortalController;
 use App\Http\Controllers\OperationalRecordController;
 use App\Http\Controllers\SmsController;
@@ -27,6 +28,13 @@ Route::redirect('/', '/login');
 Route::get('/public-portal', [PublicPortalController::class, 'index'])
     ->middleware('throttle:60,1')
     ->name('public.portal');
+
+Route::get(
+    '/public/flood-map',
+    [PublicFloodMapController::class, 'index']
+)
+    ->middleware('throttle:60,1')
+    ->name('public.flood-map');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'showLoginForm'])

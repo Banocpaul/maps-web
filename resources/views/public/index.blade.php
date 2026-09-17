@@ -194,12 +194,12 @@
                         barangay-level conditions.
                     </p>
 
-                    <button
-                        type="button"
-                        class="mt-6 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
+                    <a
+                        href="{{ route('public.flood-map') }}"
+                        class="mt-6 inline-flex rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
                     >
                         View Flood Information
-                    </button>
+                    </a>
                 </article>
 
                 {{-- Weather --}}
@@ -300,12 +300,12 @@
                         geographic information.
                     </p>
 
-                    <button
-                        type="button"
-                        class="mt-6 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"
+                    <a
+                        href="{{ route('public.flood-map') }}"
+                        class="mt-6 inline-flex rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"
                     >
                         Open Public Map
-                    </button>
+                    </a>
                 </article>
 
                 {{-- Safety guides --}}

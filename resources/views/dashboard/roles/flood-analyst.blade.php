@@ -34,11 +34,7 @@
     </div>
 </section>
 
-<section class="mt-6 grid gap-6 xl:grid-cols-3">
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="font-semibold text-slate-950">Monthly Flood Trend</h2><div class="mt-4 h-72"><canvas id="floodMonthlyChart"></canvas></div></article>
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="font-semibold text-slate-950">Risk Distribution</h2><div class="mt-4 h-72"><canvas id="floodRiskChart"></canvas></div></article>
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="font-semibold text-slate-950">Top Flood-Prone Barangays</h2><div class="mt-4 h-72"><canvas id="floodBarangayChart"></canvas></div></article>
-</section>
+@include('dashboard.partials.flood-analytics')
 
 <section class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <div class="border-b border-slate-200 px-5 py-4"><h2 class="font-semibold text-slate-950">Recent Flood Records</h2><p class="mt-1 text-sm text-slate-500">Latest verified observations used for analysis</p></div>
@@ -55,16 +51,3 @@
         </table>
     </div>
 </section>
-
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const monthly = @json($monthlyTrend), risk = @json($riskDistribution), top = @json($topBarangays);
-    const options = {responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}};
-    new Chart(document.getElementById('floodMonthlyChart'), {type:'line',data:{labels:monthly.labels ?? [],datasets:[{label:'Flood Records',data:monthly.records ?? monthly.values ?? monthly.counts ?? [],borderColor:'#0369a1',backgroundColor:'rgba(3,105,161,.1)',fill:true,tension:.3}]},options:{...options,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
-    new Chart(document.getElementById('floodRiskChart'), {type:'doughnut',data:{labels:risk.labels ?? [],datasets:[{data:risk.values ?? risk.records ?? risk.counts ?? [],backgroundColor:['#22c55e','#f59e0b','#dc2626']}]},options});
-    new Chart(document.getElementById('floodBarangayChart'), {type:'bar',data:{labels:top.labels ?? [],datasets:[{label:'Flood Records',data:top.records ?? top.values ?? top.counts ?? [],backgroundColor:'#0284c7'}]},options:{...options,indexAxis:'y',scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
-});
-</script>
-@endpush

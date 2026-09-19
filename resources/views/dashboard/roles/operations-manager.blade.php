@@ -96,6 +96,9 @@
     </article>
 </section>
 
+@include('dashboard.partials.fire-analytics')
+@include('dashboard.partials.flood-analytics')
+
 @if ($liveWeatherError)
     <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         {{ $liveWeatherError }}

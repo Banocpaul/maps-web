@@ -9,3 +9,9 @@
 
     @includeIf('dashboard.roles.' . $roleSlug)
 @endsection
+
+@if (in_array($roleSlug, ['fire-responder', 'flood-analyst', 'operations-manager'], true))
+    @push('scripts')
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    @endpush
+@endif

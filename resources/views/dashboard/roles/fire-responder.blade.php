@@ -67,19 +67,4 @@
     </div>
 </section>
 
-<section class="mt-6 grid gap-6 xl:grid-cols-2">
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="font-semibold text-slate-950">Monthly Fire Trend</h2><div class="mt-4 h-72"><canvas id="fireMonthlyChart"></canvas></div></article>
-    <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 class="font-semibold text-slate-950">Severity Distribution</h2><div class="mt-4 h-72"><canvas id="fireSeverityChart"></canvas></div></article>
-</section>
-
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const monthly = @json($monthlyTrend);
-    const severity = @json($severityDistribution);
-    new Chart(document.getElementById('fireMonthlyChart'), {type:'line',data:{labels:monthly.labels ?? [],datasets:[{label:'Fire Incidents',data:monthly.incidents ?? [],borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.1)',fill:true,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
-    new Chart(document.getElementById('fireSeverityChart'), {type:'doughnut',data:{labels:severity.labels ?? [],datasets:[{data:severity.values ?? [],backgroundColor:['#f59e0b','#f97316','#dc2626']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
-});
-</script>
-@endpush
+@include('dashboard.partials.fire-analytics')

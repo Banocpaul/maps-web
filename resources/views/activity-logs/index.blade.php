@@ -19,9 +19,14 @@
                 devices, IP addresses, and request details.
             </p>
         </div>
-        <span class="inline-flex w-fit rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
-            Administrator access only
-        </span>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ route('activity-logs.export', request()->only(['search', 'user_id', 'module', 'action', 'date_from', 'date_to'])) }}" class="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
+                Export to Excel
+            </a>
+            <span class="inline-flex w-fit rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+                Administrator access only
+            </span>
+        </div>
     </div>
 
     <section class="grid gap-4 sm:grid-cols-3">

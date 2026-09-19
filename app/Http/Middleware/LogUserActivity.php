@@ -151,6 +151,9 @@ class LogUserActivity
             $routeName === 'admin.backups.download' =>
                 'download_backup',
 
+            $routeName === 'admin.backups.restore' =>
+                'restore_backup',
+
             $routeName === 'admin.backups.destroy' =>
                 'delete_backup',
 

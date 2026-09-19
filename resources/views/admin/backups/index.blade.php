@@ -11,7 +11,7 @@
                 </p>
                 <h1 class="mt-1 text-2xl font-bold text-slate-950">Backup & Recovery</h1>
                 <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                    Create, verify, and securely download encrypted TiDB backups. Production restoration is intentionally performed through the protected Artisan command.
+                    Create, verify, download, and safely restore encrypted TiDB backups.
                 </p>
             </div>
 
@@ -148,6 +148,15 @@
                                             <button type="button" data-open-dialog="download-{{ $backup->uuid }}" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
                                                 Download
                                             </button>
+                                            @if ($backup->verified_at)
+                                                <button type="button" data-open-dialog="restore-{{ $backup->uuid }}" class="rounded-lg border border-amber-300 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50">
+                                                    Restore
+                                                </button>
+                                            @else
+                                                <button type="button" disabled title="Verify this backup before restoring it" class="cursor-not-allowed rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-400">
+                                                    Restore
+                                                </button>
+                                            @endif
                                         @endif
                                         <button type="button" data-open-dialog="delete-{{ $backup->uuid }}" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50">
                                             Delete
@@ -173,9 +182,8 @@
 
         <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
             <strong>Recovery safety:</strong>
-            Database restoration is intentionally unavailable as a one-click browser action. An administrator must use
-            <code class="rounded bg-amber-100 px-1.5 py-0.5">php artisan maps:backup:restore BACKUP-UUID</code>.
-            The command requires typed confirmation and creates a pre-restore backup automatically.
+            Only a completed and verified backup can be restored. The administrator must provide the current password,
+            type <strong>RESTORE-MAPS</strong>, and the system creates a pre-restore safety backup automatically.
         </section>
     </div>
 
@@ -210,6 +218,27 @@
                     </form>
                 </dialog>
             @endforeach
+
+            @if ($backup->verified_at)
+                <dialog id="restore-{{ $backup->uuid }}" class="w-full max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
+                    <form method="POST" action="{{ route('admin.backups.restore', $backup) }}" class="p-6">
+                        @csrf
+                        <h2 class="text-lg font-bold text-amber-900">Restore this database backup?</h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">
+                            This replaces the current TiDB data with the selected backup. A new safety backup will be created first.
+                        </p>
+                        <p class="mt-2 break-all rounded-lg bg-slate-100 p-3 text-xs text-slate-600">{{ $backup->filename }}</p>
+                        <label class="mt-5 block text-sm font-semibold text-slate-700">Type RESTORE-MAPS to confirm</label>
+                        <input name="confirmation" type="text" required autocomplete="off" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3">
+                        <label class="mt-4 block text-sm font-semibold text-slate-700">Current password</label>
+                        <input name="current_password" type="password" required autocomplete="current-password" class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3">
+                        <div class="mt-6 flex justify-end gap-3">
+                            <button type="button" data-close-dialog class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button>
+                            <button type="submit" class="rounded-xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800">Create Safety Backup & Restore</button>
+                        </div>
+                    </form>
+                </dialog>
+            @endif
         @endif
 
         <dialog id="delete-{{ $backup->uuid }}" class="w-full max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">

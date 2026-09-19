@@ -7,6 +7,7 @@ use App\Services\Backup\DatabaseBackupService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -112,6 +113,57 @@ class DatabaseBackupController extends Controller
             return redirect()
                 ->route('admin.backups.index')
                 ->with('error', 'Download failed: '.$exception->getMessage());
+        }
+    }
+
+    public function restore(
+        Request $request,
+        DatabaseBackup $databaseBackup,
+        DatabaseBackupService $service
+    ): RedirectResponse {
+        $this->assertAdministrator($request);
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'confirmation' => ['required', 'in:RESTORE-MAPS'],
+        ]);
+
+        if (! Hash::check($validated['current_password'], $request->user()->password)) {
+            return back()->withErrors([
+                'current_password' => 'The administrator password is incorrect.',
+            ]);
+        }
+
+        if (! $databaseBackup->isCompleted() || $databaseBackup->verified_at === null) {
+            return redirect()
+                ->route('admin.backups.index')
+                ->with('error', 'Only completed and verified backups can be restored.');
+        }
+
+        $lock = Cache::lock('maps-database-restore', (int) config('backup.timeout_seconds', 600) * 2);
+
+        if (! $lock->get()) {
+            return redirect()
+                ->route('admin.backups.index')
+                ->with('error', 'Another database restore is already running.');
+        }
+
+        try {
+            $administratorId = $request->user()->id;
+            $safetyBackup = $service->create('pre_restore', $administratorId);
+            $service->restore($databaseBackup, $administratorId);
+            $service->preserveRecordAfterRestore($safetyBackup, $administratorId, false);
+
+            return redirect()
+                ->route('admin.backups.index')
+                ->with('success', "Database restore completed successfully. Safety backup: {$safetyBackup->filename}.");
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return redirect()
+                ->route('admin.backups.index')
+                ->with('error', 'Restore failed: '.$exception->getMessage());
+        } finally {
+            $lock->release();
         }
     }
 

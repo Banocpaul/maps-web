@@ -464,6 +464,9 @@ Route::resource('fire-incidents', FireIncidentController::class)
             Route::post('/{databaseBackup}/download', [DatabaseBackupController::class, 'download'])
                 ->middleware('throttle:5,10')
                 ->name('download');
+            Route::post('/{databaseBackup}/restore', [DatabaseBackupController::class, 'restore'])
+                ->middleware('throttle:1,10')
+                ->name('restore');
             Route::delete('/{databaseBackup}', [DatabaseBackupController::class, 'destroy'])
                 ->middleware('throttle:3,10')
                 ->name('destroy');

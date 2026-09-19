@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
 
 class DashboardRoleAnalyticsTest extends TestCase
@@ -81,6 +82,7 @@ class DashboardRoleAnalyticsTest extends TestCase
             'selectedYear' => null,
             'selectedBarangayId' => null,
             'selectedBarangay' => null,
+            'errors' => new ViewErrorBag(),
         ]);
     }
 

@@ -443,6 +443,17 @@ Route::resource('fire-incidents', FireIncidentController::class)
         ])
         ->name('activity-logs.index');
 
+    Route::get(
+        '/activity-logs/export',
+        [ActivityLogController::class, 'export']
+    )
+        ->middleware([
+            'admin',
+            'permission:activity-logs.view',
+            'throttle:5,10',
+        ])
+        ->name('activity-logs.export');
+
     /*
     |--------------------------------------------------------------------------
     | Administrator-only Backup & Recovery

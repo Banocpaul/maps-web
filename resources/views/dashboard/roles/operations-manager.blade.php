@@ -96,8 +96,80 @@
     </article>
 </section>
 
-@include('dashboard.partials.fire-analytics')
-@include('dashboard.partials.flood-analytics')
+<section
+    id="operations-analytics"
+    class="mt-6 overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/60 shadow-sm"
+>
+    <div class="border-b border-blue-200 bg-gradient-to-r from-blue-50 via-sky-50 to-cyan-50 px-5 py-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">
+                    Operational overview
+                </p>
+
+                <h2 class="mt-1 text-lg font-semibold text-blue-950">
+                    Disaster Analytics
+                </h2>
+
+                <p class="mt-1 text-sm text-blue-700">
+                    Switch between fire and flood operational insights
+                </p>
+            </div>
+
+            <div
+                class="inline-flex w-full rounded-xl border border-blue-200 bg-white/90 p-1 shadow-sm sm:w-auto"
+                role="tablist"
+                aria-label="Disaster analytics"
+            >
+                <button
+                    type="button"
+                    id="fire-analytics-tab"
+                    class="analytics-tab flex-1 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-200 sm:flex-none"
+                    data-analytics-target="fire"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="fire-analytics-panel"
+                >
+                    Fire Analytics
+                </button>
+
+                <button
+                    type="button"
+                    id="flood-analytics-tab"
+                    class="analytics-tab flex-1 rounded-lg px-5 py-2.5 text-sm font-semibold text-blue-700 transition duration-200 hover:bg-blue-100 sm:flex-none"
+                    data-analytics-target="flood"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="flood-analytics-panel"
+                    tabindex="-1"
+                >
+                    Flood Analytics
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white/75 p-4 sm:p-5">
+        <div
+            id="fire-analytics-panel"
+            data-analytics-panel="fire"
+            role="tabpanel"
+            aria-labelledby="fire-analytics-tab"
+        >
+            @include('dashboard.partials.fire-analytics')
+        </div>
+
+        <div
+            id="flood-analytics-panel"
+            data-analytics-panel="flood"
+            class="hidden"
+            role="tabpanel"
+            aria-labelledby="flood-analytics-tab"
+        >
+            @include('dashboard.partials.flood-analytics')
+        </div>
+    </div>
+</section>
 
 @if ($liveWeatherError)
     <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -158,6 +230,91 @@
         </div>
     </div>
 </section>
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const analyticsContainer = document.getElementById(
+                'operations-analytics'
+            );
+
+            if (!analyticsContainer) {
+                return;
+            }
+
+            const tabs = Array.from(
+                analyticsContainer.querySelectorAll('.analytics-tab')
+            );
+
+            const panels = Array.from(
+                analyticsContainer.querySelectorAll(
+                    '[data-analytics-panel]'
+                )
+            );
+
+            const setActiveAnalytics = (target) => {
+                tabs.forEach((tab) => {
+                    const isActive =
+                        tab.dataset.analyticsTarget === target;
+
+                    tab.setAttribute(
+                        'aria-selected',
+                        isActive ? 'true' : 'false'
+                    );
+
+                    tab.tabIndex = isActive ? 0 : -1;
+                    tab.classList.toggle('bg-blue-600', isActive);
+                    tab.classList.toggle('text-white', isActive);
+                    tab.classList.toggle('shadow-sm', isActive);
+                    tab.classList.toggle('text-blue-700', !isActive);
+                    tab.classList.toggle('hover:bg-blue-100', !isActive);
+                });
+
+                panels.forEach((panel) => {
+                    const isActive =
+                        panel.dataset.analyticsPanel === target;
+
+                    panel.classList.toggle('hidden', !isActive);
+                    panel.setAttribute(
+                        'aria-hidden',
+                        isActive ? 'false' : 'true'
+                    );
+                });
+
+                window.requestAnimationFrame(() => {
+                    window.dispatchEvent(new Event('resize'));
+                });
+            };
+
+            tabs.forEach((tab, index) => {
+                tab.addEventListener('click', () => {
+                    setActiveAnalytics(tab.dataset.analyticsTarget);
+                });
+
+                tab.addEventListener('keydown', (event) => {
+                    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    const direction =
+                        event.key === 'ArrowRight' ? 1 : -1;
+
+                    const nextIndex =
+                        (index + direction + tabs.length) % tabs.length;
+
+                    tabs[nextIndex].focus();
+                    setActiveAnalytics(
+                        tabs[nextIndex].dataset.analyticsTarget
+                    );
+                });
+            });
+
+            setActiveAnalytics('fire');
+        });
+    </script>
+@endpush
 
 <section class="mt-6 grid gap-6 xl:grid-cols-2">
     <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

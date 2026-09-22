@@ -74,15 +74,15 @@ class FloodAnalyticsService
         $totalRecords = (clone $query)->count();
 
         $highRiskRecords = (clone $query)
-            ->where('risk_level', 'High')
+            ->whereIn('flood_code', ['C', 'D'])
             ->count();
 
         $mediumRiskRecords = (clone $query)
-            ->where('risk_level', 'Medium')
+            ->where('flood_code', 'B')
             ->count();
 
         $lowRiskRecords = (clone $query)
-            ->where('risk_level', 'Low')
+            ->where('flood_code', 'A')
             ->count();
 
         $averageFloodDepth = (float) (
@@ -191,7 +191,7 @@ class FloodAnalyticsService
                 'COALESCE(AVG(rainfall_24h_mm), 0) as average_rainfall'
             )
             ->selectRaw(
-                "SUM(CASE WHEN risk_level = 'High' THEN 1 ELSE 0 END)
+                "SUM(CASE WHEN flood_code IN ('C', 'D') THEN 1 ELSE 0 END)
                 as high_risk_count"
             )
             ->groupBy('month')
@@ -252,11 +252,11 @@ class FloodAnalyticsService
         ?string $barangay = null
     ): array {
         $rows = $this->baseQuery($year, $barangay)
-            ->selectRaw('risk_level, COUNT(*) as total')
-            ->groupBy('risk_level')
-            ->pluck('total', 'risk_level');
+            ->selectRaw('flood_code, COUNT(*) as total')
+            ->groupBy('flood_code')
+            ->pluck('total', 'flood_code');
 
-        $labels = ['Low', 'Medium', 'High'];
+        $labels = ['A', 'B', 'C', 'D'];
 
         return [
             'labels' => $labels,
@@ -282,7 +282,7 @@ class FloodAnalyticsService
             ->selectRaw('barangay')
             ->selectRaw('COUNT(*) as record_count')
             ->selectRaw(
-                "SUM(CASE WHEN risk_level = 'High' THEN 1 ELSE 0 END)
+                "SUM(CASE WHEN flood_code IN ('C', 'D') THEN 1 ELSE 0 END)
                 as high_risk_count"
             )
             ->selectRaw(
@@ -522,6 +522,7 @@ class FloodAnalyticsService
                 'flood_depth_mm',
                 'duration_hours',
                 'risk_level',
+                'flood_code',
                 'wet_season',
                 'storm_signal',
             ]);
@@ -573,7 +574,7 @@ class FloodAnalyticsService
             ->selectRaw('barangay')
             ->selectRaw('COUNT(*) as total_records')
             ->selectRaw(
-                "SUM(CASE WHEN risk_level = 'High' THEN 1 ELSE 0 END)
+                "SUM(CASE WHEN flood_code IN ('C', 'D') THEN 1 ELSE 0 END)
                 as high_risk_count"
             )
             ->selectRaw(

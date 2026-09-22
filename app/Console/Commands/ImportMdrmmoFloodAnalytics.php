@@ -24,7 +24,7 @@ class ImportMdrmmoFloodAnalytics extends Command
 
         $path = $this->argument('path');
         if (! is_file($path) || ! is_readable($path)) {
-            $this->error("CSV file not found or unreadable: \${path}");
+            $this->error('CSV file not found or unreadable: ' . $path);
             return self::FAILURE;
         }
 
@@ -35,8 +35,8 @@ class ImportMdrmmoFloodAnalytics extends Command
         }
 
         $backup = 'flood_analytics_backup_' . now()->format('Ymd_His');
-        DB::statement("CREATE TABLE \\\`\${backup}\\\` LIKE \\\`flood_analytics_dataset\\\`");
-        DB::statement("INSERT INTO \\\`\${backup}\\\` SELECT * FROM \\\`flood_analytics_dataset\\\`");
+        DB::statement('CREATE TABLE `' . $backup . '` LIKE `flood_analytics_dataset`');
+        DB::statement('INSERT INTO `' . $backup . '` SELECT * FROM `flood_analytics_dataset`');
 
         $handle = fopen($path, 'r');
         $headers = fgetcsv($handle);
@@ -96,8 +96,8 @@ class ImportMdrmmoFloodAnalytics extends Command
             DB::table('flood_analytics_dataset')->insert($batch);
             $imported += count($batch);
         }
-        $this->info("Imported \${imported} MDRRMO records.");
-        $this->info("Backup retained in table: \${backup}");
+        $this->info('Imported ' . $imported . ' MDRRMO records.');
+        $this->info('Backup retained in table: ' . $backup);
         return self::SUCCESS;
     }
 

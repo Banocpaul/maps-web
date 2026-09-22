@@ -233,7 +233,7 @@
                 </p>
 
                 <h2 class="mt-1 text-2xl font-bold text-slate-900">
-                    Mandaluyong Barangay Risk Assessment
+                    Mandaluyong Barangay Flood Severity Assessment
                 </h2>
 
                 <p class="mt-1 text-sm text-slate-500">
@@ -242,22 +242,33 @@
                 </p>
             </div>
 
-            <div class="grid gap-4 sm:grid-cols-3">
-                @foreach (['High', 'Medium', 'Low'] as $level)
+            @php
+                $severityCounts = collect($citywideResult['predictions'] ?? [])
+                    ->countBy(fn ($item) => $item['flood_code'] ?? 'Unknown');
+            @endphp
+
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach (['A', 'B', 'C', 'D'] as $code)
                     @php
-                        $summaryClass = match ($level) {
-                            'High' => 'border-rose-200 bg-rose-50 text-rose-800',
-                            'Medium' => 'border-amber-200 bg-amber-50 text-amber-800',
-                            'Low' => 'border-emerald-200 bg-emerald-50 text-emerald-800',
+                        $summaryClass = match ($code) {
+                            'A' => 'border-emerald-200 bg-emerald-50 text-emerald-800',
+                            'B' => 'border-sky-200 bg-sky-50 text-sky-800',
+                            'C' => 'border-amber-200 bg-amber-50 text-amber-800',
+                            'D' => 'border-rose-200 bg-rose-50 text-rose-800',
+                        };
+
+                        $severityName = match ($code) {
+                            'A' => 'Minor (1 ft)',
+                            'B' => 'Moderate (2 ft)',
+                            'C' => 'Severe (3 ft)',
+                            'D' => 'Critical (4 ft)',
                         };
                     @endphp
 
                     <div class="rounded-2xl border p-5 {{ $summaryClass }}">
-                        <p class="text-sm font-medium">{{ $level }} Risk</p>
-
-                        <p class="mt-2 text-3xl font-bold">
-                            {{ $citywideResult['summary']['risk_distribution'][$level] ?? ($citywideResult['risk_summary'][$level] ?? 0) }}
-                        </p>
+                        <p class="text-sm font-medium">Level {{ $code }}</p>
+                        <p class="mt-1 text-xs">{{ $severityName }}</p>
+                        <p class="mt-2 text-3xl font-bold">{{ $severityCounts[$code] ?? 0 }}</p>
                     </div>
                 @endforeach
             </div>
@@ -276,7 +287,7 @@
                                 </th>
 
                                 <th class="px-4 py-3 text-left text-xs font-bold uppercase text-slate-600">
-                                    Risk
+                                    Flood Severity
                                 </th>
 
                                 <th class="px-4 py-3 text-right text-xs font-bold uppercase text-slate-600">
@@ -284,7 +295,7 @@
                                 </th>
 
                                 <th class="px-4 py-3 text-right text-xs font-bold uppercase text-slate-600">
-                                    Depth
+                                    Predicted Depth
                                 </th>
 
                                 <th class="px-4 py-3 text-right text-xs font-bold uppercase text-slate-600">
@@ -296,14 +307,14 @@
                         <tbody class="divide-y divide-slate-100">
                             @forelse (($citywideResult['predictions'] ?? []) as $index => $item)
                                 @php
-                                    $risk = $item['risk_level']
-                                        ?? $item['predicted_risk_level']
-                                        ?? 'Unknown';
+                                    $floodCode = $item['flood_code'] ?? 'Unknown';
+                                    $floodSeverity = $item['flood_severity'] ?? 'Severity unavailable';
 
-                                    $badgeClass = match ($risk) {
-                                        'High' => 'bg-rose-100 text-rose-700',
-                                        'Medium' => 'bg-amber-100 text-amber-700',
-                                        'Low' => 'bg-emerald-100 text-emerald-700',
+                                    $badgeClass = match ($floodCode) {
+                                        'A' => 'bg-emerald-100 text-emerald-700',
+                                        'B' => 'bg-sky-100 text-sky-700',
+                                        'C' => 'bg-amber-100 text-amber-700',
+                                        'D' => 'bg-rose-100 text-rose-700',
                                         default => 'bg-slate-100 text-slate-700',
                                     };
                                 @endphp
@@ -319,7 +330,10 @@
 
                                     <td class="px-4 py-3">
                                         <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold {{ $badgeClass }}">
-                                            {{ $risk }}
+                                            {{ $floodCode }}
+                                        </span>
+                                        <span class="ml-2 text-xs text-slate-600">
+                                            {{ $floodSeverity }}
                                         </span>
                                     </td>
 
@@ -346,15 +360,9 @@
 
                                     <td class="px-4 py-3 text-right text-sm text-slate-700">
                                         {{ number_format(
-                                            (float) (
-                                                $item['predicted_depth_mm']
-                                                ?? $item[
-                                                    'predicted_flood_depth_mm'
-                                                ]
-                                                ?? 0
-                                            ),
+                                            (float) ($item['predicted_depth_ft'] ?? 0),
                                             2
-                                        ) }} mm
+                                        ) }} ft
                                     </td>
 
                                     <td class="px-4 py-3 text-right text-sm text-slate-700">

@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     new Chart(document.getElementById('fireMonthlyChart'), {type:'line',data:{labels:monthly.labels ?? [],datasets:[{label:'Fire Incidents',data:monthly.incidents ?? [],borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.12)',fill:true,tension:.3}]},options:{...options,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
     new Chart(document.getElementById('fireSeverityChart'), {type:'doughnut',data:{labels:severity.labels ?? [],datasets:[{data:severity.values ?? [],backgroundColor:['#fbbf24','#f97316','#dc2626']}]},options});
     new Chart(document.getElementById('fireBarangayChart'), {type:'bar',data:{labels:barangays.labels ?? [],datasets:[{label:'Fire Incidents',data:barangays.incidents ?? [],backgroundColor:'#ef4444'}]},options:{...options,indexAxis:'y',scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
-    new Chart(document.getElementById('fireTimeChart'), {type:'bar',data:{labels:time.labels ?? [],datasets:[{label:'Fire Incidents',data:time.values ?? [],backgroundColor:['#f59e0b','#fb923c','#ef4444','#7f1d1d']}]},options:{...options,plugins:{...options.plugins,legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+    new Chart(document.getElementById('fireTimeChart'), {type:'bar',data:{labels:time.labels ?? [],datasets:[{label:'Fire Incidents',data:time.values ?? [],backgroundColor:['#f59e0b','#fb923c','#ef4444','#7f1d1d']}]},options:{...options,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
 });
 </script>
 @endpush

@@ -46,7 +46,11 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
+            'analytics' => ['nullable', 'in:fire,flood'],
         ]);
+
+        $selectedAnalytics = $validated['analytics']
+            ?? ($roleSlug === 'flood-analyst' ? 'flood' : 'fire');
 
         $selectedYear = isset($validated['year'])
             ? (int) $validated['year']
@@ -144,7 +148,8 @@ class DashboardController extends Controller
             'availableYears',
             'selectedYear',
             'selectedBarangayId',
-            'selectedBarangay'
+            'selectedBarangay',
+            'selectedAnalytics'
         ));
     }
 

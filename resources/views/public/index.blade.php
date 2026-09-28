@@ -462,17 +462,12 @@
 
 
 
-                    <button
-
-                        type="button"
-
-                        class="mt-6 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-cyan-700"
-
+                    <a
+                        href="{{ route('public.weather') }}"
+                        class="mt-6 inline-flex rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-cyan-700"
                     >
-
                         View Weather
-
-                    </button>
+                    </a>
 
                 </article>
 

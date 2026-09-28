@@ -9,7 +9,7 @@
     >
 
     <title>
-        Live Flood Advisory Map | Mandaluyong Flood & Fire
+        Active Flood & Fire Map | Mandaluyong Flood & Fire
     </title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -20,11 +20,6 @@
     >
 
     <style>
-        /*
-         * Leaflet production fallback.
-         * This prevents Tailwind or a failed external stylesheet from
-         * displaying map tiles as separate squares.
-         */
         .leaflet-container {
             position: relative;
             overflow: hidden;
@@ -59,29 +54,12 @@
             left: 0;
         }
 
-        .leaflet-tile-pane {
-            z-index: 200;
-        }
-
-        .leaflet-overlay-pane {
-            z-index: 400;
-        }
-
-        .leaflet-shadow-pane {
-            z-index: 500;
-        }
-
-        .leaflet-marker-pane {
-            z-index: 600;
-        }
-
-        .leaflet-tooltip-pane {
-            z-index: 650;
-        }
-
-        .leaflet-popup-pane {
-            z-index: 700;
-        }
+        .leaflet-tile-pane { z-index: 200; }
+        .leaflet-overlay-pane { z-index: 400; }
+        .leaflet-shadow-pane { z-index: 500; }
+        .leaflet-marker-pane { z-index: 600; }
+        .leaflet-tooltip-pane { z-index: 650; }
+        .leaflet-popup-pane { z-index: 700; }
 
         .leaflet-tile,
         .leaflet-marker-icon,
@@ -90,13 +68,8 @@
             max-height: none !important;
         }
 
-        .leaflet-tile {
-            visibility: hidden;
-        }
-
-        .leaflet-tile-loaded {
-            visibility: inherit;
-        }
+        .leaflet-tile { visibility: hidden; }
+        .leaflet-tile-loaded { visibility: inherit; }
 
         .leaflet-top,
         .leaflet-bottom {
@@ -105,21 +78,10 @@
             pointer-events: none;
         }
 
-        .leaflet-top {
-            top: 0;
-        }
-
-        .leaflet-right {
-            right: 0;
-        }
-
-        .leaflet-bottom {
-            bottom: 0;
-        }
-
-        .leaflet-left {
-            left: 0;
-        }
+        .leaflet-top { top: 0; }
+        .leaflet-right { right: 0; }
+        .leaflet-bottom { bottom: 0; }
+        .leaflet-left { left: 0; }
 
         .leaflet-control {
             position: relative;
@@ -127,7 +89,7 @@
             pointer-events: auto;
         }
 
-        #public-flood-map {
+        #public-incident-map {
             position: relative;
             z-index: 0;
             width: 100%;
@@ -139,8 +101,8 @@
             border-radius: 0.9rem;
         }
 
-        .flood-popup {
-            min-width: 210px;
+        .incident-popup {
+            min-width: 220px;
         }
     </style>
 </head>
@@ -149,14 +111,13 @@
 
     <header class="border-b border-slate-800 bg-slate-950 text-white shadow-lg">
         <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-
             <div>
                 <p class="text-lg font-black tracking-wide">
                     Mandaluyong Flood & Fire
                 </p>
 
                 <p class="text-xs text-slate-400">
-                    Public Live Flood Advisory Map
+                    Public Active Flood & Fire Map
                 </p>
             </div>
 
@@ -176,7 +137,6 @@
                     Refresh Map
                 </button>
             </div>
-
         </div>
     </header>
 
@@ -184,55 +144,43 @@
 
         <section class="rounded-2xl bg-gradient-to-r from-blue-950 to-slate-900 p-6 text-white shadow-lg">
             <p class="text-xs font-bold uppercase tracking-[0.16em] text-blue-300">
-                Public Flood Advisory
+                Public Incident Information
             </p>
 
             <h1 class="mt-2 text-3xl font-black">
-                Active mapped flood extents
+                Active flood and fire incidents
             </h1>
 
             <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                Colored road lines represent active flood observations
-                reported by authorized operations personnel. Select a line
-                to view its barangay, flood level, recorded length, and
-                observation time.
+                Flood lines show active mapped flood extents. Red markers show
+                active fire incidents reported in Mandaluyong. Use the filters
+                below to view all active incidents, flood only, or fire only.
             </p>
         </section>
 
-        <section class="grid grid-cols-2 gap-4 lg:grid-cols-6">
+        <section class="grid grid-cols-2 gap-4 md:grid-cols-4">
             @foreach ([
                 [
-                    'label' => 'Active Floods',
-                    'value' => $statistics['total'],
+                    'label' => 'All Active',
+                    'value' => $statistics['active_total'],
                     'class' => 'text-slate-950',
                 ],
                 [
-                    'label' => 'Barangays',
-                    'value' => $statistics['barangays'],
+                    'label' => 'Active Floods',
+                    'value' => $statistics['active_floods'],
                     'class' => 'text-blue-700',
                 ],
                 [
-                    'label' => 'Level A',
-                    'value' => $statistics['level_a'],
-                    'class' => 'text-green-700',
-                ],
-                [
-                    'label' => 'Level B',
-                    'value' => $statistics['level_b'],
-                    'class' => 'text-yellow-700',
-                ],
-                [
-                    'label' => 'Level C',
-                    'value' => $statistics['level_c'],
-                    'class' => 'text-orange-700',
-                ],
-                [
-                    'label' => 'Level D',
-                    'value' => $statistics['level_d'],
+                    'label' => 'Active Fires',
+                    'value' => $statistics['active_fires'],
                     'class' => 'text-red-700',
                 ],
+                [
+                    'label' => 'Affected Barangays',
+                    'value' => $statistics['barangays'],
+                    'class' => 'text-violet-700',
+                ],
             ] as $item)
-
                 <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <p class="text-xs font-bold uppercase tracking-wide text-slate-500">
                         {{ $item['label'] }}
@@ -242,61 +190,85 @@
                         {{ $item['value'] }}
                     </p>
                 </article>
-
             @endforeach
         </section>
 
         <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-            <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-
+            <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                     <h2 class="text-lg font-bold">
-                        Flood extent GIS map
+                        Active incident GIS map
                     </h2>
 
                     <p
                         id="map-status"
                         class="mt-1 text-sm text-slate-600"
                     >
-                        {{ $statistics['total'] > 0
-                            ? $statistics['total'].' active flood extent(s) displayed.'
-                            : 'No active mapped floods are currently reported.' }}
+                        {{ $statistics['active_total'] > 0
+                            ? $statistics['active_total'].' active incident(s) displayed.'
+                            : 'No active mapped flood or fire incidents are currently reported.' }}
                     </p>
                 </div>
 
-                <div class="flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold">
-                    @foreach ($levels as $code => $level)
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-wrap gap-2" aria-label="Map filters">
+                        <button
+                            type="button"
+                            data-map-filter="all"
+                            class="map-filter rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white"
+                        >
+                            All Active
+                        </button>
+
+                        <button
+                            type="button"
+                            data-map-filter="flood"
+                            class="map-filter rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+                        >
+                            Flood
+                        </button>
+
+                        <button
+                            type="button"
+                            data-map-filter="fire"
+                            class="map-filter rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
+                        >
+                            Fire
+                        </button>
+                    </div>
+
+                    <div class="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-slate-700">
+                        @foreach ($levels as $code => $level)
+                            <span class="inline-flex items-center gap-2">
+                                <span
+                                    class="h-3 w-7 rounded-full"
+                                    style="background-color: {{ $level['color'] }}"
+                                ></span>
+
+                                Flood {{ $code }} — {{ $level['depth'] }}
+                            </span>
+                        @endforeach
 
                         <span class="inline-flex items-center gap-2">
-                            <span
-                                class="h-3 w-7 rounded-full"
-                                style="background-color: {{ $level['color'] }}"
-                            ></span>
-
-                            {{ $code }} — {{ $level['depth'] }}
+                            <span class="h-3 w-3 rounded-full bg-red-600 ring-2 ring-red-200"></span>
+                            Active Fire
                         </span>
-
-                    @endforeach
+                    </div>
                 </div>
-
             </div>
 
             <div
-                id="public-flood-map"
-                aria-label="Public active flood advisory map"
+                id="public-incident-map"
+                aria-label="Public active flood and fire incident map"
             ></div>
-
         </section>
 
         <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
             <strong>Safety reminder:</strong>
-
-            Avoid entering a mapped flooded road. Conditions may change
-            quickly. Follow current instructions from Mandaluyong CDRRMO
-            and emergency personnel.
+            Do not enter flooded roads or approach an active fire scene.
+            Conditions can change quickly. Keep access routes clear and follow
+            instructions from Mandaluyong CDRRMO, BFP, and emergency personnel.
         </section>
-
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -304,14 +276,11 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const floods = {{ Illuminate\Support\Js::from($floods) }};
+            const fires = {{ Illuminate\Support\Js::from($fires) }};
 
-            const mapElement = document.getElementById(
-                'public-flood-map'
-            );
-
-            const statusElement = document.getElementById(
-                'map-status'
-            );
+            const mapElement = document.getElementById('public-incident-map');
+            const statusElement = document.getElementById('map-status');
+            const filterButtons = document.querySelectorAll('[data-map-filter]');
 
             if (!mapElement) {
                 return;
@@ -320,95 +289,75 @@
             if (typeof L === 'undefined') {
                 statusElement.textContent =
                     'The GIS map library could not be loaded.';
-
                 statusElement.classList.add('text-red-700');
-
                 return;
             }
 
             const map = L.map(mapElement, {
                 scrollWheelZoom: true,
                 zoomControl: true,
-            }).setView(
-                [14.5794, 121.0359],
-                14
-            );
+            }).setView([14.5794, 121.0359], 14);
 
             L.tileLayer(
                 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                 {
                     maxZoom: 19,
-                    attribution:
-                        '&copy; OpenStreetMap contributors',
+                    attribution: '&copy; OpenStreetMap contributors',
                 }
             ).addTo(map);
 
+            const floodGroup = L.layerGroup().addTo(map);
+            const fireGroup = L.layerGroup().addTo(map);
+
             const floodLayers = [];
+            const fireLayers = [];
 
             floods.forEach((flood) => {
                 if (
                     !flood.geometry
                     || flood.geometry.type !== 'LineString'
-                    || !Array.isArray(
-                        flood.geometry.coordinates
-                    )
+                    || !Array.isArray(flood.geometry.coordinates)
                 ) {
                     return;
                 }
 
-                const coordinates =
-                    flood.geometry.coordinates.map(
-                        ([longitude, latitude]) => [
-                            Number(latitude),
-                            Number(longitude),
-                        ]
+                const coordinates = flood.geometry.coordinates
+                    .map(([longitude, latitude]) => [
+                        Number(latitude),
+                        Number(longitude),
+                    ])
+                    .filter(
+                        ([latitude, longitude]) =>
+                            Number.isFinite(latitude)
+                            && Number.isFinite(longitude)
                     );
 
-                const validCoordinates = coordinates.filter(
-                    ([latitude, longitude]) =>
-                        Number.isFinite(latitude)
-                        && Number.isFinite(longitude)
-                );
-
-                if (validCoordinates.length < 2) {
+                if (coordinates.length < 2) {
                     return;
                 }
 
-                const line = L.polyline(
-                    validCoordinates,
-                    {
-                        color: flood.color,
-                        weight: 8,
-                        opacity: 0.9,
-                        lineCap: 'round',
-                        lineJoin: 'round',
-                    }
-                ).addTo(map);
+                const line = L.polyline(coordinates, {
+                    color: flood.color,
+                    weight: 8,
+                    opacity: 0.9,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                });
 
                 line.bindTooltip(
-                    `${escapeHtml(flood.barangay)}
-                    — Level ${escapeHtml(
-                        flood.level_code
-                    )}`,
-                    {
-                        sticky: true,
-                    }
+                    `${escapeHtml(flood.barangay)} — Flood Level ${escapeHtml(flood.level_code)}`,
+                    { sticky: true }
                 );
 
                 line.bindPopup(`
-                    <div class="flood-popup">
-                        <div style="
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                            margin-bottom: 8px;
-                        ">
+                    <div class="incident-popup">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                             <span style="
-                                width: 12px;
-                                height: 12px;
-                                border-radius: 999px;
-                                background: ${flood.color};
-                                display: inline-block;
+                                width:12px;
+                                height:12px;
+                                border-radius:999px;
+                                background:${flood.color};
+                                display:inline-block;
                             "></span>
 
                             <strong>
@@ -417,68 +366,229 @@
                             </strong>
                         </div>
 
-                        <p style="margin: 5px 0;">
+                        <p style="margin:5px 0;">
+                            <strong>Type:</strong> Active Flood
+                        </p>
+
+                        <p style="margin:5px 0;">
                             <strong>Barangay:</strong>
                             ${escapeHtml(flood.barangay)}
                         </p>
 
-                        <p style="margin: 5px 0;">
+                        <p style="margin:5px 0;">
                             <strong>Mapped length:</strong>
-                            ${Number(
-                                flood.length_m
-                            ).toLocaleString()} m
+                            ${Number(flood.length_m).toLocaleString()} m
                         </p>
 
-                        <p style="margin: 5px 0;">
-                            <strong>Status:</strong>
-                            Active
+                        <p style="margin:5px 0;">
+                            <strong>Status:</strong> Active
                         </p>
 
-                        <p style="margin: 5px 0;">
+                        <p style="margin:5px 0;">
                             <strong>Observed:</strong>
-                            ${escapeHtml(
-                                flood.observed_at
-                                || 'Not available'
-                            )}
+                            ${escapeHtml(flood.observed_at || 'Not available')}
                         </p>
                     </div>
                 `);
 
+                line.addTo(floodGroup);
                 floodLayers.push(line);
             });
 
-            const resizeAndFitMap = () => {
-                map.invalidateSize();
+            fires.forEach((fire) => {
+                const latitude = Number(fire.latitude);
+                const longitude = Number(fire.longitude);
 
-                if (floodLayers.length === 0) {
-                    map.setView(
-                        [14.5794, 121.0359],
-                        14
-                    );
-
+                if (
+                    !Number.isFinite(latitude)
+                    || !Number.isFinite(longitude)
+                ) {
                     return;
                 }
 
-                const bounds = L.featureGroup(
-                    floodLayers
-                ).getBounds();
+                const marker = L.circleMarker(
+                    [latitude, longitude],
+                    {
+                        radius: 10,
+                        color: '#991b1b',
+                        weight: 3,
+                        fillColor: '#dc2626',
+                        fillOpacity: 0.92,
+                    }
+                );
+
+                marker.bindTooltip(
+                    `${escapeHtml(fire.barangay)} — Active Fire`,
+                    { sticky: true }
+                );
+
+                marker.bindPopup(`
+                    <div class="incident-popup">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                            <span style="
+                                width:12px;
+                                height:12px;
+                                border-radius:999px;
+                                background:#dc2626;
+                                display:inline-block;
+                            "></span>
+
+                            <strong>Active Fire Incident</strong>
+                        </div>
+
+                        <p style="margin:5px 0;">
+                            <strong>Incident type:</strong>
+                            ${escapeHtml(fire.incident_type || 'Fire')}
+                        </p>
+
+                        <p style="margin:5px 0;">
+                            <strong>Barangay:</strong>
+                            ${escapeHtml(fire.barangay)}
+                        </p>
+
+                        <p style="margin:5px 0;">
+                            <strong>Location:</strong>
+                            ${escapeHtml(fire.location || 'Not available')}
+                        </p>
+
+                        <p style="margin:5px 0;">
+                            <strong>Severity:</strong>
+                            ${escapeHtml(fire.severity || 'Not available')}
+                        </p>
+
+                        <p style="margin:5px 0;">
+                            <strong>Status:</strong>
+                            ${escapeHtml(fire.status || 'Active')}
+                        </p>
+
+                        <p style="margin:5px 0;">
+                            <strong>Reported:</strong>
+                            ${escapeHtml(fire.reported_at || 'Not available')}
+                        </p>
+                    </div>
+                `);
+
+                marker.addTo(fireGroup);
+                fireLayers.push(marker);
+            });
+
+            let activeFilter = 'all';
+
+            const visibleLayers = () => {
+                if (activeFilter === 'flood') {
+                    return floodLayers;
+                }
+
+                if (activeFilter === 'fire') {
+                    return fireLayers;
+                }
+
+                return [...floodLayers, ...fireLayers];
+            };
+
+            const updateStatus = () => {
+                if (!statusElement) {
+                    return;
+                }
+
+                if (activeFilter === 'flood') {
+                    statusElement.textContent =
+                        floodLayers.length > 0
+                            ? `${floodLayers.length} active flood extent(s) displayed.`
+                            : 'No active mapped floods are currently reported.';
+                    return;
+                }
+
+                if (activeFilter === 'fire') {
+                    statusElement.textContent =
+                        fireLayers.length > 0
+                            ? `${fireLayers.length} active fire incident(s) displayed.`
+                            : 'No active mapped fire incidents are currently reported.';
+                    return;
+                }
+
+                const total = floodLayers.length + fireLayers.length;
+
+                statusElement.textContent =
+                    total > 0
+                        ? `${total} active incident(s) displayed: ${floodLayers.length} flood, ${fireLayers.length} fire.`
+                        : 'No active mapped flood or fire incidents are currently reported.';
+            };
+
+            const fitVisibleLayers = () => {
+                map.invalidateSize();
+
+                const layers = visibleLayers();
+
+                if (layers.length === 0) {
+                    map.setView([14.5794, 121.0359], 14);
+                    return;
+                }
+
+                const bounds = L.featureGroup(layers).getBounds();
 
                 if (bounds.isValid()) {
                     map.fitBounds(
                         bounds.pad(0.18),
-                        {
-                            maxZoom: 17,
-                        }
+                        { maxZoom: 16 }
                     );
                 }
             };
 
+            const setFilter = (filter) => {
+                activeFilter = filter;
+
+                if (filter === 'all' || filter === 'flood') {
+                    if (!map.hasLayer(floodGroup)) {
+                        floodGroup.addTo(map);
+                    }
+                } else if (map.hasLayer(floodGroup)) {
+                    map.removeLayer(floodGroup);
+                }
+
+                if (filter === 'all' || filter === 'fire') {
+                    if (!map.hasLayer(fireGroup)) {
+                        fireGroup.addTo(map);
+                    }
+                } else if (map.hasLayer(fireGroup)) {
+                    map.removeLayer(fireGroup);
+                }
+
+                filterButtons.forEach((button) => {
+                    const isActive =
+                        button.dataset.mapFilter === filter;
+
+                    button.classList.toggle(
+                        'bg-slate-900',
+                        isActive
+                    );
+                    button.classList.toggle(
+                        'text-white',
+                        isActive
+                    );
+                    button.classList.toggle(
+                        'bg-white',
+                        !isActive
+                    );
+                });
+
+                updateStatus();
+                fitVisibleLayers();
+            };
+
+            filterButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    setFilter(button.dataset.mapFilter || 'all');
+                });
+            });
+
             requestAnimationFrame(() => {
-                resizeAndFitMap();
+                updateStatus();
+                fitVisibleLayers();
             });
 
             window.addEventListener('load', () => {
-                resizeAndFitMap();
+                fitVisibleLayers();
             });
 
             window.addEventListener('resize', () => {
@@ -492,14 +602,8 @@
                 });
 
             function escapeHtml(value) {
-                const element = document.createElement(
-                    'div'
-                );
-
-                element.textContent = String(
-                    value ?? ''
-                );
-
+                const element = document.createElement('div');
+                element.textContent = String(value ?? '');
                 return element.innerHTML;
             }
         });

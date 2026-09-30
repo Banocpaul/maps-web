@@ -130,6 +130,15 @@
             'icon' => 'submissions',
         ],
         [
+            'label' => 'Public Advisories',
+            'route' => Route::has('advisories.index')
+                ? 'advisories.index'
+                : null,
+            'active' => ['advisories.*'],
+            'permission' => 'advisories.view',
+            'icon' => 'advisory',
+        ],
+        [
             'label' => 'User Management',
             'route' => Route::has('users.index')
                 ? 'users.index'
@@ -223,14 +232,17 @@
         'fire-responder' => [
             'Reports',
             'Public Submissions',
+            'Public Advisories',
         ],
         'flood-analyst' => [
             'Reports',
             'Public Submissions',
+            'Public Advisories',
         ],
         'operations-manager' => [
             'Reports',
             'Public Submissions',
+            'Public Advisories',
         ],
         default => [],
     };
@@ -608,6 +620,23 @@
                                                 stroke-linecap="round"
                                                 stroke-linejoin="round"
                                                 d="M5 20V11m5 9V5m5 15v-7m4 7V8"
+                                            />
+                                        </svg>
+                                        @break
+
+                                    @case('advisory')
+                                        <svg
+                                            class="h-5 w-5"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="1.8"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
                                             />
                                         </svg>
                                         @break

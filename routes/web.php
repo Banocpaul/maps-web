@@ -11,6 +11,7 @@ use App\Http\Controllers\GisMapController;
 use App\Http\Controllers\PredictionController;
 use App\Http\Controllers\PublicFloodMapController;
 use App\Http\Controllers\PublicPortalController;
+use App\Http\Controllers\PublicAdvisoryController;
 use App\Http\Controllers\OperationalRecordController;
 use App\Http\Controllers\SmsController;
 use App\Http\Controllers\UserManagementController;
@@ -28,6 +29,9 @@ Route::get('/public-portal', [PublicPortalController::class, 'index'])
 Route::get('/public-portal/weather', [PublicPortalController::class, 'weather'])
     ->middleware('throttle:60,1')
     ->name('public.weather');
+Route::get('/public-portal/advisories', [PublicPortalController::class, 'advisories'])
+    ->middleware('throttle:60,1')
+    ->name('public.advisories');
 Route::get(
     '/public/flood-map',
     [PublicFloodMapController::class, 'index']
@@ -47,6 +51,71 @@ Route::middleware('guest')->group(function (): void {
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function (): void {
+    /*
+    |--------------------------------------------------------------------------
+    | Public Advisory Management
+    |--------------------------------------------------------------------------
+    |
+    | Only operational departments may access these routes.
+    | Administrator and System Viewer are intentionally excluded.
+    |
+    */
+    Route::prefix('public-advisories')
+        ->name('advisories.')
+        ->middleware('advisory.publisher')
+        ->group(function (): void {
+            Route::get(
+                '/',
+                [PublicAdvisoryController::class, 'index']
+            )
+                ->middleware('permission:advisories.view')
+                ->name('index');
+
+            Route::get(
+                '/create',
+                [PublicAdvisoryController::class, 'create']
+            )
+                ->middleware('permission:advisories.create')
+                ->name('create');
+
+            Route::post(
+                '/',
+                [PublicAdvisoryController::class, 'store']
+            )
+                ->middleware([
+                    'permission:advisories.create',
+                    'throttle:20,1',
+                ])
+                ->name('store');
+
+            Route::get(
+                '/{publicAdvisory}/edit',
+                [PublicAdvisoryController::class, 'edit']
+            )
+                ->middleware('permission:advisories.edit')
+                ->name('edit');
+
+            Route::put(
+                '/{publicAdvisory}',
+                [PublicAdvisoryController::class, 'update']
+            )
+                ->middleware([
+                    'permission:advisories.edit',
+                    'throttle:20,1',
+                ])
+                ->name('update');
+
+            Route::delete(
+                '/{publicAdvisory}',
+                [PublicAdvisoryController::class, 'destroy']
+            )
+                ->middleware([
+                    'permission:advisories.delete',
+                    'throttle:10,1',
+                ])
+                ->name('destroy');
+        });
+
     /*
     |--------------------------------------------------------------------------
     | Dashboard

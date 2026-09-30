@@ -527,17 +527,12 @@
 
 
 
-                    <button
-
-                        type="button"
-
-                        class="mt-6 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700"
-
+                    <a
+                        href="{{ route('public.advisories') }}"
+                        class="mt-6 inline-flex rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700"
                     >
-
                         View Advisories
-
-                    </button>
+                    </a>
 
                 </article>
 
@@ -624,7 +619,7 @@
 
             <p class="font-semibold text-slate-700">
 
-                Mandaluyong Flood & Fire — Mandaluyong Flood Prediction and Fire Response System
+                Mandaluyong Flood & Fire â€” Mandaluyong Flood Prediction and Fire Response System
 
             </p>
 

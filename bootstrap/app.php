@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'admin' => \App\Http\Middleware\EnsureAdministrator::class,
+            'advisory.publisher' => \App\Http\Middleware\EnsureAdvisoryPublisher::class,
         ]);
 
         $middleware->appendToGroup(

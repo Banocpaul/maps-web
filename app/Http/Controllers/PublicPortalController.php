@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PublicAdvisory;
 use App\Services\LiveWeatherService;
 use Illuminate\View\View;
 use Throwable;
@@ -134,6 +135,23 @@ class PublicPortalController extends Controller
         return view('public.weather', [
             'forecast' => $forecast,
             'weatherError' => $weatherError,
+        ]);
+    }
+
+    /**
+     * Public advisory listing.
+     *
+     * Residents do not need to sign in.
+     * Advisories are shown newest to oldest by advisory date.
+     */
+    public function advisories(): View
+    {
+        $advisories = PublicAdvisory::query()
+            ->newestFirst()
+            ->paginate(10);
+
+        return view('public.advisories', [
+            'advisories' => $advisories,
         ]);
     }
 }

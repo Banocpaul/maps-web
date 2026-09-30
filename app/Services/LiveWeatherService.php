@@ -14,8 +14,6 @@ use Throwable;
 
 class LiveWeatherService
 {
-    private const FRESH_MINUTES = 15;
-
     private const LATITUDE = 14.5794;
     private const LONGITUDE = 121.0359;
     private const TIMEZONE = 'Asia/Manila';
@@ -27,16 +25,33 @@ class LiveWeatherService
     private int $connectTimeoutSeconds = 10;
 
     /**
-     * Retrieve today's saved Mandaluyong weather snapshot. Open-Meteo is
-     * called only when the Manila calendar date has no stored snapshot.
+     * Retrieve the daily Mandaluyong weather snapshot.
+     *
+     * Open-Meteo is contacted at most once for a Manila calendar date.
+     * The same API response contains:
+     * - current weather
+     * - hourly data used by the flood model
+     * - seven past days for antecedent rainfall
+     * - the next seven forecast days for the public portal
+     *
+     * All later requests during the same day use the database snapshot.
      */
     public function getCurrentWeather(): array
     {
         $snapshotDate = now(self::TIMEZONE)->toDateString();
         $snapshot = $this->findSnapshot($snapshotDate);
 
-        if ($this->isFresh($snapshot)) {
+        if ($this->hasUsableSnapshot($snapshot)) {
             return $this->snapshotResponse($snapshot, 'database');
+        }
+
+        // A failed-attempt marker means today's one allowed request
+        // has already been used. Do not contact Open-Meteo again today.
+        if (
+            $snapshot !== null
+            && $snapshot->source === 'Open-Meteo-Attempt-Failed'
+        ) {
+            return $this->staleFallbackOrFail($snapshotDate);
         }
 
         return Cache::lock(
@@ -45,55 +60,106 @@ class LiveWeatherService
         )->block(15, function () use ($snapshotDate): array {
             $snapshot = $this->findSnapshot($snapshotDate);
 
-            if ($this->isFresh($snapshot)) {
+            if ($this->hasUsableSnapshot($snapshot)) {
                 return $this->snapshotResponse($snapshot, 'database');
             }
 
-            try {
-                return $this->refreshCurrentWeather();
-            } catch (Throwable $exception) {
-                if ($snapshot === null) {
-                    throw $exception;
-                }
+            if (
+                $snapshot !== null
+                && $snapshot->source === 'Open-Meteo-Attempt-Failed'
+            ) {
+                return $this->staleFallbackOrFail($snapshotDate);
+            }
 
-                Log::warning('Open-Meteo refresh failed; serving stale weather.', [
-                    'message' => $exception->getMessage(),
+            /*
+             * Mark today's one allowed attempt BEFORE the external request.
+             * Existing snapshots created by the older 15-minute version are
+             * allowed one upgrade request so they can gain the 7-day data.
+             */
+            $manilaNow = now(self::TIMEZONE);
+
+            if ($snapshot === null) {
+                $snapshot = DailyWeatherSnapshot::query()->create([
                     'snapshot_date' => $snapshotDate,
+                    'source' => 'Open-Meteo-Attempting',
+                    'weather_data' => [],
+                    'fetched_at' => now(),
+                    'expires_at' => $manilaNow->copy()->endOfDay()->utc(),
                 ]);
+            } else {
+                $snapshot->update([
+                    'source' => 'Open-Meteo-Attempting',
+                    'fetched_at' => now(),
+                    'expires_at' => $manilaNow->copy()->endOfDay()->utc(),
+                ]);
+            }
+
+            try {
+                $weather = $this->fetchCurrentWeather();
+
+                $snapshot->update([
+                    'source' => 'Open-Meteo',
+                    'weather_data' => $weather,
+                    'fetched_at' => now(),
+                    'expires_at' => $manilaNow->copy()->endOfDay()->utc(),
+                ]);
+
+                $snapshot->refresh();
 
                 return $this->snapshotResponse(
                     $snapshot,
-                    'stale-database',
-                    true
+                    'open-meteo'
+                );
+            } catch (Throwable $exception) {
+                $snapshot->update([
+                    'source' => 'Open-Meteo-Attempt-Failed',
+                    'fetched_at' => now(),
+                    'expires_at' => $manilaNow->copy()->endOfDay()->utc(),
+                ]);
+
+                Log::warning(
+                    'Daily Open-Meteo request failed; no second request will be made today.',
+                    [
+                        'message' => $exception->getMessage(),
+                        'snapshot_date' => $snapshotDate,
+                    ]
+                );
+
+                return $this->staleFallbackOrFail(
+                    $snapshotDate,
+                    $exception
                 );
             }
         });
     }
 
     /**
-     * Force a fresh Open-Meteo request and replace today's snapshot.
+     * Kept for compatibility with existing controllers/services.
+     *
+     * This no longer forces another API request. It follows the same
+     * once-per-day rule as getCurrentWeather().
      */
     public function refreshCurrentWeather(): array
     {
-        $weather = $this->fetchCurrentWeather();
-        $manilaNow = now(self::TIMEZONE);
-        $fetchedAt = now();
-        $snapshot = DailyWeatherSnapshot::query()->updateOrCreate(
-            ['snapshot_date' => $manilaNow->toDateString()],
-            [
-                'source' => 'Open-Meteo',
-                'weather_data' => $weather,
-                'fetched_at' => $fetchedAt,
-                'expires_at' => $manilaNow->copy()->endOfDay()->utc(),
-            ]
-        );
-
-        return $this->snapshotResponse($snapshot, 'open-meteo');
+        return $this->getCurrentWeather();
     }
 
     /**
-     * Retrieve current Mandaluyong weather, recent rainfall, and the
-     * upcoming 24-hour forecast used by citywide prediction.
+     * Return the public 7-day forecast.
+     *
+     * This does NOT make a separate Open-Meteo request. It reads the
+     * seven-day forecast stored inside today's daily weather snapshot.
+     */
+    public function getSevenDayForecast(): array
+    {
+        $weather = $this->getCurrentWeather();
+        $forecast = $weather['seven_day_forecast'] ?? [];
+
+        return is_array($forecast) ? $forecast : [];
+    }
+
+    /**
+     * Make the single Open-Meteo request used for the whole day.
      */
     private function fetchCurrentWeather(): array
     {
@@ -101,7 +167,6 @@ class LiveWeatherService
             $response = Http::acceptJson()
                 ->connectTimeout($this->connectTimeoutSeconds)
                 ->timeout($this->timeoutSeconds)
-                ->retry(2, 500)
                 ->get(self::FORECAST_URL, [
                     'latitude' => self::LATITUDE,
                     'longitude' => self::LONGITUDE,
@@ -127,19 +192,21 @@ class LiveWeatherService
                     ]),
 
                     'daily' => implode(',', [
+                        'weather_code',
                         'temperature_2m_max',
                         'temperature_2m_min',
+                        'precipitation_probability_max',
                         'precipitation_sum',
                         'rain_sum',
+                        'wind_speed_10m_max',
                     ]),
 
                     /*
                      * Seven past days are used for antecedent rainfall.
-                     * Two forecast days ensure that a complete rolling
-                     * 24-hour period is available even late in the day.
+                     * Seven forecast days are returned for the public portal.
                      */
                     'past_days' => 7,
-                    'forecast_days' => 2,
+                    'forecast_days' => 7,
 
                     'wind_speed_unit' => 'ms',
                     'precipitation_unit' => 'mm',
@@ -148,8 +215,7 @@ class LiveWeatherService
                 ]);
         } catch (ConnectionException $exception) {
             throw new RuntimeException(
-                'Cannot connect to Open-Meteo. Check the internet '
-                . 'connection and try again.',
+                'Cannot connect to Open-Meteo. Check the internet connection and try again tomorrow.',
                 previous: $exception
             );
         } catch (Throwable $exception) {
@@ -163,20 +229,84 @@ class LiveWeatherService
         return $this->processResponse($response);
     }
 
-    private function findSnapshot(string $snapshotDate): ?DailyWeatherSnapshot
-    {
+    private function findSnapshot(
+        string $snapshotDate
+    ): ?DailyWeatherSnapshot {
         return DailyWeatherSnapshot::query()
             ->where('snapshot_date', $snapshotDate)
             ->first();
     }
 
-    private function isFresh(?DailyWeatherSnapshot $snapshot): bool
-    {
-        return $snapshot !== null
-            && $snapshot->fetched_at !== null
-            && $snapshot->fetched_at->greaterThan(
-                now()->subMinutes(self::FRESH_MINUTES)
+    private function hasUsableSnapshot(
+        ?DailyWeatherSnapshot $snapshot
+    ): bool {
+        if ($snapshot === null) {
+            return false;
+        }
+
+        $weather = $snapshot->weather_data;
+
+        return is_array($weather)
+            && $weather !== []
+            && isset(
+                $weather['date'],
+                $weather['avg_temp_mean_c'],
+                $weather['seven_day_forecast']
             );
+    }
+
+    /**
+     * Find the most recent previous successful snapshot.
+     */
+    private function findLatestUsableSnapshotBefore(
+        string $snapshotDate
+    ): ?DailyWeatherSnapshot {
+        $snapshots = DailyWeatherSnapshot::query()
+            ->where('snapshot_date', '<', $snapshotDate)
+            ->orderByDesc('snapshot_date')
+            ->limit(14)
+            ->get();
+
+        foreach ($snapshots as $snapshot) {
+            if ($this->hasUsableSnapshot($snapshot)) {
+                return $snapshot;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Use the last successful snapshot if today's single request failed.
+     */
+    private function staleFallbackOrFail(
+        string $snapshotDate,
+        ?Throwable $originalException = null
+    ): array {
+        $previous = $this->findLatestUsableSnapshotBefore(
+            $snapshotDate
+        );
+
+        if ($previous !== null) {
+            Log::warning(
+                'Serving previous successful weather snapshot as fallback.',
+                [
+                    'requested_date' => $snapshotDate,
+                    'fallback_date' => (string) $previous->snapshot_date,
+                ]
+            );
+
+            return $this->snapshotResponse(
+                $previous,
+                'stale-database',
+                true
+            );
+        }
+
+        throw new RuntimeException(
+            'Weather data is unavailable. The daily Open-Meteo request failed and no previous successful snapshot is available.',
+            previous: $originalException
+        );
     }
 
     private function snapshotResponse(
@@ -186,7 +316,7 @@ class LiveWeatherService
     ): array {
         $weather = $snapshot->weather_data;
 
-        if (! is_array($weather)) {
+        if (! is_array($weather) || $weather === []) {
             throw new RuntimeException(
                 'The stored daily weather snapshot is invalid.'
             );
@@ -195,10 +325,13 @@ class LiveWeatherService
         return array_merge($weather, [
             'daily_snapshot_date' =>
                 (string) $snapshot->snapshot_date,
+
             'weather_fetched_at' =>
-                $snapshot->fetched_at->toIso8601String(),
+                $snapshot->fetched_at?->toIso8601String(),
+
             'weather_expires_at' =>
-                $snapshot->expires_at->toIso8601String(),
+                $snapshot->expires_at?->toIso8601String(),
+
             'weather_retrieved_from' => $retrievedFrom,
             'weather_is_stale' => $isStale,
         ]);
@@ -243,10 +376,15 @@ class LiveWeatherService
 
         $current = $data['current'] ?? null;
         $hourly = $data['hourly'] ?? null;
+        $daily = $data['daily'] ?? null;
 
-        if (! is_array($current) || ! is_array($hourly)) {
+        if (
+            ! is_array($current)
+            || ! is_array($hourly)
+            || ! is_array($daily)
+        ) {
             throw new RuntimeException(
-                'Required current or hourly weather data is missing.'
+                'Required current, hourly, or daily weather data is missing.'
             );
         }
 
@@ -334,6 +472,14 @@ class LiveWeatherService
             $current['weather_code'] ?? null
         );
 
+        $sevenDayForecast = $this->buildSevenDayForecast(
+            $daily,
+            $currentDateTime,
+            is_array($data['daily_units'] ?? null)
+                ? $data['daily_units']
+                : []
+        );
+
         return [
             'source' => 'Open-Meteo',
             'location' => 'Mandaluyong City',
@@ -415,10 +561,136 @@ class LiveWeatherService
                     $weatherCode
                 ),
 
+            /*
+             * Used by the public 7-day weather page.
+             * This data came from the SAME once-a-day API request.
+             */
+            'seven_day_forecast' => $sevenDayForecast,
+
             'weather_station_count' => 1,
             'weather_match_status' =>
-                'Open-Meteo current and forecast weather',
+                'Open-Meteo daily snapshot with 7-day forecast',
         ];
+    }
+
+    /**
+     * Build a seven-day forecast while preserving Open-Meteo-style arrays.
+     *
+     * This makes the result easy to use from Blade:
+     * $forecast['time'][0]
+     * $forecast['temperature_2m_max'][0]
+     * etc.
+     *
+     * A convenient $forecast['days'] list is also included.
+     */
+    private function buildSevenDayForecast(
+        array $daily,
+        Carbon $currentDateTime,
+        array $dailyUnits = []
+    ): array {
+        $times = $daily['time'] ?? [];
+
+        $result = [
+            'time' => [],
+            'weather_code' => [],
+            'temperature_2m_max' => [],
+            'temperature_2m_min' => [],
+            'precipitation_probability_max' => [],
+            'precipitation_sum' => [],
+            'rain_sum' => [],
+            'wind_speed_10m_max' => [],
+            'daily_units' => $dailyUnits,
+            'days' => [],
+        ];
+
+        if (! is_array($times)) {
+            return $result;
+        }
+
+        $today = $currentDateTime
+            ->copy()
+            ->startOfDay();
+
+        foreach ($times as $index => $dateValue) {
+            if (! is_string($dateValue)) {
+                continue;
+            }
+
+            try {
+                $date = Carbon::parse(
+                    $dateValue,
+                    self::TIMEZONE
+                )->startOfDay();
+            } catch (Throwable) {
+                continue;
+            }
+
+            if ($date->lessThan($today)) {
+                continue;
+            }
+
+            if (count($result['time']) >= 7) {
+                break;
+            }
+
+            $weatherCode = $this->nullableInteger(
+                $daily['weather_code'][$index] ?? null
+            );
+
+            $temperatureMax = $this->nullableFloat(
+                $daily['temperature_2m_max'][$index] ?? null
+            );
+
+            $temperatureMin = $this->nullableFloat(
+                $daily['temperature_2m_min'][$index] ?? null
+            );
+
+            $precipitationProbability = $this->nullableInteger(
+                $daily['precipitation_probability_max'][$index] ?? null
+            );
+
+            $precipitationSum = $this->nullableFloat(
+                $daily['precipitation_sum'][$index] ?? null
+            );
+
+            $rainSum = $this->nullableFloat(
+                $daily['rain_sum'][$index] ?? null
+            );
+
+            $windSpeedMax = $this->nullableFloat(
+                $daily['wind_speed_10m_max'][$index] ?? null
+            );
+
+            $dateString = $date->format('Y-m-d');
+
+            $result['time'][] = $dateString;
+            $result['weather_code'][] = $weatherCode;
+            $result['temperature_2m_max'][] = $temperatureMax;
+            $result['temperature_2m_min'][] = $temperatureMin;
+            $result['precipitation_probability_max'][] =
+                $precipitationProbability;
+            $result['precipitation_sum'][] = $precipitationSum;
+            $result['rain_sum'][] = $rainSum;
+            $result['wind_speed_10m_max'][] = $windSpeedMax;
+
+            $result['days'][] = [
+                'date' => $dateString,
+                'day_name' => $date->format('l'),
+                'date_display' => $date->format('M d, Y'),
+                'weather_code' => $weatherCode,
+                'weather_description' =>
+                    $this->weatherDescription($weatherCode),
+                'temperature_max_c' => $temperatureMax,
+                'temperature_min_c' => $temperatureMin,
+                'precipitation_probability_max' =>
+                    $precipitationProbability,
+                'precipitation_sum_mm' => $precipitationSum,
+                'rain_sum_mm' => $rainSum,
+                'wind_speed_10m_max' => $windSpeedMax,
+            ];
+        }
+
+        return $result;
     }
 
     private function buildHourlyRecords(array $hourly): array

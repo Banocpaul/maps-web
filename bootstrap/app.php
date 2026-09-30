@@ -22,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->appendToGroup(
             'web',
+            \App\Http\Middleware\UpdateUserLastSeen::class
+        );
+
+        $middleware->appendToGroup(
+            'web',
             \App\Http\Middleware\LogUserActivity::class
         );
     })

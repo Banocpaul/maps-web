@@ -22,6 +22,7 @@ class User extends Authenticatable
         'password',
         'is_active',
         'last_login_at',
+        'last_seen_at',
         'approved_at',
     ];
 
@@ -37,6 +38,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            'last_seen_at' => 'datetime',
             'approved_at' => 'datetime',
         ];
     }
@@ -46,41 +48,42 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
-   public function hasRole(string $roleSlug): bool
-{
-    return $this->role()
-        ->where('slug', $roleSlug)
-        ->exists();
-}
+    public function hasRole(string $roleSlug): bool
+    {
+        return $this->role()
+            ->where('slug', $roleSlug)
+            ->exists();
+    }
 
-public function hasAnyRole(array $roleSlugs): bool
-{
-    return $this->role()
-        ->whereIn('slug', $roleSlugs)
-        ->exists();
-}
+    public function hasAnyRole(array $roleSlugs): bool
+    {
+        return $this->role()
+            ->whereIn('slug', $roleSlugs)
+            ->exists();
+    }
 
     public function hasPermission(string $permissionSlug): bool
-{
-    if (! $this->is_active) {
-        return false;
+    {
+        if (! $this->is_active) {
+            return false;
+        }
+
+        $role = $this->role()->first();
+
+        if (! $role || ! $role->is_active) {
+            return false;
+        }
+
+        if ($role->slug === 'administrator') {
+            return true;
+        }
+
+        return $role->permissions()
+            ->where('slug', $permissionSlug)
+            ->where('is_active', true)
+            ->exists();
     }
 
-    $role = $this->role()->first();
-
-    if (! $role || ! $role->is_active) {
-        return false;
-    }
-
-    if ($role->slug === 'administrator') {
-        return true;
-    }
-
-    return $role->permissions()
-        ->where('slug', $permissionSlug)
-        ->where('is_active', true)
-        ->exists();
-}
     public function hasAnyPermission(array $permissionSlugs): bool
     {
         foreach ($permissionSlugs as $permissionSlug) {

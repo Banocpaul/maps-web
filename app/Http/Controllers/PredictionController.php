@@ -86,8 +86,17 @@ class PredictionController extends Controller
                 'barangay' => $predictionData['barangays'][0] ?? null,
             ]);
 
+            /*
+             * Reuse Laravel's daily Open-Meteo snapshot for ML inference.
+             * This prevents FastAPI from making a second Open-Meteo call.
+             * Keep the full weather context out of prediction storage to
+             * avoid duplicating a large weather payload for every barangay.
+             */
+            $mlPredictionData = $predictionData;
+            $mlPredictionData['weather_context'] = $liveWeather;
+
             $citywideResult = $this->floodPredictionService
-                ->predictCitywide($predictionData);
+                ->predictCitywide($mlPredictionData);
 
             /*
              * Store the selected forecast summary in input_data_json.

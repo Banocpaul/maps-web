@@ -398,6 +398,16 @@ class LiveWeatherService
                 );
         }
 
+        /*
+         * Exact consecutive 24-hour windows used by the severity model.
+         * They are generated from the same single daily Open-Meteo
+         * response as the page weather.
+         */
+        $predictionWindows = $this->buildPredictionWindows(
+            $hourlyRecords,
+            $currentDateTime
+        );
+
         $window24 = $forecastWindows['24'];
 
         $currentTemperature = $this->nullableFloat(
@@ -506,12 +516,147 @@ class LiveWeatherService
              */
             'forecast_windows' => $forecastWindows,
 
+            /*
+             * Consecutive 24-hour model windows. Wind values in these
+             * windows are converted to km/h because the Random Forest
+             * was trained with WIND_SPEED_KPH.
+             */
+            'prediction_windows' => $predictionWindows,
+
             'seven_day_forecast' => $sevenDayForecast,
 
             'weather_station_count' => 1,
             'weather_match_status' =>
                 'Open-Meteo daily snapshot with 24/48/72-hour forecast windows',
         ];
+    }
+
+    /**
+     * Build the three consecutive 24-hour windows used by FastAPI.
+     *
+     * The rolling 3-day and 7-day rainfall values are calculated
+     * directly from the same hourly Open-Meteo response, so no second
+     * weather request is needed.
+     */
+    private function buildPredictionWindows(
+        array $records,
+        Carbon $currentDateTime
+    ): array {
+        $windows = [];
+
+        foreach ([0, 24, 48] as $index => $offsetHours) {
+            $start = $currentDateTime
+                ->copy()
+                ->addHours($offsetHours);
+
+            $end = $start
+                ->copy()
+                ->addHours(24);
+
+            $windowRecords = array_values(
+                array_filter(
+                    $records,
+                    static function (array $record) use (
+                        $start,
+                        $end
+                    ): bool {
+                        $time = $record['time'] ?? null;
+
+                        return $time instanceof Carbon
+                            && $time->greaterThanOrEqualTo($start)
+                            && $time->lessThan($end);
+                    }
+                )
+            );
+
+            $rainfall24 = array_sum(
+                array_column(
+                    $windowRecords,
+                    'precipitation_mm'
+                )
+            );
+
+            $rainfall3d = $this->sumRainfallBetween(
+                records: $records,
+                start: $start->copy()->subHours(48),
+                end: $end
+            );
+
+            $rainfall7d = $this->sumRainfallBetween(
+                records: $records,
+                start: $start->copy()->subHours(144),
+                end: $end
+            );
+
+            $temperatures = $this->numericColumn(
+                $windowRecords,
+                'temperature_c'
+            );
+
+            $humidity = $this->numericColumn(
+                $windowRecords,
+                'humidity_pct'
+            );
+
+            $windMs = $this->numericColumn(
+                $windowRecords,
+                'wind_speed'
+            );
+
+            $windMeanMs = $this->average($windMs);
+            $windMaxMs = $this->maximum($windMs);
+
+            $hourlyRain = $this->numericColumn(
+                $windowRecords,
+                'precipitation_mm'
+            );
+
+            $windows[] = [
+                'window_number' => $index + 1,
+                'hours_from_now_start' => $offsetHours,
+                'hours_from_now_end' => $offsetHours + 24,
+                'start' => $start->toIso8601String(),
+                'end' => $end->toIso8601String(),
+                'start_display' => $start->format(
+                    'M d, Y h:i A'
+                ),
+                'end_display' => $end->format(
+                    'M d, Y h:i A'
+                ),
+                'rainfall_24h_mm' =>
+                    round((float) $rainfall24, 2),
+                'rainfall_3d_mm' =>
+                    round((float) $rainfall3d, 2),
+                'rainfall_7d_mm' =>
+                    round((float) $rainfall7d, 2),
+                'max_hourly_rain_mm' =>
+                    $this->maximum($hourlyRain) ?? 0.0,
+                'temperature_mean_c' =>
+                    $this->average($temperatures),
+                'temperature_max_c' =>
+                    $this->maximum($temperatures),
+                'temperature_min_c' =>
+                    $this->minimum($temperatures),
+                'humidity_mean_pct' =>
+                    $this->average($humidity),
+
+                /*
+                 * Open-Meteo is requested in m/s by this Laravel
+                 * service. Convert to km/h for the trained model.
+                 */
+                'wind_speed_mean_kph' =>
+                    $windMeanMs === null
+                        ? null
+                        : round($windMeanMs * 3.6, 2),
+
+                'wind_speed_max_kph' =>
+                    $windMaxMs === null
+                        ? null
+                        : round($windMaxMs * 3.6, 2),
+            ];
+        }
+
+        return $windows;
     }
 
     /**

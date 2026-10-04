@@ -200,6 +200,20 @@ class FloodPredictionService
             'barangays' => $normalizedBarangays,
         ];
 
+        /*
+         * The web application owns the daily Open-Meteo snapshot.
+         * FastAPI receives that same snapshot instead of requesting
+         * Open-Meteo again.
+         */
+        $weatherContext = $data['weather_context'] ?? null;
+
+        if (
+            is_array($weatherContext)
+            && $weatherContext !== []
+        ) {
+            $payload['weather_context'] = $weatherContext;
+        }
+
         $simulation = $data['simulation'] ?? null;
 
         if ($simulation !== null) {

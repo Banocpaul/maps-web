@@ -10,19 +10,8 @@ use Throwable;
 
 class FloodPredictionService
 {
-    /**
-     * Base URL of the deployed FastAPI machine-learning service.
-     */
     private string $baseUrl;
-
-    /**
-     * Maximum number of seconds Laravel will wait for the ML API.
-     */
     private int $timeoutSeconds = 120;
-
-    /**
-     * Maximum number of seconds allowed when establishing a connection.
-     */
     private int $connectTimeoutSeconds = 15;
 
     public function __construct()
@@ -36,9 +25,7 @@ class FloodPredictionService
     }
 
     /**
-     * The currently deployed FastAPI version does not expose POST /predict.
-     *
-     * This method is retained only to prevent an undefined-method error.
+     * Single-barangay prediction is intentionally disabled.
      */
     public function predict(array $data): array
     {
@@ -49,25 +36,7 @@ class FloodPredictionService
     }
 
     /**
-     * Run flood predictions for the supplied Mandaluyong barangays.
-     *
-     * Expected input:
-     *
-     * [
-     *     'barangays' => [
-     *         [
-     *             'barangay_id' => 1,
-     *             'barangay' => 'Addition Hills',
-     *             'nearest_waterway' => 'Maytunas Creek',
-     *             'elevation_m' => 25,
-     *             'distance_to_waterway_m' => 300,
-     *             'drainage_index' => 0.70,
-     *             'impervious_surface_ratio' => 0.80,
-     *             'population_density_per_km2' => 25000,
-     *             'historical_flood_count_5y' => 10,
-     *         ],
-     *     ],
-     * ]
+     * Run a citywide prediction for 24, 48 or 72 hours.
      */
     public function predictCitywide(array $data): array
     {
@@ -76,49 +45,33 @@ class FloodPredictionService
         return $this->sendPostRequest('/predict/citywide', $payload);
     }
 
-    /**
-     * Get live weather directly from FastAPI.
-     */
     public function liveWeather(): array
     {
         return $this->sendGetRequest('/weather/live');
     }
 
-    /**
-     * Check whether the FastAPI service and required models are available.
-     */
     public function health(): array
     {
         return $this->sendGetRequest('/health');
     }
 
-    /**
-     * Determine whether the deployed ML API is ready.
-     */
     public function isAvailable(): bool
     {
         try {
             $health = $this->health();
 
-            $occurrenceModelLoaded =
-                ($health['occurrence_v2_loaded'] ?? false) === true
-                || ($health['risk_model_loaded'] ?? false) === true;
-
-            $durationModelLoaded =
-                ($health['duration_v2_loaded'] ?? false) === true
-                || ($health['duration_model_loaded'] ?? false) === true;
+            $severityModelLoaded =
+                ($health['flood_severity_model_loaded'] ?? false) === true;
 
             return ($health['status'] ?? null) === 'healthy'
-                && $occurrenceModelLoaded
-                && $durationModelLoaded;
+                && $severityModelLoaded;
         } catch (Throwable) {
             return false;
         }
     }
 
     /**
-     * Prepare the exact JSON structure required by the deployed
-     * FastAPI CitywidePredictionRequest schema.
+     * Prepare the JSON structure required by FastAPI.
      */
     private function prepareCitywidePredictionPayload(array $data): array
     {
@@ -127,6 +80,14 @@ class FloodPredictionService
         if (! is_array($barangays) || $barangays === []) {
             throw new RuntimeException(
                 'No barangay profiles were supplied for citywide prediction.'
+            );
+        }
+
+        $forecastHours = (int) ($data['forecast_hours'] ?? 24);
+
+        if (! in_array($forecastHours, [24, 48, 72], true)) {
+            throw new RuntimeException(
+                'Forecast window must be 24, 48, or 72 hours.'
             );
         }
 
@@ -213,17 +174,69 @@ class FloodPredictionService
                     ],
                     0
                 ),
+
+                'waterway_type' => $this->stringFromAliases(
+                    $barangay,
+                    ['waterway_type'],
+                    'Unknown'
+                ),
+
+                'previous_floods_30d' => $this->integerFromAliases(
+                    $barangay,
+                    ['previous_floods_30d'],
+                    0
+                ),
+
+                'days_since_previous_flood' => $this->floatFromAliases(
+                    $barangay,
+                    ['days_since_previous_flood'],
+                    999.0
+                ),
             ];
         }
 
-        return [
+        $payload = [
+            'forecast_hours' => $forecastHours,
             'barangays' => $normalizedBarangays,
         ];
+
+        $simulation = $data['simulation'] ?? null;
+
+        if ($simulation !== null) {
+            if (! is_array($simulation)) {
+                throw new RuntimeException(
+                    'The rainfall simulation payload is invalid.'
+                );
+            }
+
+            foreach ([
+                'rainfall_24h_mm',
+                'rainfall_3d_mm',
+                'rainfall_7d_mm',
+            ] as $field) {
+                if (
+                    ! array_key_exists($field, $simulation)
+                    || ! is_numeric($simulation[$field])
+                ) {
+                    throw new RuntimeException(
+                        "Missing or invalid simulation value: {$field}."
+                    );
+                }
+            }
+
+            $payload['simulation'] = [
+                'rainfall_24h_mm' =>
+                    (float) $simulation['rainfall_24h_mm'],
+                'rainfall_3d_mm' =>
+                    (float) $simulation['rainfall_3d_mm'],
+                'rainfall_7d_mm' =>
+                    (float) $simulation['rainfall_7d_mm'],
+            ];
+        }
+
+        return $payload;
     }
 
-    /**
-     * Send a POST request to FastAPI.
-     */
     private function sendPostRequest(
         string $endpoint,
         array $payload
@@ -261,9 +274,6 @@ class FloodPredictionService
         return $this->processResponse($response);
     }
 
-    /**
-     * Send a GET request to FastAPI.
-     */
     private function sendGetRequest(string $endpoint): array
     {
         try {
@@ -295,9 +305,6 @@ class FloodPredictionService
         return $this->processResponse($response);
     }
 
-    /**
-     * Validate and return a JSON response from FastAPI.
-     */
     private function processResponse(Response $response): array
     {
         $responseData = $response->json();
@@ -320,9 +327,6 @@ class FloodPredictionService
         );
     }
 
-    /**
-     * Extract a readable FastAPI error.
-     */
     private function extractApiErrorMessage(
         mixed $responseData,
         int $statusCode
@@ -368,9 +372,6 @@ class FloodPredictionService
             . '.';
     }
 
-    /**
-     * Get a required non-empty string using possible column aliases.
-     */
     private function requiredStringFromAliases(
         array $data,
         array $aliases
@@ -394,9 +395,6 @@ class FloodPredictionService
         );
     }
 
-    /**
-     * Get a string using possible column aliases.
-     */
     private function stringFromAliases(
         array $data,
         array $aliases,
@@ -417,9 +415,6 @@ class FloodPredictionService
         return $default;
     }
 
-    /**
-     * Get a required integer using possible column aliases.
-     */
     private function requiredInteger(
         array $data,
         array $aliases
@@ -440,9 +435,6 @@ class FloodPredictionService
         );
     }
 
-    /**
-     * Get a float using possible column aliases.
-     */
     private function floatFromAliases(
         array $data,
         array $aliases,
@@ -462,9 +454,6 @@ class FloodPredictionService
         return $default;
     }
 
-    /**
-     * Get an integer using possible column aliases.
-     */
     private function integerFromAliases(
         array $data,
         array $aliases,

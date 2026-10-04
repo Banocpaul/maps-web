@@ -16,6 +16,8 @@ use Throwable;
 
 class PredictionController extends Controller
 {
+    private const ALLOWED_FORECAST_HOURS = [24, 48, 72];
+
     public function __construct(
         private readonly FloodPredictionService $floodPredictionService,
         private readonly LiveWeatherService $liveWeatherService,
@@ -37,6 +39,7 @@ class PredictionController extends Controller
                 [
                     'apiAvailable' => $apiAvailable,
                     'citywideResult' => null,
+                    'selectedForecastHours' => 24,
                 ],
                 $weatherContext
             )
@@ -62,6 +65,8 @@ class PredictionController extends Controller
      */
     public function citywide(Request $request): View|RedirectResponse
     {
+        $forecastHours = $this->validatedForecastHours($request);
+
         try {
             $liveWeather = $this->liveWeatherService
                 ->getCurrentWeather();
@@ -71,16 +76,25 @@ class PredictionController extends Controller
             $predictionData = array_merge(
                 $this->prepareWeatherStorageData($liveWeather),
                 [
+                    'forecast_hours' => $forecastHours,
                     'barangays' => $barangays->all(),
                 ]
             );
 
             Log::info('First barangay payload', [
+                'forecast_hours' => $forecastHours,
                 'barangay' => $predictionData['barangays'][0] ?? null,
             ]);
 
             $citywideResult = $this->floodPredictionService
                 ->predictCitywide($predictionData);
+
+            /*
+             * Store the selected forecast summary in input_data_json.
+             * Existing database columns remain unchanged.
+             */
+            $predictionData['selected_forecast'] =
+                $citywideResult['selected_forecast'] ?? null;
 
             $storedPredictionRuns =
                 $this->predictionStorageService->saveCitywide(
@@ -93,16 +107,22 @@ class PredictionController extends Controller
                 'barangay_profile_count' => $barangays->count(),
                 'saved_prediction_count' =>
                     $storedPredictionRuns->count(),
+                'forecast_hours' => $forecastHours,
                 'forecast_start' =>
-                    $liveWeather['forecast_start'] ?? null,
+                    $citywideResult['selected_forecast']['start']
+                    ?? $liveWeather['forecast_start']
+                    ?? null,
                 'forecast_end' =>
-                    $liveWeather['forecast_end'] ?? null,
+                    $citywideResult['selected_forecast']['end']
+                    ?? $liveWeather['forecast_end']
+                    ?? null,
                 'user_id' => auth()->id(),
             ]);
 
             return view('prediction.index', [
                 'apiAvailable' => true,
                 'citywideResult' => $citywideResult,
+                'selectedForecastHours' => $forecastHours,
                 'liveWeather' => $liveWeather,
                 'weatherAvailable' => true,
                 'weatherError' => null,
@@ -110,11 +130,13 @@ class PredictionController extends Controller
         } catch (RuntimeException $exception) {
             Log::error('Automated citywide prediction failed.', [
                 'message' => $exception->getMessage(),
+                'forecast_hours' => $forecastHours,
                 'user_id' => auth()->id(),
             ]);
 
             return redirect()
                 ->route('prediction.index')
+                ->withInput()
                 ->with(
                     'error',
                     $exception->getMessage()
@@ -125,18 +147,48 @@ class PredictionController extends Controller
                 [
                     'message' => $exception->getMessage(),
                     'exception' => get_class($exception),
+                    'forecast_hours' => $forecastHours,
                     'user_id' => auth()->id(),
                 ]
             );
 
             return redirect()
                 ->route('prediction.index')
+                ->withInput()
                 ->with(
                     'error',
                     'The citywide prediction could not be completed: '
                     . $exception->getMessage()
                 );
         }
+    }
+
+    /**
+     * Validate the requested forecast window.
+     */
+    private function validatedForecastHours(Request $request): int
+    {
+        $validated = $request->validate([
+            'forecast_hours' => [
+                'required',
+                'integer',
+                'in:24,48,72',
+            ],
+        ]);
+
+        $hours = (int) $validated['forecast_hours'];
+
+        if (! in_array(
+            $hours,
+            self::ALLOWED_FORECAST_HOURS,
+            true
+        )) {
+            throw new RuntimeException(
+                'Unsupported forecast window.'
+            );
+        }
+
+        return $hours;
     }
 
     /**
@@ -317,6 +369,31 @@ class PredictionController extends Controller
                             ],
                             0
                         ),
+
+                    /*
+                     * V2 fields remain optional in FastAPI.
+                     * If these columns exist later, aliases can be added here.
+                     */
+                    'waterway_type' =>
+                        $this->stringFromAliases(
+                            $data,
+                            ['waterway_type'],
+                            'Unknown'
+                        ),
+
+                    'previous_floods_30d' =>
+                        $this->integerFromAliases(
+                            $data,
+                            ['previous_floods_30d'],
+                            0
+                        ),
+
+                    'days_since_previous_flood' =>
+                        $this->floatFromAliases(
+                            $data,
+                            ['days_since_previous_flood'],
+                            999.0
+                        ),
                 ];
             }
         );
@@ -336,6 +413,10 @@ class PredictionController extends Controller
 
     /**
      * Prepare weather values used for prediction storage.
+     *
+     * The legacy database field avg_rainfall_24h_mm keeps its original
+     * 24-hour meaning. The selected 24/48/72 horizon is stored separately
+     * in input_data_json through forecast_hours and selected_forecast.
      */
     private function prepareWeatherStorageData(
         array $liveWeather
@@ -399,7 +480,7 @@ class PredictionController extends Controller
                 ?? 1,
 
             'weather_match_status' =>
-                'Open-Meteo current weather and 24-hour forecast',
+                'Open-Meteo current weather and selected forecast window',
         ];
     }
 

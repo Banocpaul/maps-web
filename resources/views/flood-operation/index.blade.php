@@ -4,10 +4,6 @@
 
 @section('content')
 <div class="space-y-6">
-
-    {{-- ============================================================
-         PAGE HEADER
-         ============================================================ --}}
     <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">
@@ -15,13 +11,14 @@
             </p>
 
             <h1 class="mt-1 text-2xl font-bold text-slate-950 sm:text-3xl">
-                Citywide Flood Vulnerability Simulation
+                Citywide Flood Severity Simulation
             </h1>
 
             <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                Enter a rainfall and weather scenario once, then run the
-                machine-learning model across all Mandaluyong barangays to
-                identify which locations may be vulnerable.
+                Enter a hypothetical rainfall accumulation scenario. The system
+                automatically combines it with today's date, current weather,
+                and each barangay's geographic profile before running the A-D
+                flood severity model.
             </p>
         </div>
 
@@ -34,10 +31,7 @@
                     id="model-status-dot"
                     class="h-2.5 w-2.5 rounded-full bg-slate-400"
                 ></span>
-
-                <span id="model-status-text">
-                    Model not tested
-                </span>
+                <span id="model-status-text">Model not tested</span>
             </span>
 
             <a
@@ -49,331 +43,111 @@
         </div>
     </section>
 
-    {{-- ============================================================
-         MESSAGE AREA
-         ============================================================ --}}
     <div
         id="operation-message"
         class="hidden rounded-2xl border px-5 py-4 text-sm"
         role="alert"
     ></div>
 
-    {{-- ============================================================
-         SCENARIO FORM
-         ============================================================ --}}
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="border-b border-slate-200 px-5 py-5 sm:px-6">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-950">
-                        Weather Scenario Input
+                        Rainfall Scenario Input
                     </h2>
-
                     <p class="mt-1 text-sm text-slate-600">
-                        These conditions will be applied to all barangays during
-                        the citywide simulation.
+                        Enter cumulative rainfall only. The 24-hour value must
+                        not exceed the 3-day value, and the 3-day value must not
+                        exceed the 7-day value.
                     </p>
                 </div>
 
-                <button
-                    id="load-weather-button"
-                    type="button"
-                    class="inline-flex items-center justify-center rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                    Use Current Weather
-                </button>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600">
+                    Simulation date:
+                    <span class="font-semibold text-slate-900">
+                        {{ now(config('app.timezone'))->format('F d, Y') }}
+                    </span>
+                </div>
             </div>
         </div>
 
         <form id="simulation-form" class="p-5 sm:p-6">
             @csrf
 
-            <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-
-                {{-- Rainfall 24h --}}
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
                 <div>
-                    <label
-                        for="rainfall_24h_mm"
-                        class="block text-sm font-medium text-slate-700"
-                    >
+                    <label for="rainfall_24h_mm" class="block text-sm font-medium text-slate-700">
                         Rainfall in Last 24 Hours
                     </label>
-
                     <div class="mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
                         <input
                             id="rainfall_24h_mm"
                             name="rainfall_24h_mm"
                             type="number"
                             min="0"
+                            max="2000"
                             step="0.01"
                             required
-                            placeholder="Example: 50"
+                            placeholder="Example: 30"
                             class="min-w-0 flex-1 border-0 px-3 py-2.5 text-sm outline-none focus:ring-0"
                         >
-
-                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
-                            mm
-                        </span>
+                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">mm</span>
                     </div>
                 </div>
 
-                {{-- Rainfall 3d --}}
                 <div>
-                    <label
-                        for="rainfall_3d_mm"
-                        class="block text-sm font-medium text-slate-700"
-                    >
+                    <label for="rainfall_3d_mm" class="block text-sm font-medium text-slate-700">
                         Rainfall in Last 3 Days
                     </label>
-
                     <div class="mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
                         <input
                             id="rainfall_3d_mm"
                             name="rainfall_3d_mm"
                             type="number"
                             min="0"
+                            max="4000"
                             step="0.01"
                             required
-                            placeholder="Example: 120"
+                            placeholder="Example: 80"
                             class="min-w-0 flex-1 border-0 px-3 py-2.5 text-sm outline-none focus:ring-0"
                         >
-
-                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
-                            mm
-                        </span>
+                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">mm</span>
                     </div>
                 </div>
 
-                {{-- Rainfall 7d --}}
                 <div>
-                    <label
-                        for="rainfall_7d_mm"
-                        class="block text-sm font-medium text-slate-700"
-                    >
+                    <label for="rainfall_7d_mm" class="block text-sm font-medium text-slate-700">
                         Rainfall in Last 7 Days
                     </label>
-
                     <div class="mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
                         <input
                             id="rainfall_7d_mm"
                             name="rainfall_7d_mm"
                             type="number"
                             min="0"
+                            max="8000"
                             step="0.01"
                             required
-                            placeholder="Example: 250"
+                            placeholder="Example: 140"
                             class="min-w-0 flex-1 border-0 px-3 py-2.5 text-sm outline-none focus:ring-0"
                         >
-
-                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
-                            mm
-                        </span>
+                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">mm</span>
                     </div>
                 </div>
+            </div>
 
-                {{-- Temperature --}}
-                <div>
-                    <label
-                        for="temperature_c"
-                        class="block text-sm font-medium text-slate-700"
-                    >
-                        Temperature
-                    </label>
-
-                    <div class="mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
-                        <input
-                            id="temperature_c"
-                            name="temperature_c"
-                            type="number"
-                            min="0"
-                            max="60"
-                            step="0.01"
-                            required
-                            placeholder="Example: 29"
-                            class="min-w-0 flex-1 border-0 px-3 py-2.5 text-sm outline-none focus:ring-0"
-                        >
-
-                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
-                            °C
-                        </span>
-                    </div>
-                </div>
-
-                {{-- Humidity --}}
-                <div>
-                    <label
-                        for="humidity_pct"
-                        class="block text-sm font-medium text-slate-700"
-                    >
-                        Humidity
-                    </label>
-
-                    <div class="mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
-                        <input
-                            id="humidity_pct"
-                            name="humidity_pct"
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            required
-                            placeholder="Example: 85"
-                            class="min-w-0 flex-1 border-0 px-3 py-2.5 text-sm outline-none focus:ring-0"
-                        >
-
-                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
-                            %
-                        </span>
-                    </div>
-                </div>
-
-                {{-- Wind Speed --}}
-                <div>
-                    <label
-                        for="wind_speed_kph"
-                        class="block text-sm font-medium text-slate-700"
-                    >
-                        Wind Speed
-                    </label>
-
-                    <div class="mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
-                        <input
-                            id="wind_speed_kph"
-                            name="wind_speed_kph"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            required
-                            placeholder="Example: 18"
-                            class="min-w-0 flex-1 border-0 px-3 py-2.5 text-sm outline-none focus:ring-0"
-                        >
-
-                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
-                            km/h
-                        </span>
-                    </div>
-                </div>
-
-                {{-- Tide Level --}}
-                <div>
-                    <label
-                        for="tide_level_m"
-                        class="block text-sm font-medium text-slate-700"
-                    >
-                        Tide Level
-                    </label>
-
-                    <div class="mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
-                        <input
-                            id="tide_level_m"
-                            name="tide_level_m"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            required
-                            placeholder="Example: 1.4"
-                            class="min-w-0 flex-1 border-0 px-3 py-2.5 text-sm outline-none focus:ring-0"
-                        >
-
-                        <span class="flex items-center border-l border-slate-300 bg-slate-50 px-3 text-sm text-slate-500">
-                            m
-                        </span>
-                    </div>
-                </div>
-
-                {{-- Storm Signal --}}
-                <div>
-                    <label
-                        for="storm_signal"
-                        class="block text-sm font-medium text-slate-700"
-                    >
-                        Storm Signal
-                    </label>
-
-                    <select
-                        id="storm_signal"
-                        name="storm_signal"
-                        required
-                        class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                    >
-                        <option value="0">No Storm Signal</option>
-                        <option value="1">Signal No. 1</option>
-                        <option value="2">Signal No. 2</option>
-                        <option value="3">Signal No. 3</option>
-                        <option value="4">Signal No. 4</option>
-                        <option value="5">Signal No. 5</option>
-                    </select>
-                </div>
-
-                {{-- Month --}}
-                <div>
-                    <label
-                        for="month"
-                        class="block text-sm font-medium text-slate-700"
-                    >
-                        Month
-                    </label>
-
-                    <select
-                        id="month"
-                        name="month"
-                        required
-                        class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                    >
-                        <option value="1">January</option>
-                        <option value="2">February</option>
-                        <option value="3">March</option>
-                        <option value="4">April</option>
-                        <option value="5">May</option>
-                        <option value="6">June</option>
-                        <option value="7">July</option>
-                        <option value="8">August</option>
-                        <option value="9">September</option>
-                        <option value="10">October</option>
-                        <option value="11">November</option>
-                        <option value="12">December</option>
-                    </select>
-                </div>
-
-                {{-- Weekend --}}
-                <div>
-                    <label
-                        for="is_weekend"
-                        class="block text-sm font-medium text-slate-700"
-                    >
-                        Weekend
-                    </label>
-
-                    <select
-                        id="is_weekend"
-                        name="is_weekend"
-                        required
-                        class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                    >
-                        <option value="0">No</option>
-                        <option value="1">Yes</option>
-                    </select>
-                </div>
-
-                {{-- Wet Season --}}
-                <div>
-                    <label
-                        for="wet_season"
-                        class="block text-sm font-medium text-slate-700"
-                    >
-                        Wet Season
-                    </label>
-
-                    <select
-                        id="wet_season"
-                        name="wet_season"
-                        required
-                        class="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                    >
-                        <option value="0">No</option>
-                        <option value="1">Yes</option>
-                    </select>
-                </div>
+            <div class="mt-5 rounded-xl border border-sky-100 bg-sky-50 p-4">
+                <p class="text-sm font-semibold text-sky-900">
+                    Automatically supplied by the system
+                </p>
+                <p class="mt-1 text-sm leading-6 text-sky-800">
+                    Today's date and time, current temperature, daily maximum and
+                    minimum temperature, wind speed, wind direction, storm-signal
+                    default, barangay, nearest waterway, elevation, and distance
+                    to waterway. Rainfall-derived features are calculated from
+                    the three values above.
+                </p>
             </div>
 
             <div class="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center">
@@ -393,205 +167,74 @@
                     Reset Fields
                 </button>
 
-                <p
-                    id="last-simulation-time"
-                    class="text-sm text-slate-500 sm:ml-auto"
-                >
+                <p id="last-simulation-time" class="text-sm text-slate-500 sm:ml-auto">
                     No simulation performed
                 </p>
             </div>
         </form>
     </section>
 
-    {{-- ============================================================
-         DATASET MANAGEMENT
-         ============================================================ --}}
-    @include('flood-operation.dataset-manager')
-
-    {{-- ============================================================
-         LOADING STATE
-         ============================================================ --}}
-    <section
-        id="loading-section"
-        class="hidden rounded-2xl border border-sky-200 bg-sky-50 p-5"
-    >
+    <section id="loading-section" class="hidden rounded-2xl border border-sky-200 bg-sky-50 p-5">
         <div class="flex items-center gap-4">
-            <svg
-                class="h-7 w-7 animate-spin text-sky-700"
-                viewBox="0 0 24 24"
-                fill="none"
-            >
-                <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                ></circle>
-
-                <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4Z"
-                ></path>
+            <svg class="h-7 w-7 animate-spin text-sky-700" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4Z"></path>
             </svg>
-
             <div>
-                <p class="font-semibold text-sky-900">
-                    Running vulnerability simulation
-                </p>
-
+                <p class="font-semibold text-sky-900">Running rainfall severity simulation</p>
                 <p class="mt-1 text-sm text-sky-700">
-                    The machine-learning API is evaluating all available
-                    barangays.
+                    The A-D Random Forest is evaluating all active barangays.
                 </p>
             </div>
         </div>
     </section>
 
-    {{-- ============================================================
-         RESULTS CONTAINER
-         ============================================================ --}}
     <div id="results-container" class="hidden space-y-6">
-
-        {{-- Summary cards --}}
-        <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <article class="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
-                <p class="text-sm font-medium text-slate-500">
-                    High Risk
-                </p>
-
-                <p
-                    id="high-risk-count"
-                    class="mt-2 text-3xl font-bold text-red-600"
-                >
-                    0
-                </p>
-
-                <p class="mt-1 text-sm text-slate-500">
-                    Barangays
-                </p>
-            </article>
-
-            <article class="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
-                <p class="text-sm font-medium text-slate-500">
-                    Medium Risk
-                </p>
-
-                <p
-                    id="medium-risk-count"
-                    class="mt-2 text-3xl font-bold text-amber-600"
-                >
-                    0
-                </p>
-
-                <p class="mt-1 text-sm text-slate-500">
-                    Barangays
-                </p>
-            </article>
-
+        <section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <article class="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
-                <p class="text-sm font-medium text-slate-500">
-                    Low Risk
-                </p>
-
-                <p
-                    id="low-risk-count"
-                    class="mt-2 text-3xl font-bold text-emerald-600"
-                >
-                    0
-                </p>
-
-                <p class="mt-1 text-sm text-slate-500">
-                    Barangays
-                </p>
+                <p class="text-sm font-medium text-slate-500">Code A · 0.5 ft</p>
+                <p id="severity-a-count" class="mt-2 text-3xl font-bold text-emerald-700">0</p>
             </article>
-
-            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-sm font-medium text-slate-500">
-                    Most Vulnerable
-                </p>
-
-                <p
-                    id="most-vulnerable-name"
-                    class="mt-2 text-lg font-bold text-slate-950"
-                >
-                    —
-                </p>
-
-                <p
-                    id="most-vulnerable-details"
-                    class="mt-1 text-sm text-slate-500"
-                >
-                    No result
-                </p>
+            <article class="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-slate-500">Code B · 1.5 ft</p>
+                <p id="severity-b-count" class="mt-2 text-3xl font-bold text-amber-700">0</p>
             </article>
-
-            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p class="text-sm font-medium text-slate-500">
-                    Average Predicted Depth
-                </p>
-
-                <p
-                    id="average-depth"
-                    class="mt-2 text-3xl font-bold text-slate-950"
-                >
-                    0.0
-                </p>
-
-                <p class="mt-1 text-sm text-slate-500">
-                    millimeters
-                </p>
+            <article class="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-slate-500">Code C · 2.0 ft</p>
+                <p id="severity-c-count" class="mt-2 text-3xl font-bold text-orange-700">0</p>
+            </article>
+            <article class="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-slate-500">Code D · 2.5 ft+</p>
+                <p id="severity-d-count" class="mt-2 text-3xl font-bold text-red-700">0</p>
             </article>
         </section>
 
-        {{-- Operational notice --}}
-        <section
-            id="operational-notice"
-            class="hidden rounded-2xl border px-5 py-4"
-        >
-            <h2
-                id="operational-notice-title"
-                class="font-semibold"
-            ></h2>
+        <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-200 px-5 py-5 sm:px-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-950">Simulation Results</h2>
+                        <p id="scenario-summary" class="mt-1 text-sm text-slate-600"></p>
+                    </div>
 
-            <p
-                id="operational-notice-message"
-                class="mt-1 text-sm"
-            ></p>
-        </section>
-
-        {{-- Results table --}}
-        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <h2 class="text-lg font-semibold text-slate-950">
-                        Barangay Vulnerability Ranking
-                    </h2>
-
-                    <p class="mt-1 text-sm text-slate-600">
-                        Barangays are ranked from highest to lowest vulnerability.
-                    </p>
-                </div>
-
-                <div class="flex flex-col gap-2 sm:flex-row">
-                    <input
-                        id="result-search"
-                        type="search"
-                        placeholder="Search barangay..."
-                        class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                    >
-
-                    <select
-                        id="risk-filter"
-                        class="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
-                    >
-                        <option value="all">All Risk Levels</option>
-                        <option value="high">High Risk</option>
-                        <option value="medium">Medium Risk</option>
-                        <option value="low">Low Risk</option>
-                    </select>
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                        <input
+                            id="barangay-search"
+                            type="search"
+                            placeholder="Search barangay"
+                            class="rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                        >
+                        <select
+                            id="severity-filter"
+                            class="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                        >
+                            <option value="all">All severity codes</option>
+                            <option value="A">Code A</option>
+                            <option value="B">Code B</option>
+                            <option value="C">Code C</option>
+                            <option value="D">Code D</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -599,147 +242,49 @@
                 <table class="min-w-full divide-y divide-slate-200">
                     <thead class="bg-slate-50">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                Rank
-                            </th>
-
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                Barangay
-                            </th>
-
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                Risk
-                            </th>
-
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                Probability
-                            </th>
-
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                Predicted Depth
-                            </th>
-
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                Duration
-                            </th>
-
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                Recommended Action
-                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Rank</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Barangay</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flood Severity</th>
                         </tr>
                     </thead>
-
-                    <tbody
-                        id="results-table-body"
-                        class="divide-y divide-slate-200 bg-white"
-                    ></tbody>
+                    <tbody id="results-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
                 </table>
             </div>
 
-            <div
-                id="empty-results"
-                class="hidden px-6 py-12 text-center text-sm text-slate-500"
-            >
+            <div id="empty-results" class="hidden px-5 py-10 text-center text-sm text-slate-500">
                 No barangays match the selected filter.
             </div>
         </section>
-
-        {{-- GIS preparation --}}
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <h2 class="text-lg font-semibold text-slate-950">
-                        GIS Vulnerability Visualization
-                    </h2>
-
-                    <p class="mt-1 text-sm text-slate-600">
-                        Citywide simulation results can later be connected to
-                        the GIS map for barangay risk highlighting.
-                    </p>
-                </div>
-
-                <a
-                    href="{{ route('gis.index') }}"
-                    class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                >
-                    Open GIS Mapping
-                </a>
-            </div>
-
-            <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div class="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-                    <span class="h-4 w-4 rounded-full bg-red-600"></span>
-
-                    <span class="text-sm font-medium text-red-900">
-                        High vulnerability
-                    </span>
-                </div>
-
-                <div class="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                    <span class="h-4 w-4 rounded-full bg-amber-500"></span>
-
-                    <span class="text-sm font-medium text-amber-900">
-                        Medium vulnerability
-                    </span>
-                </div>
-
-                <div class="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                    <span class="h-4 w-4 rounded-full bg-emerald-600"></span>
-
-                    <span class="text-sm font-medium text-emerald-900">
-                        Low vulnerability
-                    </span>
-                </div>
-            </div>
-        </section>
-
     </div>
+
+    @include('flood-operation.dataset-manager')
 </div>
-@endsection
 
-@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    'use strict';
-
+(() => {
     const form = document.getElementById('simulation-form');
+    if (!form || form.dataset.initialized === '1') {
+        return;
+    }
+    form.dataset.initialized = '1';
+
     const runButton = document.getElementById('run-simulation-button');
     const resetButton = document.getElementById('reset-simulation-button');
-    const weatherButton = document.getElementById('load-weather-button');
-
     const loadingSection = document.getElementById('loading-section');
     const resultsContainer = document.getElementById('results-container');
     const resultsTableBody = document.getElementById('results-table-body');
     const emptyResults = document.getElementById('empty-results');
-
-    const searchInput = document.getElementById('result-search');
-    const riskFilter = document.getElementById('risk-filter');
-
+    const searchInput = document.getElementById('barangay-search');
+    const severityFilter = document.getElementById('severity-filter');
     const messageBox = document.getElementById('operation-message');
 
     let citywideResults = [];
-
-    setAutomaticDateValues();
+    let lastScenario = null;
 
     form.addEventListener('submit', runSimulation);
     resetButton.addEventListener('click', resetForm);
-    weatherButton.addEventListener('click', loadCurrentWeather);
     searchInput.addEventListener('input', renderFilteredResults);
-    riskFilter.addEventListener('change', renderFilteredResults);
-
-    function setAutomaticDateValues() {
-        const now = new Date();
-        const month = now.getMonth() + 1;
-        const dayOfWeek = now.getDay();
-
-        document.getElementById('month').value = String(month);
-
-        document.getElementById('is_weekend').value =
-            dayOfWeek === 0 || dayOfWeek === 6 ? '1' : '0';
-
-        document.getElementById('wet_season').value =
-            month >= 5 && month <= 11 ? '1' : '0';
-    }
+    severityFilter.addEventListener('change', renderFilteredResults);
 
     async function runSimulation(event) {
         event.preventDefault();
@@ -749,25 +294,37 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        setLoading(true);
+        const rainfall24h = getNumber('rainfall_24h_mm');
+        const rainfall3d = getNumber('rainfall_3d_mm');
+        const rainfall7d = getNumber('rainfall_7d_mm');
 
-        const payload = {
-            rainfall_24h_mm: getNumber('rainfall_24h_mm'),
-            rainfall_3d_mm: getNumber('rainfall_3d_mm'),
-            rainfall_7d_mm: getNumber('rainfall_7d_mm'),
-            temperature_c: getNumber('temperature_c'),
-            humidity_pct: getNumber('humidity_pct'),
-            wind_speed_kph: getNumber('wind_speed_kph'),
-            tide_level_m: getNumber('tide_level_m'),
-            storm_signal: getInteger('storm_signal'),
-            month: getInteger('month'),
-            is_weekend: getInteger('is_weekend'),
-            wet_season: getInteger('wet_season')
+        if (rainfall3d < rainfall24h) {
+            showMessage(
+                '3-day rainfall must be greater than or equal to 24-hour rainfall.',
+                'error'
+            );
+            return;
+        }
+
+        if (rainfall7d < rainfall3d) {
+            showMessage(
+                '7-day rainfall must be greater than or equal to 3-day rainfall.',
+                'error'
+            );
+            return;
+        }
+
+        lastScenario = {
+            rainfall24h,
+            rainfall3d,
+            rainfall7d
         };
+
+        setLoading(true);
 
         try {
             const response = await fetch(
-                @json(route('prediction.citywide')),
+                @json(route('flood-operation.simulate')),
                 {
                     method: 'POST',
                     headers: {
@@ -776,7 +333,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         'X-CSRF-TOKEN': @json(csrf_token()),
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        rainfall_24h_mm: rainfall24h,
+                        rainfall_3d_mm: rainfall3d,
+                        rainfall_7d_mm: rainfall7d
+                    })
                 }
             );
 
@@ -785,56 +346,50 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!response.ok) {
                 throw new Error(
                     responseData.message ||
-                    responseData.error ||
-                    'The citywide simulation request failed.'
+                    responseData.detail ||
+                    'The rainfall simulation request failed.'
                 );
             }
 
-            citywideResults = normalizeResponse(responseData);
+            const predictions = Array.isArray(responseData.predictions)
+                ? responseData.predictions
+                : [];
+
+            citywideResults = predictions.map(normalizeResult);
 
             if (citywideResults.length === 0) {
-                console.error('Citywide API response:', responseData);
-
-                throw new Error(
-                    'The API returned no barangay predictions. Check the browser console and Laravel log.'
-                );
+                throw new Error('The ML API returned no barangay predictions.');
             }
 
-            citywideResults.sort(function (first, second) {
-                const riskDifference =
-                    riskWeight(second.riskLevel) -
-                    riskWeight(first.riskLevel);
+            citywideResults.sort((first, second) => {
+                const severityDifference =
+                    severityWeight(second.floodCode) -
+                    severityWeight(first.floodCode);
 
-                if (riskDifference !== 0) {
-                    return riskDifference;
+                if (severityDifference !== 0) {
+                    return severityDifference;
                 }
 
-                return second.probability - first.probability;
+                return second.confidence - first.confidence;
             });
 
-            citywideResults = citywideResults.map(function (result, index) {
-                return {
-                    ...result,
-                    rank: index + 1
-                };
-            });
+            citywideResults = citywideResults.map((result, index) => ({
+                ...result,
+                rank: index + 1
+            }));
 
             renderSummary();
             renderFilteredResults();
-            renderOperationalNotice();
+            renderScenarioSummary(responseData);
 
             resultsContainer.classList.remove('hidden');
-
-            updateModelStatus(
-                'Model connected',
-                'success'
-            );
+            updateModelStatus('Severity model connected', 'success');
 
             document.getElementById('last-simulation-time').textContent =
                 'Last simulation: ' + new Date().toLocaleString();
 
             showMessage(
-                'Citywide simulation completed for ' +
+                'Rainfall severity simulation completed for ' +
                     citywideResults.length +
                     ' barangays.',
                 'success'
@@ -846,15 +401,9 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         } catch (error) {
             console.error(error);
-
-            updateModelStatus(
-                'Model connection error',
-                'error'
-            );
-
+            updateModelStatus('Model connection error', 'error');
             showMessage(
-                error.message ||
-                    'Unable to complete the citywide simulation.',
+                error.message || 'Unable to complete the rainfall simulation.',
                 'error'
             );
         } finally {
@@ -862,660 +411,179 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    async function loadCurrentWeather() {
-        hideMessage();
-
-        weatherButton.disabled = true;
-        weatherButton.textContent = 'Loading Weather...';
-
-        try {
-            const response = await fetch(
-                @json(route('weather.live')),
-                {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                }
-            );
-
-            const responseData = await parseJsonResponse(response);
-
-            if (!response.ok) {
-                throw new Error(
-                    responseData.message ||
-                    responseData.error ||
-                    'Unable to retrieve current weather.'
-                );
-            }
-
-            const weather =
-                responseData.weather ||
-                responseData.data ||
-                responseData.current ||
-                responseData;
-
-            setField(
-                'rainfall_24h_mm',
-                firstValue(weather, [
-                    'rainfall_24h_mm',
-                    'rainfall_24h',
-                    'rainfall',
-                    'precipitation'
-                ])
-            );
-
-            setField(
-                'rainfall_3d_mm',
-                firstValue(weather, [
-                    'rainfall_3d_mm',
-                    'rainfall_3d',
-                    'three_day_rainfall'
-                ])
-            );
-
-            setField(
-                'rainfall_7d_mm',
-                firstValue(weather, [
-                    'rainfall_7d_mm',
-                    'rainfall_7d',
-                    'seven_day_rainfall'
-                ])
-            );
-
-            setField(
-                'temperature_c',
-                firstValue(weather, [
-                    'temperature_c',
-                    'temperature',
-                    'temperature_2m'
-                ])
-            );
-
-            setField(
-                'humidity_pct',
-                firstValue(weather, [
-                    'humidity_pct',
-                    'humidity',
-                    'relative_humidity_2m'
-                ])
-            );
-
-            setField(
-                'wind_speed_kph',
-                firstValue(weather, [
-                    'wind_speed_kph',
-                    'wind_speed',
-                    'wind_speed_10m'
-                ])
-            );
-
-            setField(
-                'tide_level_m',
-                firstValue(weather, [
-                    'tide_level_m',
-                    'tide_level'
-                ])
-            );
-
-            showMessage(
-                'Current weather values were loaded. Review them before running the simulation.',
-                'success'
-            );
-        } catch (error) {
-            console.error(error);
-
-            showMessage(
-                error.message ||
-                    'Unable to retrieve current weather.',
-                'error'
-            );
-        } finally {
-            weatherButton.disabled = false;
-            weatherButton.textContent = 'Use Current Weather';
-        }
-    }
-
-    function normalizeResponse(responseData) {
-        let rawResults = [];
-
-        if (Array.isArray(responseData)) {
-            rawResults = responseData;
-        } else if (Array.isArray(responseData.results)) {
-            rawResults = responseData.results;
-        } else if (Array.isArray(responseData.predictions)) {
-            rawResults = responseData.predictions;
-        } else if (Array.isArray(responseData.data)) {
-            rawResults = responseData.data;
-        } else if (
-            responseData.data &&
-            Array.isArray(responseData.data.results)
-        ) {
-            rawResults = responseData.data.results;
-        } else if (
-            responseData.data &&
-            Array.isArray(responseData.data.predictions)
-        ) {
-            rawResults = responseData.data.predictions;
-        } else if (
-            responseData.citywide &&
-            Array.isArray(responseData.citywide)
-        ) {
-            rawResults = responseData.citywide;
-        } else if (
-            responseData.citywide &&
-            Array.isArray(responseData.citywide.results)
-        ) {
-            rawResults = responseData.citywide.results;
-        }
-
-        return rawResults
-            .map(normalizeResult)
-            .filter(function (result) {
-                return result.barangay !== '';
-            });
-    }
-
     function normalizeResult(item) {
-        const barangay = String(
-            firstValue(item, [
-                'barangay',
-                'barangay_name',
-                'name',
-                'location'
-            ]) || ''
-        );
-
-        const riskLevel = normalizeRisk(
-            firstValue(item, [
-                'risk_level',
-                'risk',
-                'predicted_risk',
-                'prediction',
-                'classification',
-                'predicted_class'
-            ])
-        );
-
-        let probability = toNumber(
-            firstValue(item, [
-                'probability',
-                'confidence',
-                'risk_probability',
-                'high_risk_probability',
-                'prediction_probability',
-                'confidence_score'
-            ])
-        );
-
-        if (probability > 0 && probability <= 1) {
-            probability *= 100;
-        }
-
-        probability = Math.max(
-            0,
-            Math.min(probability, 100)
-        );
-
+        const code = String(item.flood_code || '').toUpperCase();
         return {
-            barangay: barangay,
-            riskLevel: riskLevel,
-            probability: probability,
-            depth: toNumber(
-                firstValue(item, [
-                    'flood_depth_mm',
-                    'predicted_depth_mm',
-                    'predicted_flood_depth',
-                    'depth_mm',
-                    'depth'
-                ])
-            ),
-            duration: toNumber(
-                firstValue(item, [
-                    'duration_hours',
-                    'predicted_duration_hours',
-                    'predicted_duration',
-                    'duration'
-                ])
-            ),
-            recommendation:
-                firstValue(item, [
-                    'recommendation',
-                    'recommended_action',
-                    'action'
-                ]) || recommendationForRisk(riskLevel)
+            barangay: String(item.barangay || ''),
+            floodCode: ['A', 'B', 'C', 'D'].includes(code) ? code : 'A',
+            confidence: Number(item.flood_severity_confidence || item.confidence || 0)
         };
     }
 
     function renderSummary() {
-        const highResults = citywideResults.filter(
-            result => result.riskLevel === 'High'
-        );
+        ['A', 'B', 'C', 'D'].forEach(code => {
+            const count = citywideResults.filter(
+                result => result.floodCode === code
+            ).length;
 
-        const mediumResults = citywideResults.filter(
-            result => result.riskLevel === 'Medium'
-        );
-
-        const lowResults = citywideResults.filter(
-            result => result.riskLevel === 'Low'
-        );
-
-        const averageDepth =
-            citywideResults.reduce(
-                (sum, result) => sum + result.depth,
-                0
-            ) / citywideResults.length;
-
-        const mostVulnerable = citywideResults[0];
-
-        document.getElementById('high-risk-count').textContent =
-            highResults.length;
-
-        document.getElementById('medium-risk-count').textContent =
-            mediumResults.length;
-
-        document.getElementById('low-risk-count').textContent =
-            lowResults.length;
-
-        document.getElementById('average-depth').textContent =
-            averageDepth.toFixed(1);
-
-        document.getElementById('most-vulnerable-name').textContent =
-            mostVulnerable?.barangay || '—';
-
-        document.getElementById('most-vulnerable-details').textContent =
-            mostVulnerable
-                ? mostVulnerable.riskLevel +
-                  ' risk · ' +
-                  formatPercentage(mostVulnerable.probability)
-                : 'No result';
+            document.getElementById(
+                'severity-' + code.toLowerCase() + '-count'
+            ).textContent = String(count);
+        });
     }
 
     function renderFilteredResults() {
-        if (citywideResults.length === 0) {
-            return;
-        }
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        const selectedSeverity = severityFilter.value;
 
-        const searchTerm =
-            searchInput.value.trim().toLowerCase();
+        const filtered = citywideResults.filter(result => {
+            const matchesSearch = result.barangay
+                .toLowerCase()
+                .includes(searchTerm);
+            const matchesSeverity = selectedSeverity === 'all' ||
+                result.floodCode === selectedSeverity;
 
-        const selectedRisk =
-            riskFilter.value.toLowerCase();
-
-        const filteredResults = citywideResults.filter(
-            function (result) {
-                const matchesSearch =
-                    result.barangay
-                        .toLowerCase()
-                        .includes(searchTerm);
-
-                const matchesRisk =
-                    selectedRisk === 'all' ||
-                    result.riskLevel.toLowerCase() === selectedRisk;
-
-                return matchesSearch && matchesRisk;
-            }
-        );
+            return matchesSearch && matchesSeverity;
+        });
 
         resultsTableBody.innerHTML = '';
 
-        filteredResults.forEach(function (result) {
+        filtered.forEach(result => {
             const row = document.createElement('tr');
-
             row.className = 'hover:bg-slate-50';
-
             row.innerHTML = `
                 <td class="whitespace-nowrap px-4 py-4 text-sm font-semibold text-slate-700">
                     #${escapeHtml(result.rank)}
                 </td>
-
                 <td class="whitespace-nowrap px-4 py-4 text-sm font-medium text-slate-950">
                     ${escapeHtml(result.barangay)}
                 </td>
-
                 <td class="whitespace-nowrap px-4 py-4 text-sm">
-                    ${riskBadge(result.riskLevel)}
-                </td>
-
-                <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
-                    ${escapeHtml(formatPercentage(result.probability))}
-                </td>
-
-                <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
-                    ${escapeHtml(result.depth.toFixed(1))} mm
-                </td>
-
-                <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
-                    ${escapeHtml(result.duration.toFixed(1))} hours
-                </td>
-
-                <td class="min-w-64 px-4 py-4 text-sm leading-5 text-slate-600">
-                    ${escapeHtml(result.recommendation)}
+                    ${severityBadge(result.floodCode)}
                 </td>
             `;
-
             resultsTableBody.appendChild(row);
         });
 
-        emptyResults.classList.toggle(
-            'hidden',
-            filteredResults.length > 0
-        );
+        emptyResults.classList.toggle('hidden', filtered.length !== 0);
     }
 
-    function renderOperationalNotice() {
-        const notice =
-            document.getElementById('operational-notice');
+    function renderScenarioSummary(responseData) {
+        const simulation = responseData.simulation || {};
+        const date = simulation.date || new Date().toLocaleDateString();
+        const weather = simulation.automatic_features || {};
+        const temp = weather.temperature_c;
+        const wind = weather.wind_speed_kph;
 
-        const title =
-            document.getElementById('operational-notice-title');
+        let text =
+            'Scenario ' + date + ': ' +
+            formatNumber(lastScenario.rainfall24h) + ' mm / 24h, ' +
+            formatNumber(lastScenario.rainfall3d) + ' mm / 3d, ' +
+            formatNumber(lastScenario.rainfall7d) + ' mm / 7d.';
 
-        const message =
-            document.getElementById('operational-notice-message');
-
-        const highCount = citywideResults.filter(
-            result => result.riskLevel === 'High'
-        ).length;
-
-        const mediumCount = citywideResults.filter(
-            result => result.riskLevel === 'Medium'
-        ).length;
-
-        notice.className = 'rounded-2xl border px-5 py-4';
-
-        if (highCount > 0) {
-            notice.classList.add(
-                'border-red-200',
-                'bg-red-50',
-                'text-red-900'
-            );
-
-            title.textContent =
-                'High-risk barangays detected';
-
-            message.textContent =
-                highCount +
-                ' barangay or barangays were classified as high risk. Prioritize monitoring, preparation, and internal alerts.';
-        } else if (mediumCount > 0) {
-            notice.classList.add(
-                'border-amber-200',
-                'bg-amber-50',
-                'text-amber-900'
-            );
-
-            title.textContent =
-                'Moderate vulnerability detected';
-
-            message.textContent =
-                mediumCount +
-                ' barangay or barangays were classified as medium risk. Continue monitoring rainfall, waterways, and drainage conditions.';
-        } else {
-            notice.classList.add(
-                'border-emerald-200',
-                'bg-emerald-50',
-                'text-emerald-900'
-            );
-
-            title.textContent =
-                'No high-risk barangays detected';
-
-            message.textContent =
-                'The current scenario produced low-risk classifications. Continue routine monitoring because conditions may change.';
+        if (temp !== null && temp !== undefined) {
+            text += ' Automatic temperature: ' + formatNumber(temp) + ' °C.';
         }
+
+        if (wind !== null && wind !== undefined) {
+            text += ' Wind: ' + formatNumber(wind) + ' km/h.';
+        }
+
+        document.getElementById('scenario-summary').textContent = text;
     }
 
     function resetForm() {
         form.reset();
-        setAutomaticDateValues();
-
         citywideResults = [];
-
+        lastScenario = null;
         resultsContainer.classList.add('hidden');
-        loadingSection.classList.add('hidden');
-        resultsTableBody.innerHTML = '';
-
-        searchInput.value = '';
-        riskFilter.value = 'all';
-
+        hideMessage();
+        updateModelStatus('Model not tested', 'neutral');
         document.getElementById('last-simulation-time').textContent =
             'No simulation performed';
-
-        updateModelStatus(
-            'Model not tested',
-            'neutral'
-        );
-
-        hideMessage();
+        searchInput.value = '';
+        severityFilter.value = 'all';
     }
 
     function setLoading(isLoading) {
         runButton.disabled = isLoading;
-        weatherButton.disabled = isLoading;
-
-        loadingSection.classList.toggle(
-            'hidden',
-            !isLoading
-        );
-
+        resetButton.disabled = isLoading;
+        loadingSection.classList.toggle('hidden', !isLoading);
         runButton.textContent = isLoading
             ? 'Running Simulation...'
             : 'Run Citywide Simulation';
     }
 
-    function updateModelStatus(text, type) {
-        const container =
-            document.getElementById('model-status');
+    function updateModelStatus(text, state) {
+        const dot = document.getElementById('model-status-dot');
+        const label = document.getElementById('model-status-text');
+        label.textContent = text;
 
-        const dot =
-            document.getElementById('model-status-dot');
-
-        document.getElementById('model-status-text').textContent =
-            text;
-
-        container.className =
-            'inline-flex items-center gap-2 rounded-full border bg-white px-4 py-2 text-sm font-medium shadow-sm';
-
-        if (type === 'success') {
-            container.classList.add(
-                'border-emerald-200',
-                'text-emerald-700'
-            );
-
-            dot.className =
-                'h-2.5 w-2.5 rounded-full bg-emerald-500';
-        } else if (type === 'error') {
-            container.classList.add(
-                'border-red-200',
-                'text-red-700'
-            );
-
-            dot.className =
-                'h-2.5 w-2.5 rounded-full bg-red-500';
-        } else {
-            container.classList.add(
-                'border-slate-200',
-                'text-slate-600'
-            );
-
-            dot.className =
-                'h-2.5 w-2.5 rounded-full bg-slate-400';
-        }
+        dot.className = 'h-2.5 w-2.5 rounded-full ' + (
+            state === 'success'
+                ? 'bg-emerald-500'
+                : state === 'error'
+                    ? 'bg-red-500'
+                    : 'bg-slate-400'
+        );
     }
 
     function showMessage(message, type) {
         messageBox.textContent = message;
-
-        messageBox.className =
-            'rounded-2xl border px-5 py-4 text-sm';
-
-        if (type === 'success') {
-            messageBox.classList.add(
-                'border-emerald-200',
-                'bg-emerald-50',
-                'text-emerald-800'
-            );
-        } else {
-            messageBox.classList.add(
-                'border-red-200',
-                'bg-red-50',
-                'text-red-800'
-            );
-        }
+        messageBox.className = type === 'success'
+            ? 'rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800'
+            : 'rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800';
     }
 
     function hideMessage() {
-        messageBox.classList.add('hidden');
+        messageBox.className = 'hidden rounded-2xl border px-5 py-4 text-sm';
         messageBox.textContent = '';
     }
 
-    async function parseJsonResponse(response) {
-        const responseText = await response.text();
-
-        if (responseText.trim() === '') {
-            return {};
-        }
-
-        try {
-            return JSON.parse(responseText);
-        } catch (error) {
-            console.error(
-                'Non-JSON server response:',
-                responseText
-            );
-
-            throw new Error(
-                'The server returned an invalid response. Check the Laravel log and browser console.'
-            );
-        }
+    function getNumber(id) {
+        const value = Number(document.getElementById(id).value);
+        return Number.isFinite(value) ? value : 0;
     }
 
-    function normalizeRisk(value) {
-        const normalized = String(value || '')
-            .trim()
-            .toLowerCase();
-
-        if (
-            normalized === 'high' ||
-            normalized === '2' ||
-            normalized.includes('high')
-        ) {
-            return 'High';
-        }
-
-        if (
-            normalized === 'medium' ||
-            normalized === 'moderate' ||
-            normalized === '1' ||
-            normalized.includes('medium') ||
-            normalized.includes('moderate')
-        ) {
-            return 'Medium';
-        }
-
-        return 'Low';
+    function severityWeight(code) {
+        return { A: 1, B: 2, C: 3, D: 4 }[code] || 0;
     }
 
-    function riskWeight(riskLevel) {
-        if (riskLevel === 'High') {
-            return 3;
-        }
+    function severityBadge(code) {
+        const config = {
+            A: ['Minor · 0.5 ft', 'border-emerald-200 bg-emerald-50 text-emerald-800'],
+            B: ['Moderate · 1.5 ft', 'border-amber-200 bg-amber-50 text-amber-800'],
+            C: ['Severe · 2.0 ft', 'border-orange-200 bg-orange-50 text-orange-800'],
+            D: ['Critical · 2.5 ft+', 'border-red-200 bg-red-50 text-red-800']
+        };
 
-        if (riskLevel === 'Medium') {
-            return 2;
-        }
-
-        return 1;
-    }
-
-    function riskBadge(riskLevel) {
-        if (riskLevel === 'High') {
-            return `
-                <span class="inline-flex rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800">
-                    High
-                </span>
-            `;
-        }
-
-        if (riskLevel === 'Medium') {
-            return `
-                <span class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
-                    Medium
-                </span>
-            `;
-        }
-
+        const selected = config[code] || config.A;
         return `
-            <span class="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
-                Low
+            <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${selected[1]}">
+                Code ${escapeHtml(code)} · ${escapeHtml(selected[0])}
             </span>
         `;
     }
 
-    function recommendationForRisk(riskLevel) {
-        if (riskLevel === 'High') {
-            return 'Prioritize monitoring, prepare response teams, and consider sending internal alerts.';
+    async function parseJsonResponse(response) {
+        const text = await response.text();
+        if (!text) {
+            return {};
         }
 
-        if (riskLevel === 'Medium') {
-            return 'Monitor rainfall, drainage, waterways, and barangay conditions closely.';
+        try {
+            return JSON.parse(text);
+        } catch (error) {
+            throw new Error('The server returned an invalid response.');
         }
-
-        return 'Maintain routine monitoring and continue checking weather changes.';
     }
 
-    function firstValue(object, keys) {
-        if (!object || typeof object !== 'object') {
-            return null;
-        }
-
-        for (const key of keys) {
-            if (
-                Object.prototype.hasOwnProperty.call(object, key) &&
-                object[key] !== null &&
-                object[key] !== ''
-            ) {
-                return object[key];
-            }
-        }
-
-        return null;
-    }
-
-    function setField(fieldId, value) {
-        if (
-            value === null ||
-            value === undefined ||
-            value === ''
-        ) {
-            return;
-        }
-
-        document.getElementById(fieldId).value = value;
-    }
-
-    function getNumber(fieldId) {
-        return toNumber(
-            document.getElementById(fieldId).value
-        );
-    }
-
-    function getInteger(fieldId) {
-        const value = parseInt(
-            document.getElementById(fieldId).value,
-            10
-        );
-
-        return Number.isFinite(value) ? value : 0;
-    }
-
-    function toNumber(value) {
+    function formatNumber(value) {
         const number = Number(value);
-
-        return Number.isFinite(number) ? number : 0;
-    }
-
-    function formatPercentage(value) {
-        return toNumber(value).toFixed(1) + '%';
+        if (!Number.isFinite(number)) {
+            return '0';
+        }
+        return number.toFixed(2).replace(/\.00$/, '');
     }
 
     function escapeHtml(value) {
@@ -1526,6 +594,6 @@ document.addEventListener('DOMContentLoaded', function () {
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
     }
-});
+})();
 </script>
-@endpush
+@endsection

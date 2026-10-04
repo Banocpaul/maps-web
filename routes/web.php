@@ -158,6 +158,16 @@ Route::middleware('auth')->group(function (): void {
     )
         ->middleware('permission:prediction.view')
         ->name('flood-operation.index');
+
+    Route::post(
+        '/flood-operation/simulate',
+        [FloodOperationController::class, 'simulate']
+    )
+        ->middleware([
+            'permission:prediction.run',
+            'throttle:10,1',
+        ])
+        ->name('flood-operation.simulate');
     /*
     |--------------------------------------------------------------------------
     | Flood Dataset Management

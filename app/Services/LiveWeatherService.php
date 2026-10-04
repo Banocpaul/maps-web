@@ -17,7 +17,6 @@ class LiveWeatherService
     private const LATITUDE = 14.5794;
     private const LONGITUDE = 121.0359;
     private const TIMEZONE = 'Asia/Manila';
-
     private const FORECAST_URL =
         'https://api.open-meteo.com/v1/forecast';
 
@@ -25,16 +24,11 @@ class LiveWeatherService
     private int $connectTimeoutSeconds = 10;
 
     /**
-     * Retrieve the daily Mandaluyong weather snapshot.
+     * Retrieve today's Mandaluyong weather snapshot.
      *
-     * Open-Meteo is contacted at most once for a Manila calendar date.
-     * The same API response contains:
-     * - current weather
-     * - hourly data used by the flood model
-     * - seven past days for antecedent rainfall
-     * - the next seven forecast days for the public portal
-     *
-     * All later requests during the same day use the database snapshot.
+     * The Open-Meteo request includes seven past days plus seven forecast
+     * days, so the same daily snapshot can support 24, 48 and 72-hour
+     * prediction windows without making extra weather requests.
      */
     public function getCurrentWeather(): array
     {
@@ -45,8 +39,6 @@ class LiveWeatherService
             return $this->snapshotResponse($snapshot, 'database');
         }
 
-        // A failed-attempt marker means today's one allowed request
-        // has already been used. Do not contact Open-Meteo again today.
         if (
             $snapshot !== null
             && $snapshot->source === 'Open-Meteo-Attempt-Failed'
@@ -71,11 +63,6 @@ class LiveWeatherService
                 return $this->staleFallbackOrFail($snapshotDate);
             }
 
-            /*
-             * Mark today's one allowed attempt BEFORE the external request.
-             * Existing snapshots created by the older 15-minute version are
-             * allowed one upgrade request so they can gain the 7-day data.
-             */
             $manilaNow = now(self::TIMEZONE);
 
             if ($snapshot === null) {
@@ -134,10 +121,7 @@ class LiveWeatherService
     }
 
     /**
-     * Kept for compatibility with existing controllers/services.
-     *
-     * This no longer forces another API request. It follows the same
-     * once-per-day rule as getCurrentWeather().
+     * Compatibility method. It still follows the once-per-day snapshot rule.
      */
     public function refreshCurrentWeather(): array
     {
@@ -145,10 +129,7 @@ class LiveWeatherService
     }
 
     /**
-     * Return the public 7-day forecast.
-     *
-     * This does NOT make a separate Open-Meteo request. It reads the
-     * seven-day forecast stored inside today's daily weather snapshot.
+     * Return the public seven-day forecast from the same daily snapshot.
      */
     public function getSevenDayForecast(): array
     {
@@ -158,9 +139,6 @@ class LiveWeatherService
         return is_array($forecast) ? $forecast : [];
     }
 
-    /**
-     * Make the single Open-Meteo request used for the whole day.
-     */
     private function fetchCurrentWeather(): array
     {
         try {
@@ -201,13 +179,8 @@ class LiveWeatherService
                         'wind_speed_10m_max',
                     ]),
 
-                    /*
-                     * Seven past days are used for antecedent rainfall.
-                     * Seven forecast days are returned for the public portal.
-                     */
                     'past_days' => 7,
                     'forecast_days' => 7,
-
                     'wind_speed_unit' => 'ms',
                     'precipitation_unit' => 'mm',
                     'temperature_unit' => 'celsius',
@@ -246,18 +219,23 @@ class LiveWeatherService
 
         $weather = $snapshot->weather_data;
 
+        /*
+         * forecast_windows is required by the new 24/48/72-hour selector.
+         * Requiring it also upgrades an older same-day snapshot once after
+         * this version is deployed.
+         */
         return is_array($weather)
             && $weather !== []
             && isset(
                 $weather['date'],
                 $weather['avg_temp_mean_c'],
-                $weather['seven_day_forecast']
+                $weather['seven_day_forecast'],
+                $weather['forecast_windows']['24'],
+                $weather['forecast_windows']['48'],
+                $weather['forecast_windows']['72']
             );
     }
 
-    /**
-     * Find the most recent previous successful snapshot.
-     */
     private function findLatestUsableSnapshotBefore(
         string $snapshotDate
     ): ?DailyWeatherSnapshot {
@@ -276,9 +254,6 @@ class LiveWeatherService
         return null;
     }
 
-    /**
-     * Use the last successful snapshot if today's single request failed.
-     */
     private function staleFallbackOrFail(
         string $snapshotDate,
         ?Throwable $originalException = null
@@ -392,21 +367,17 @@ class LiveWeatherService
             $current['time'] ?? null
         );
 
-        $forecastEnd = $currentDateTime
-            ->copy()
-            ->addHours(24);
-
         $hourlyRecords = $this->buildHourlyRecords($hourly);
-
-        $pastRainfall3Days = $this->sumRainfallBetween(
-            records: $hourlyRecords,
-            start: $currentDateTime->copy()->subHours(72),
-            end: $currentDateTime
-        );
 
         $pastRainfall24Hours = $this->sumRainfallBetween(
             records: $hourlyRecords,
             start: $currentDateTime->copy()->subHours(24),
+            end: $currentDateTime
+        );
+
+        $pastRainfall3Days = $this->sumRainfallBetween(
+            records: $hourlyRecords,
+            start: $currentDateTime->copy()->subHours(72),
             end: $currentDateTime
         );
 
@@ -416,45 +387,18 @@ class LiveWeatherService
             end: $currentDateTime
         );
 
-        $forecastRecords = array_values(
-            array_filter(
-                $hourlyRecords,
-                static function (array $record) use (
+        $forecastWindows = [];
+
+        foreach ([24, 48, 72] as $hours) {
+            $forecastWindows[(string) $hours] =
+                $this->buildForecastWindow(
+                    $hourlyRecords,
                     $currentDateTime,
-                    $forecastEnd
-                ): bool {
-                    $time = $record['time'] ?? null;
+                    $hours
+                );
+        }
 
-                    return $time instanceof Carbon
-                        && $time->greaterThanOrEqualTo(
-                            $currentDateTime
-                        )
-                        && $time->lessThan($forecastEnd);
-                }
-            )
-        );
-
-        $forecastRainfall = array_sum(
-            array_column(
-                $forecastRecords,
-                'precipitation_mm'
-            )
-        );
-
-        $forecastTemperatures = $this->numericColumn(
-            $forecastRecords,
-            'temperature_c'
-        );
-
-        $forecastHumidity = $this->numericColumn(
-            $forecastRecords,
-            'humidity_pct'
-        );
-
-        $forecastWind = $this->numericColumn(
-            $forecastRecords,
-            'wind_speed'
-        );
+        $window24 = $forecastWindows['24'];
 
         $currentTemperature = $this->nullableFloat(
             $current['temperature_2m'] ?? null
@@ -491,18 +435,14 @@ class LiveWeatherService
             'time' => $currentDateTime->format('H:i'),
             'observed_at' => $currentDateTime->toIso8601String(),
 
+            /*
+             * Backward-compatible 24-hour fields.
+             */
             'forecast_window_hours' => 24,
-            'forecast_start' =>
-                $currentDateTime->toIso8601String(),
-
-            'forecast_end' =>
-                $forecastEnd->toIso8601String(),
-
-            'forecast_start_display' =>
-                $currentDateTime->format('M d, Y h:i A'),
-
-            'forecast_end_display' =>
-                $forecastEnd->format('M d, Y h:i A'),
+            'forecast_start' => $window24['start'],
+            'forecast_end' => $window24['end'],
+            'forecast_start_display' => $window24['start_display'],
+            'forecast_end_display' => $window24['end_display'],
 
             'current_temperature_c' => $currentTemperature,
             'avg_temp_mean_c' => $currentTemperature,
@@ -529,7 +469,7 @@ class LiveWeatherService
                 $this->weatherDescription($weatherCode),
 
             'forecast_rainfall_24h_mm' =>
-                round((float) $forecastRainfall, 2),
+                $window24['rainfall_mm'],
 
             'rainfall_24h_mm' =>
                 round($pastRainfall24Hours, 2),
@@ -541,48 +481,103 @@ class LiveWeatherService
                 round($pastRainfall7Days, 2),
 
             'forecast_tmax_c' =>
-                $this->maximum($forecastTemperatures),
+                $window24['temperature_max_c'],
 
             'forecast_tmin_c' =>
-                $this->minimum($forecastTemperatures),
+                $window24['temperature_min_c'],
 
             'forecast_mean_temp_c' =>
-                $this->average($forecastTemperatures),
+                $window24['temperature_mean_c'],
 
             'forecast_avg_humidity_pct' =>
-                $this->average($forecastHumidity),
+                $window24['humidity_mean_pct'],
 
             'forecast_avg_wind_speed' =>
-                $this->average($forecastWind),
+                $window24['wind_speed_mean'],
 
             'suggested_cause' =>
                 $this->suggestCause(
-                    (float) $forecastRainfall,
+                    (float) $window24['rainfall_mm'],
                     $weatherCode
                 ),
 
             /*
-             * Used by the public 7-day weather page.
-             * This data came from the SAME once-a-day API request.
+             * New values used by the prediction page dropdown.
              */
+            'forecast_windows' => $forecastWindows,
+
             'seven_day_forecast' => $sevenDayForecast,
 
             'weather_station_count' => 1,
             'weather_match_status' =>
-                'Open-Meteo daily snapshot with 7-day forecast',
+                'Open-Meteo daily snapshot with 24/48/72-hour forecast windows',
         ];
     }
 
     /**
-     * Build a seven-day forecast while preserving Open-Meteo-style arrays.
-     *
-     * This makes the result easy to use from Blade:
-     * $forecast['time'][0]
-     * $forecast['temperature_2m_max'][0]
-     * etc.
-     *
-     * A convenient $forecast['days'] list is also included.
+     * Build one cumulative future forecast window beginning now.
      */
+    private function buildForecastWindow(
+        array $records,
+        Carbon $start,
+        int $hours
+    ): array {
+        $end = $start->copy()->addHours($hours);
+
+        $windowRecords = array_values(
+            array_filter(
+                $records,
+                static function (array $record) use (
+                    $start,
+                    $end
+                ): bool {
+                    $time = $record['time'] ?? null;
+
+                    return $time instanceof Carbon
+                        && $time->greaterThanOrEqualTo($start)
+                        && $time->lessThan($end);
+                }
+            )
+        );
+
+        $rainfall = array_sum(
+            array_column(
+                $windowRecords,
+                'precipitation_mm'
+            )
+        );
+
+        $temperatures = $this->numericColumn(
+            $windowRecords,
+            'temperature_c'
+        );
+
+        $humidity = $this->numericColumn(
+            $windowRecords,
+            'humidity_pct'
+        );
+
+        $wind = $this->numericColumn(
+            $windowRecords,
+            'wind_speed'
+        );
+
+        return [
+            'hours' => $hours,
+            'start' => $start->toIso8601String(),
+            'end' => $end->toIso8601String(),
+            'start_display' => $start->format('M d, Y h:i A'),
+            'end_display' => $end->format('M d, Y h:i A'),
+            'rainfall_mm' => round((float) $rainfall, 2),
+            'temperature_mean_c' => $this->average($temperatures),
+            'temperature_max_c' => $this->maximum($temperatures),
+            'temperature_min_c' => $this->minimum($temperatures),
+            'humidity_mean_pct' => $this->average($humidity),
+            'wind_speed_mean' => $this->average($wind),
+            'wind_speed_max' => $this->maximum($wind),
+        ];
+    }
+
     private function buildSevenDayForecast(
         array $daily,
         Carbon $currentDateTime,
@@ -743,6 +738,11 @@ class LiveWeatherService
                     $this->nullableFloat(
                         $hourly['wind_speed_10m'][$index] ?? null
                     ),
+
+                'wind_direction_deg' =>
+                    $this->nullableFloat(
+                        $hourly['wind_direction_10m'][$index] ?? null
+                    ),
             ];
         }
 
@@ -857,22 +857,16 @@ class LiveWeatherService
             $code === 0 => 'Clear sky',
             in_array($code, [1, 2, 3], true) =>
                 'Partly cloudy',
-
             in_array($code, [45, 48], true) =>
                 'Foggy',
-
             in_array($code, [51, 53, 55, 56, 57], true) =>
                 'Drizzle',
-
             in_array($code, [61, 63, 65, 66, 67], true) =>
                 'Rain',
-
             in_array($code, [80, 81, 82], true) =>
                 'Rain showers',
-
             in_array($code, [95, 96, 99], true) =>
                 'Thunderstorm',
-
             default => 'Weather data available',
         };
     }

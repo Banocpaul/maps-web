@@ -16,7 +16,7 @@
 
             <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                 View current Mandaluyong weather and generate automated flood-risk
-                predictions for all barangays using the upcoming 24-hour forecast.
+                predictions for all barangays using a 24, 48, or 72-hour forecast window.
             </p>
         </div>
 
@@ -43,7 +43,7 @@
             The ML API is offline. Start it using:
 
             <code class="mt-2 block rounded bg-amber-100 px-3 py-2 font-mono text-xs">
-                python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
+                python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
             </code>
         </div>
     @endunless
@@ -140,16 +140,66 @@
             </div>
         </section>
 
-        <section class="rounded-2xl border border-sky-200 bg-sky-50 p-5 sm:p-6">
-            <div class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-                <div>
-                    <p class="text-sm font-semibold uppercase tracking-wide text-sky-700">
-                        Forecast Window
-                    </p>
+        @php
+            $forecastWindows = $liveWeather['forecast_windows'] ?? [];
+            $selectedHours = (int) ($selectedForecastHours ?? old('forecast_hours', 24));
 
-                    <h2 class="mt-1 text-2xl font-bold text-sky-950">
-                        Next 24 Hours
-                    </h2>
+            if (! in_array($selectedHours, [24, 48, 72], true)) {
+                $selectedHours = 24;
+            }
+
+            $selectedWindow = $forecastWindows[(string) $selectedHours]
+                ?? $forecastWindows['24']
+                ?? [
+                    'start_display' => $liveWeather['forecast_start_display'] ?? 'Unavailable',
+                    'end_display' => $liveWeather['forecast_end_display'] ?? 'Unavailable',
+                    'rainfall_mm' => $liveWeather['forecast_rainfall_24h_mm'] ?? 0,
+                ];
+        @endphp
+
+        <section class="rounded-2xl border border-sky-200 bg-sky-50 p-5 sm:p-6">
+            <form
+                method="POST"
+                action="{{ route('prediction.citywide') }}"
+                class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center"
+            >
+                @csrf
+
+                <div>
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <label
+                                for="forecast_hours"
+                                class="text-sm font-semibold uppercase tracking-wide text-sky-700"
+                            >
+                                Forecast Window
+                            </label>
+
+                            <div class="mt-2 flex items-center gap-3">
+                                <select
+                                    id="forecast_hours"
+                                    name="forecast_hours"
+                                    class="rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-bold text-sky-950 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                                >
+                                    @foreach ([24, 48, 72] as $hours)
+                                        <option
+                                            value="{{ $hours }}"
+                                            @selected($selectedHours === $hours)
+                                        >
+                                            {{ $hours }} Hours
+                                        </option>
+                                    @endforeach
+                                </select>
+
+                                <h2
+                                    id="forecast-window-title"
+                                    class="text-2xl font-bold text-sky-950"
+                                >
+                                    Next {{ $selectedHours }} Hours
+                                </h2>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="mt-4 grid gap-4 sm:grid-cols-3">
                         <div>
@@ -157,8 +207,11 @@
                                 Valid From
                             </p>
 
-                            <p class="mt-1 text-sm font-semibold text-sky-950">
-                                {{ $liveWeather['forecast_start_display'] ?? 'Unavailable' }}
+                            <p
+                                id="forecast-valid-from"
+                                class="mt-1 text-sm font-semibold text-sky-950"
+                            >
+                                {{ $selectedWindow['start_display'] ?? 'Unavailable' }}
                             </p>
                         </div>
 
@@ -167,8 +220,11 @@
                                 Valid Until
                             </p>
 
-                            <p class="mt-1 text-sm font-semibold text-sky-950">
-                                {{ $liveWeather['forecast_end_display'] ?? 'Unavailable' }}
+                            <p
+                                id="forecast-valid-until"
+                                class="mt-1 text-sm font-semibold text-sky-950"
+                            >
+                                {{ $selectedWindow['end_display'] ?? 'Unavailable' }}
                             </p>
                         </div>
 
@@ -177,13 +233,12 @@
                                 Forecast Rainfall
                             </p>
 
-                            <p class="mt-1 text-sm font-semibold text-sky-950">
+                            <p
+                                id="forecast-rainfall"
+                                class="mt-1 text-sm font-semibold text-sky-950"
+                            >
                                 {{ number_format(
-                                    (float) (
-                                        $liveWeather[
-                                            'forecast_rainfall_24h_mm'
-                                        ] ?? 0
-                                    ),
+                                    (float) ($selectedWindow['rainfall_mm'] ?? 0),
                                     2
                                 ) }} mm
                             </p>
@@ -191,27 +246,20 @@
                     </div>
 
                     <p class="mt-4 max-w-3xl text-sm leading-6 text-sky-800">
-                        The result estimates each barangay's flood-risk category
-                        during this forecast period. It does not identify the exact
-                        minute when flooding will occur.
+                        The selected window is evaluated in consecutive 24-hour model periods.
+                        For 48 or 72 hours, M.A.P.S. reports the highest flood severity expected
+                        within the selected period.
                     </p>
                 </div>
 
-                <form
-                    method="POST"
-                    action="{{ route('prediction.citywide') }}"
+                <button
+                    type="submit"
+                    @disabled(! $apiAvailable || ! $weatherAvailable)
+                    class="inline-flex w-full items-center justify-center rounded-xl bg-sky-700 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
                 >
-                    @csrf
-
-                    <button
-                        type="submit"
-                        @disabled(! $apiAvailable || ! $weatherAvailable)
-                        class="inline-flex w-full items-center justify-center rounded-xl bg-sky-700 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
-                    >
-                        Run Citywide Prediction
-                    </button>
-                </form>
-            </div>
+                    Run Citywide Prediction
+                </button>
+            </form>
         </section>
     @else
         <section class="rounded-2xl border border-rose-200 bg-rose-50 p-5">
@@ -226,6 +274,17 @@
     @endif
 
     @if (is_array($citywideResult))
+        @php
+            $predictions = collect($citywideResult['predictions'] ?? []);
+            $severityCounts = $predictions
+                ->countBy(fn ($item) => $item['flood_code'] ?? 'Unknown');
+            $resultHours = (int) (
+                $citywideResult['forecast_hours']
+                ?? $selectedForecastHours
+                ?? 24
+            );
+        @endphp
+
         <section class="space-y-4">
             <div>
                 <p class="text-sm font-semibold uppercase tracking-wide text-sky-700">
@@ -238,14 +297,10 @@
 
                 <p class="mt-1 text-sm text-slate-500">
                     {{ $citywideResult['summary']['total_barangays'] ?? ($citywideResult['barangay_count'] ?? 0) }}
-                    barangays analyzed
+                    barangays analyzed for flood severity over the next {{ $resultHours }} hours.
+                    Each barangay is classified as Level A, B, C, or D.
                 </p>
             </div>
-
-            @php
-                $severityCounts = collect($citywideResult['predictions'] ?? [])
-                    ->countBy(fn ($item) => $item['flood_code'] ?? 'Unknown');
-            @endphp
 
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach (['A', 'B', 'C', 'D'] as $code)
@@ -258,10 +313,10 @@
                         };
 
                         $severityName = match ($code) {
-                            'A' => 'Minor (1 ft)',
-                            'B' => 'Moderate (2 ft)',
-                            'C' => 'Severe (3 ft)',
-                            'D' => 'Critical (4 ft)',
+                            'A' => 'Minor (0.5 ft)',
+                            'B' => 'Moderate (1.5 ft)',
+                            'C' => 'Severe (2.0 ft)',
+                            'D' => 'Critical (2.5 ft+)',
                         };
                     @endphp
 
@@ -289,18 +344,6 @@
                                 <th class="px-4 py-3 text-left text-xs font-bold uppercase text-slate-600">
                                     Flood Severity
                                 </th>
-
-                                <th class="px-4 py-3 text-right text-xs font-bold uppercase text-slate-600">
-                                    Confidence
-                                </th>
-
-                                <th class="px-4 py-3 text-right text-xs font-bold uppercase text-slate-600">
-                                    Predicted Depth
-                                </th>
-
-                                <th class="px-4 py-3 text-right text-xs font-bold uppercase text-slate-600">
-                                    Duration
-                                </th>
                             </tr>
                         </thead>
 
@@ -308,7 +351,14 @@
                             @forelse (($citywideResult['predictions'] ?? []) as $index => $item)
                                 @php
                                     $floodCode = $item['flood_code'] ?? 'Unknown';
-                                    $floodSeverity = $item['flood_severity'] ?? 'Severity unavailable';
+
+                                    $severityText = match ($floodCode) {
+                                        'A' => 'Level A - Minor Flooding (0.5 ft)',
+                                        'B' => 'Level B - Moderate Flooding (1.5 ft)',
+                                        'C' => 'Level C - Severe Flooding (2.0 ft)',
+                                        'D' => 'Level D - Critical Flooding (2.5 ft+)',
+                                        default => 'Severity unavailable',
+                                    };
 
                                     $badgeClass = match ($floodCode) {
                                         'A' => 'bg-emerald-100 text-emerald-700',
@@ -321,7 +371,7 @@
 
                                 <tr class="hover:bg-slate-50">
                                     <td class="px-4 py-3 text-sm text-slate-500">
-                                        {{ $index + 1 }}
+                                        {{ $item['rank'] ?? ($index + 1) }}
                                     </td>
 
                                     <td class="px-4 py-3 text-sm font-semibold text-slate-900">
@@ -332,53 +382,15 @@
                                         <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold {{ $badgeClass }}">
                                             {{ $floodCode }}
                                         </span>
+
                                         <span class="ml-2 text-xs text-slate-600">
-                                            {{ $floodSeverity }}
+                                            {{ $severityText }}
                                         </span>
-                                    </td>
-
-                                    <td class="px-4 py-3 text-right text-sm text-slate-700">
-                                        @php
-                                            $confidenceValue =
-                                                $item['confidence_percent']
-                                                ?? null;
-
-                                            if ($confidenceValue === null) {
-                                                $confidenceValue =
-                                                    ((float) (
-                                                        $item['confidence']
-                                                        ?? 0
-                                                    )) * 100;
-                                            }
-                                        @endphp
-
-                                        {{ number_format(
-                                            (float) $confidenceValue,
-                                            2
-                                        ) }}%
-                                    </td>
-
-                                    <td class="px-4 py-3 text-right text-sm text-slate-700">
-                                        {{ number_format(
-                                            (float) ($item['predicted_depth_ft'] ?? 0),
-                                            2
-                                        ) }} ft
-                                    </td>
-
-                                    <td class="px-4 py-3 text-right text-sm text-slate-700">
-                                        {{ number_format(
-                                            (float) (
-                                                $item[
-                                                    'predicted_duration_hours'
-                                                ] ?? 0
-                                            ),
-                                            2
-                                        ) }} h
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">
+                                    <td colspan="3" class="px-4 py-10 text-center text-sm text-slate-500">
                                         No prediction records were returned.
                                     </td>
                                 </tr>
@@ -390,4 +402,41 @@
         </section>
     @endif
 </div>
+
+@if ($weatherAvailable)
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const select = document.getElementById('forecast_hours');
+
+            if (!select) {
+                return;
+            }
+
+            const windows = @json($liveWeather['forecast_windows'] ?? []);
+            const title = document.getElementById('forecast-window-title');
+            const validFrom = document.getElementById('forecast-valid-from');
+            const validUntil = document.getElementById('forecast-valid-until');
+            const rainfall = document.getElementById('forecast-rainfall');
+
+            const renderWindow = () => {
+                const hours = String(select.value);
+                const windowData = windows[hours];
+
+                if (!windowData) {
+                    return;
+                }
+
+                title.textContent = `Next ${hours} Hours`;
+                validFrom.textContent = windowData.start_display ?? 'Unavailable';
+                validUntil.textContent = windowData.end_display ?? 'Unavailable';
+
+                const rainValue = Number(windowData.rainfall_mm ?? 0);
+                rainfall.textContent = `${rainValue.toFixed(2)} mm`;
+            };
+
+            select.addEventListener('change', renderWindow);
+            renderWindow();
+        });
+    </script>
+@endif
 @endsection

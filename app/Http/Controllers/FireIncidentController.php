@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Barangay;
 use App\Models\FireIncident;
 use App\Services\FireIncidentAlertService;
+use App\Services\IncidentReportWorkflow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -139,7 +140,8 @@ class FireIncidentController extends Controller
      */
     public function store(
         Request $request,
-        FireIncidentAlertService $fireIncidentAlertService
+        FireIncidentAlertService $fireIncidentAlertService,
+        IncidentReportWorkflow $reportWorkflow
     ): RedirectResponse
     {
         $validated = $request->validate(
@@ -147,12 +149,34 @@ class FireIncidentController extends Controller
             $this->validationMessages()
         );
 
+        $reportData = $request->validate(['public_report_id' => ['nullable', 'integer', 'min:1']]);
+        $reportId = $reportData['public_report_id'] ?? null;
+        if ($reportId) {
+            foreach (['reported_at', 'responded_at', 'resolved_at'] as $field) {
+                if (! empty($validated[$field])) {
+                    $validated[$field] = \Carbon\Carbon::parse($validated[$field], 'Asia/Manila')->utc()->toDateTimeString();
+                }
+            }
+        }
+
         $fireIncident = DB::transaction(
-            function () use ($validated): FireIncident {
+            function () use ($validated, $reportId, $reportWorkflow, $request): FireIncident {
+                $publicReport = $reportId
+                    ? $reportWorkflow->lockForPublication((int) $reportId, 'fire', $request->user())
+                    : null;
                 $validated['incident_number'] =
                     $this->generateIncidentNumber();
 
-                return FireIncident::create($validated);
+                if ($publicReport) {
+                    $validated['data_source'] = 'Public report verified by staff';
+                    $validated['remarks'] = 'Public report '.$publicReport->reference.'. '.($validated['remarks'] ?? '');
+                }
+                $incident = FireIncident::create($validated);
+                if ($publicReport) {
+                    $reportWorkflow->published($publicReport, 'fire_incident_id', $incident->id, $request->user());
+                }
+
+                return $incident;
             }
         );
 

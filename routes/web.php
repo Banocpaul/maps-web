@@ -17,6 +17,7 @@ use App\Http\Controllers\SmsController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\WeatherController;
 use Illuminate\Support\Facades\Route;
+require __DIR__.'/public-incident-reports.php';
 Route::redirect('/', '/login');
 /*
 |--------------------------------------------------------------------------

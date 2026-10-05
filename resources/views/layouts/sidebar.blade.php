@@ -121,7 +121,7 @@
             'icon' => 'reports',
         ],
         [
-            'label' => 'Public Submissions',
+            'label' => 'Incident Reports',
             'route' => Route::has('public-submissions.index')
                 ? 'public-submissions.index'
                 : null,
@@ -208,7 +208,7 @@
             'Flood Operations',
             'GIS Mapping',
         ],
-        'operations-manager' => [
+        'operations-manager', 'operations-officer' => [
             'Dashboard',
             'Database Records',
             'Flood Prediction',
@@ -231,17 +231,17 @@
         ],
         'fire-responder' => [
             'Reports',
-            'Public Submissions',
+            'Incident Reports',
             'Public Advisories',
         ],
         'flood-analyst' => [
             'Reports',
-            'Public Submissions',
+            'Incident Reports',
             'Public Advisories',
         ],
-        'operations-manager' => [
+        'operations-manager', 'operations-officer' => [
             'Reports',
-            'Public Submissions',
+            'Incident Reports',
             'Public Advisories',
         ],
         default => [],
@@ -261,7 +261,7 @@
         'administrator' => 'System',
         'fire-responder' => 'Fire Response',
         'flood-analyst' => 'Flood Analytics',
-        'operations-manager' => 'Command Operations',
+        'operations-manager', 'operations-officer' => 'Command Operations',
         default => 'Operations',
     };
 

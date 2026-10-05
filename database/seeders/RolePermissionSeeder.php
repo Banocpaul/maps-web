@@ -309,6 +309,8 @@ class RolePermissionSeeder extends Seeder
                     'reports.view',
                     'public-submissions.view',
                     'public-submissions.review',
+                    'public-submissions.approve',
+                    'public-submissions.reject',
                 ],
 
                 'system-viewer' => [

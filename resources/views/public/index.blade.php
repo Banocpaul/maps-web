@@ -44,85 +44,7 @@
 
     {{-- Top navigation --}}
 
-    <header class="border-b border-slate-200 bg-slate-950 text-white shadow-lg">
-
-        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-
-
-
-            <div class="flex items-center gap-3">
-
-                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600">
-
-                    <svg
-
-                        class="h-6 w-6 text-white"
-
-                        viewBox="0 0 24 24"
-
-                        fill="none"
-
-                        stroke="currentColor"
-
-                        stroke-width="1.8"
-
-                    >
-
-                        <path
-
-                            stroke-linecap="round"
-
-                            stroke-linejoin="round"
-
-                            d="M9 6.75V15m6-6v8.25m.5-12.75-7 3-4-1.5v13.5l4 1.5 7-3 4 1.5V6l-4-1.5Z"
-
-                        />
-
-                        <circle cx="12" cy="12" r="2.25" />
-
-                    </svg>
-
-                </div>
-
-
-
-                <div>
-
-                    <p class="text-xl font-black tracking-[0.16em]">
-
-                        Mandaluyong Flood & Fire
-
-                    </p>
-
-
-
-                    <p class="text-xs text-slate-400">
-
-                        Mandaluyong Flood Prediction and Fire Response System
-
-                    </p>
-
-                </div>
-
-            </div>
-
-
-
-            <a
-
-                href="{{ route('login') }}"
-
-                class="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white hover:text-slate-950"
-
-            >
-
-                Staff Login
-
-            </a>
-
-        </div>
-
-    </header>
+    @include('public.partials.header')
 
 
 
@@ -171,6 +93,11 @@
                         advisories without signing in.
 
                     </p>
+
+                    <a href="{{ route('public.incident-reports.create') }}" class="mt-6 inline-flex rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700">
+                        Report a Fire or Flood Incident
+                    </a>
+                    <p class="mt-3 text-sm leading-6 text-slate-300">Place a pin and optionally attach a photo. No account required.</p>
 
                 </div>
 
@@ -613,27 +540,7 @@
 
 
 
-    <footer class="border-t border-slate-200 bg-white">
-
-        <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-center text-sm text-slate-500 sm:px-6 lg:px-8">
-
-            <p class="font-semibold text-slate-700">
-
-                Mandaluyong Flood & Fire â€” Mandaluyong Flood Prediction and Fire Response System
-
-            </p>
-
-
-
-            <p>
-
-                Public disaster information portal
-
-            </p>
-
-        </div>
-
-    </footer>
+    @include('public.partials.footer')
 
 
 

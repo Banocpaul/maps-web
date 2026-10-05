@@ -1,0 +1,45 @@
+name: MAPS midnight weather trigger
+
+on:
+  schedule:
+    # UTC 16:00 is 00:00 the following day in Manila.
+    # The later runs check recovery; successful data is reused by Laravel.
+    - cron: '0,15,30 16 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: maps-daily-weather-trigger
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      MAPS_WEATHER_URL: ${{ vars.MAPS_WEATHER_URL || 'https://maps-web.onrender.com/public-portal/weather' }}
+    steps:
+      - name: Wake the web service and request the public forecast
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A free Render service may initially return a platform loading page.
+          # Make bounded requests until the actual Laravel forecast page responds.
+          for attempt in 1 2 3; do
+            if curl --silent --show-error --fail --max-time 180 \
+              "$MAPS_WEATHER_URL" --output /tmp/maps-forecast.html; then
+              if python3 - <<'PY'
+          from pathlib import Path
+          text = Path('/tmp/maps-forecast.html').read_text(errors='replace').lower()
+          raise SystemExit(0 if '7-day weather forecast' in text else 1)
+          PY
+              then
+                echo "Laravel forecast page responded. Check app snapshot/logs for fetch status."
+                exit 0
+              fi
+            fi
+            if [ "$attempt" -lt 3 ]; then sleep 30; fi
+          done
+          echo "The Laravel forecast page did not respond."
+          exit 1

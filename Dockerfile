@@ -60,7 +60,8 @@ RUN composer install \
     --prefer-dist \
     --optimize-autoloader
 
-RUN chown -R www-data:www-data \
+RUN mkdir -p storage/app/public/advisories \
+    && chown -R www-data:www-data \
     storage \
     bootstrap/cache \
     && chmod -R 775 \
@@ -79,5 +80,7 @@ RUN printf '<Directory /var/www/html/public>\n\
 
 EXPOSE 80
 
-# Run pending production database migrations before starting Apache.
-CMD ["sh", "-c", "php artisan migrate --force && exec apache2-foreground"]
+# A storage link must be created inside the Linux container at every startup.
+# Refuse to remove an unexpected real directory or file at public/storage.
+# --force recreates a normal existing symlink; the final check catches link failures.
+CMD ["sh", "-c", "mkdir -p storage/app/public/advisories && chown -R www-data:www-data storage/app/public && if [ -e public/storage ] && [ ! -L public/storage ]; then echo 'ERROR: public/storage is a real file or directory; check Docker build exclusions before replacing it.' >&2; exit 1; fi && php artisan migrate --force && php artisan storage:link --force && test -L public/storage && test -d public/storage/advisories && exec apache2-foreground"]

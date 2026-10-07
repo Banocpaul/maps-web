@@ -244,6 +244,7 @@
                                 id="role_id"
                                 name="role_id"
                                 required
+                                @disabled(! $canChangeRole)
                                 class="@error('role_id') input-error @enderror"
                             >
                                 <option value="">
@@ -254,9 +255,13 @@
                                     <option
                                         value="{{ $role->id }}"
                                         @selected(
-                                            (string) old(
-                                                'role_id',
-                                                $user->role_id
+                                            (string) (
+                                                $canChangeRole
+                                                    ? old(
+                                                        'role_id',
+                                                        $user->role_id
+                                                    )
+                                                    : $user->role_id
                                             ) === (string) $role->id
                                         )
                                     >
@@ -265,10 +270,28 @@
                                 @endforeach
                             </select>
 
-                            <p class="field-help">
-                                The selected role determines the user's
-                                permissions inside Mandaluyong Flood & Fire
-                            </p>
+                            @unless ($canChangeRole)
+                                <input
+                                    type="hidden"
+                                    name="role_id"
+                                    value="{{ $user->role_id }}"
+                                >
+                            @endunless
+
+                            @if ($roleChangeRestrictionMessage)
+                                <div class="role-restriction-box">
+                                    <strong>Role change restricted</strong>
+                                    <p>
+                                        {{ $roleChangeRestrictionMessage }}
+                                    </p>
+                                </div>
+                            @else
+                                <p class="field-help">
+                                    A user's role can be changed once every
+                                    3 months. Changing the role starts a new
+                                    3-month restriction period.
+                                </p>
+                            @endif
 
                             @error('role_id')
                                 <span class="field-error">
@@ -444,6 +467,63 @@
                                             'h:i A'
                                         ) }}
                                     </small>
+                                @endif
+                            </dd>
+                        </div>
+
+                        <div class="account-detail-row">
+                            <dt>Last Role Change</dt>
+
+                            <dd>
+                                @if ($user->role_changed_at)
+                                    <strong>
+                                        {{ $user->role_changed_at->format(
+                                            'M d, Y'
+                                        ) }}
+                                    </strong>
+
+                                    <small>
+                                        {{ $user->role_changed_at->format(
+                                            'h:i A'
+                                        ) }}
+                                    </small>
+                                @else
+                                    <span class="muted-text">
+                                        No recorded role change
+                                    </span>
+                                @endif
+                            </dd>
+                        </div>
+
+                        <div class="account-detail-row">
+                            <dt>Role Change Availability</dt>
+
+                            <dd>
+                                @if ($user->role?->slug === 'administrator')
+                                    <span class="detail-status protected-role">
+                                        Protected
+                                    </span>
+
+                                    <small>
+                                        Administrator role cannot be changed.
+                                    </small>
+                                @elseif (
+                                    $roleChangeAvailableAt
+                                    && now()->lt($roleChangeAvailableAt)
+                                )
+                                    <strong>
+                                        {{ $roleChangeAvailableAt->format(
+                                            'M d, Y'
+                                        ) }}
+                                    </strong>
+
+                                    <small>
+                                        Available after the 3-month restriction.
+                                    </small>
+                                @else
+                                    <span class="detail-status available-role">
+                                        Available now
+                                    </span>
                                 @endif
                             </dd>
                         </div>
@@ -888,6 +968,35 @@
     .warning-text {
         color: #b45309;
         font-weight: 600;
+    }
+
+    .role-restriction-box {
+        border: 1px solid #fde68a;
+        border-radius: 0.65rem;
+        background: #fffbeb;
+        padding: 0.8rem;
+        color: #92400e;
+    }
+
+    .role-restriction-box strong {
+        display: block;
+        font-size: 0.78rem;
+    }
+
+    .role-restriction-box p {
+        margin: 0.25rem 0 0;
+        font-size: 0.75rem;
+        line-height: 1.5;
+    }
+
+    .protected-role {
+        background: #e2e8f0;
+        color: #334155;
+    }
+
+    .available-role {
+        background: #dcfce7;
+        color: #166534;
     }
 
     .information-box {

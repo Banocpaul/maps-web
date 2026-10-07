@@ -14,6 +14,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'role_id',
+        'role_changed_at',
         'name',
         'first_name',
         'last_name',
@@ -35,6 +36,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'role_changed_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',

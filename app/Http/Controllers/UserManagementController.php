@@ -158,14 +158,20 @@ class UserManagementController extends Controller
      */
     public function edit(User $user): View
     {
-        $user->loadMissing('role');
+        /*
+         * Read the relationship explicitly instead of using $user->role.
+         * Some existing production databases still contain a legacy
+         * users.role attribute, which can shadow the role() relationship
+         * and cause a 500 error when the edit page reads ->name or ->slug.
+         */
+        $assignedRole = $user->role()->first();
 
         $roles = Role::query()
             ->orderBy('name')
             ->get();
 
         $isAdministratorAccount =
-            $user->role?->slug === 'administrator';
+            $assignedRole?->slug === 'administrator';
 
         $roleChangeAvailableAt = $user->role_changed_at
             ?->copy()
@@ -192,6 +198,7 @@ class UserManagementController extends Controller
         return view('users.edit', [
             'user' => $user,
             'roles' => $roles,
+            'assignedRole' => $assignedRole,
             'canChangeRole' => $canChangeRole,
             'roleChangeAvailableAt' => $roleChangeAvailableAt,
             'roleChangeRestrictionMessage' =>
@@ -251,13 +258,13 @@ class UserManagementController extends Controller
                 );
         }
 
-        $user->loadMissing('role');
+        $assignedRole = $user->role()->first();
 
         $roleIsChanging =
             (int) $validated['role_id'] !== (int) $user->role_id;
 
         if ($roleIsChanging) {
-            if ($user->role?->slug === 'administrator') {
+            if ($assignedRole?->slug === 'administrator') {
                 return back()
                     ->withInput()
                     ->withErrors([

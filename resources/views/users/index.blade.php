@@ -410,6 +410,7 @@
                                         ) }}"
                                         class="inline-form"
                                         onsubmit="return confirmPasswordReset(
+                                            event,
                                             @js($user->name)
                                         )"
                                     >
@@ -434,6 +435,7 @@
                                             ) }}"
                                             class="inline-form"
                                             onsubmit="return confirmStatusChange(
+                                                event,
                                                 @js($user->name),
                                                 {{ $user->is_active
                                                     ? 'false'
@@ -480,6 +482,7 @@
                                             ) }}"
                                             class="inline-form"
                                             onsubmit="return confirmUserDeletion(
+                                                event,
                                                 @js($user->name)
                                             )"
                                         >
@@ -628,6 +631,7 @@
                             ) }}"
                             class="inline-form"
                             onsubmit="return confirmPasswordReset(
+                                event,
                                 @js($user->name)
                             )"
                         >
@@ -651,6 +655,7 @@
                                 ) }}"
                                 class="inline-form"
                                 onsubmit="return confirmStatusChange(
+                                    event,
                                     @js($user->name),
                                     {{ $user->is_active
                                         ? 'false'
@@ -690,6 +695,7 @@
                                 ) }}"
                                 class="inline-form"
                                 onsubmit="return confirmUserDeletion(
+                                    event,
                                     @js($user->name)
                                 )"
                             >
@@ -722,6 +728,75 @@
         @endif
     </div>
 </div>
+
+    <div
+        id="user-action-modal"
+        class="maps-modal-backdrop"
+        hidden
+        aria-hidden="true"
+    >
+        <div
+            class="maps-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="user-action-modal-title"
+            aria-describedby="user-action-modal-message"
+        >
+            <div class="maps-modal-header">
+                <div
+                    id="user-action-modal-icon"
+                    class="maps-modal-icon"
+                    aria-hidden="true"
+                >
+                    !
+                </div>
+
+                <div class="maps-modal-heading">
+                    <p class="maps-modal-eyebrow">Confirm action</p>
+                    <h2 id="user-action-modal-title">
+                        Confirm account action
+                    </h2>
+                </div>
+
+                <button
+                    type="button"
+                    class="maps-modal-close"
+                    id="user-action-modal-close"
+                    aria-label="Close confirmation"
+                >
+                    ×
+                </button>
+            </div>
+
+            <div class="maps-modal-body">
+                <p id="user-action-modal-message"></p>
+                <div
+                    id="user-action-modal-note"
+                    class="maps-modal-note"
+                    hidden
+                ></div>
+            </div>
+
+            <div class="maps-modal-actions">
+                <button
+                    type="button"
+                    class="button button-secondary"
+                    id="user-action-modal-cancel"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="button"
+                    class="button maps-modal-confirm"
+                    id="user-action-modal-confirm"
+                >
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('styles')
@@ -1365,6 +1440,194 @@
         padding: 0.5rem;
     }
 
+    .maps-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.25rem;
+        background: rgba(2, 6, 23, 0.58);
+        backdrop-filter: blur(3px);
+    }
+
+    .maps-modal-backdrop[hidden] {
+        display: none;
+    }
+
+    .maps-modal-card {
+        width: min(100%, 460px);
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #ffffff;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        animation: mapsModalIn 150ms ease-out;
+    }
+
+    .maps-modal-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.9rem;
+        padding: 1.2rem 1.25rem 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .maps-modal-icon {
+        display: flex;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.75rem;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 1rem;
+        font-weight: 900;
+    }
+
+    .maps-modal-heading {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .maps-modal-eyebrow {
+        margin: 0 0 0.2rem;
+        color: #64748b;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .maps-modal-heading h2 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 1.05rem;
+        font-weight: 800;
+    }
+
+    .maps-modal-close {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: #64748b;
+        font-size: 1.45rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .maps-modal-close:hover {
+        color: #0f172a;
+    }
+
+    .maps-modal-body {
+        padding: 1.15rem 1.25rem;
+    }
+
+    .maps-modal-body > p {
+        margin: 0;
+        color: #475569;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    .maps-modal-note {
+        margin-top: 0.85rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.7rem;
+        background: #f8fafc;
+        padding: 0.75rem 0.85rem;
+        color: #64748b;
+        font-size: 0.78rem;
+        line-height: 1.5;
+    }
+
+    .maps-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.7rem;
+        padding: 1rem 1.25rem 1.2rem;
+        border-top: 1px solid #e2e8f0;
+        background: #ffffff;
+    }
+
+    .maps-modal-confirm {
+        min-width: 118px;
+        border-color: #1d4ed8;
+        background: #1d4ed8;
+        color: #ffffff;
+    }
+
+    .maps-modal-confirm:hover {
+        border-color: #1e40af;
+        background: #1e40af;
+    }
+
+    .maps-modal-card.is-danger .maps-modal-icon {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .maps-modal-card.is-danger .maps-modal-confirm {
+        border-color: #dc2626;
+        background: #dc2626;
+    }
+
+    .maps-modal-card.is-danger .maps-modal-confirm:hover {
+        border-color: #b91c1c;
+        background: #b91c1c;
+    }
+
+    .maps-modal-card.is-warning .maps-modal-icon {
+        background: #fffbeb;
+        color: #b45309;
+    }
+
+    .maps-modal-card.is-warning .maps-modal-confirm {
+        border-color: #d97706;
+        background: #d97706;
+    }
+
+    .maps-modal-card.is-warning .maps-modal-confirm:hover {
+        border-color: #b45309;
+        background: #b45309;
+    }
+
+    .maps-modal-card.is-purple .maps-modal-icon {
+        background: #f5f3ff;
+        color: #6d28d9;
+    }
+
+    .maps-modal-card.is-purple .maps-modal-confirm {
+        border-color: #6d28d9;
+        background: #6d28d9;
+    }
+
+    .maps-modal-card.is-purple .maps-modal-confirm:hover {
+        border-color: #5b21b6;
+        background: #5b21b6;
+    }
+
+    @keyframes mapsModalIn {
+        from {
+            opacity: 0;
+            transform: translateY(8px) scale(0.985);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    body.maps-modal-open {
+        overflow: hidden;
+    }
+
     .empty-state {
         align-items: center;
         display: flex;
@@ -1536,28 +1799,192 @@
 
 @push('scripts')
 <script>
-    function confirmPasswordReset(userName) {
-        return window.confirm(
-            'Reset the password for "' + userName + '"?\n\n' +
-            'A new temporary password will be generated.'
+    let pendingUserActionForm = null;
+    let lastUserActionTrigger = null;
+
+    function openUserActionModal(event, options) {
+        event.preventDefault();
+
+        const modal = document.getElementById('user-action-modal');
+        const card = modal?.querySelector('.maps-modal-card');
+        const title = document.getElementById('user-action-modal-title');
+        const message = document.getElementById('user-action-modal-message');
+        const note = document.getElementById('user-action-modal-note');
+        const confirmButton = document.getElementById(
+            'user-action-modal-confirm'
         );
+        const icon = document.getElementById('user-action-modal-icon');
+
+        if (
+            !modal
+            || !card
+            || !title
+            || !message
+            || !note
+            || !confirmButton
+            || !icon
+        ) {
+            return true;
+        }
+
+        pendingUserActionForm = event.currentTarget;
+        lastUserActionTrigger = document.activeElement;
+
+        card.classList.remove(
+            'is-danger',
+            'is-warning',
+            'is-purple'
+        );
+
+        if (options.variant) {
+            card.classList.add(options.variant);
+        }
+
+        title.textContent = options.title;
+        message.textContent = options.message;
+        confirmButton.textContent = options.confirmLabel;
+        icon.textContent = options.icon || '!';
+
+        if (options.note) {
+            note.textContent = options.note;
+            note.hidden = false;
+        } else {
+            note.textContent = '';
+            note.hidden = true;
+        }
+
+        modal.hidden = false;
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('maps-modal-open');
+
+        requestAnimationFrame(() => {
+            confirmButton.focus();
+        });
+
+        return false;
     }
 
-    function confirmStatusChange(userName, willActivate) {
+    function closeUserActionModal() {
+        const modal = document.getElementById('user-action-modal');
+
+        if (!modal) {
+            return;
+        }
+
+        modal.hidden = true;
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('maps-modal-open');
+
+        pendingUserActionForm = null;
+
+        if (
+            lastUserActionTrigger
+            && typeof lastUserActionTrigger.focus === 'function'
+        ) {
+            lastUserActionTrigger.focus();
+        }
+
+        lastUserActionTrigger = null;
+    }
+
+    function confirmPasswordReset(event, userName) {
+        return openUserActionModal(event, {
+            title: 'Reset user password?',
+            message:
+                'A new temporary password will be generated for "' +
+                userName +
+                '".',
+            note:
+                'The current password will stop working immediately after the reset.',
+            confirmLabel: 'Reset Password',
+            variant: 'is-purple',
+            icon: '↻',
+        });
+    }
+
+    function confirmStatusChange(event, userName, willActivate) {
         const action = willActivate ? 'activate' : 'deactivate';
 
-        return window.confirm(
-            'Are you sure you want to ' + action +
-            ' the account of "' + userName + '"?'
-        );
+        return openUserActionModal(event, {
+            title: willActivate
+                ? 'Activate this account?'
+                : 'Deactivate this account?',
+            message:
+                'You are about to ' +
+                action +
+                ' the account of "' +
+                userName +
+                '".',
+            note: willActivate
+                ? 'The user will be able to sign in again with their assigned permissions.'
+                : 'The user will not be able to sign in until the account is activated again.',
+            confirmLabel: willActivate ? 'Activate Account' : 'Deactivate',
+            variant: willActivate ? '' : 'is-warning',
+            icon: willActivate ? '✓' : '!',
+        });
     }
 
-    function confirmUserDeletion(userName) {
-        return window.confirm(
-            'Permanently delete the account of "' + userName + '"?\n\n' +
-            'This action cannot be undone.'
-        );
+    function confirmUserDeletion(event, userName) {
+        return openUserActionModal(event, {
+            title: 'Delete this account?',
+            message:
+                'You are about to permanently delete the account of "' +
+                userName +
+                '".',
+            note:
+                'This action cannot be undone. Use Deactivate instead if the account may be needed later.',
+            confirmLabel: 'Delete Account',
+            variant: 'is-danger',
+            icon: '!',
+        });
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('user-action-modal');
+        const cancelButton = document.getElementById(
+            'user-action-modal-cancel'
+        );
+        const closeButton = document.getElementById(
+            'user-action-modal-close'
+        );
+        const confirmButton = document.getElementById(
+            'user-action-modal-confirm'
+        );
+
+        cancelButton?.addEventListener('click', closeUserActionModal);
+        closeButton?.addEventListener('click', closeUserActionModal);
+
+        modal?.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                closeUserActionModal();
+            }
+        });
+
+        confirmButton?.addEventListener('click', function () {
+            if (!pendingUserActionForm) {
+                closeUserActionModal();
+                return;
+            }
+
+            const form = pendingUserActionForm;
+
+            pendingUserActionForm = null;
+            confirmButton.disabled = true;
+            confirmButton.textContent = 'Processing...';
+
+            form.submit();
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (
+                event.key === 'Escape'
+                && modal
+                && !modal.hidden
+            ) {
+                closeUserActionModal();
+            }
+        });
+    });
 
     async function copyTemporaryPassword() {
         const passwordElement = document.getElementById(

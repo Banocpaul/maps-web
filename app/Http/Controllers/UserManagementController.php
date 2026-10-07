@@ -158,13 +158,44 @@ class UserManagementController extends Controller
      */
     public function edit(User $user): View
     {
+        $user->loadMissing('role');
+
         $roles = Role::query()
             ->orderBy('name')
             ->get();
 
+        $isAdministratorAccount =
+            $user->role?->slug === 'administrator';
+
+        $roleChangeAvailableAt = $user->role_changed_at
+            ?->copy()
+            ->addMonthsNoOverflow(3);
+
+        $roleChangeOnCooldown = $roleChangeAvailableAt
+            && now()->lt($roleChangeAvailableAt);
+
+        $canChangeRole = ! $isAdministratorAccount
+            && ! $roleChangeOnCooldown;
+
+        $roleChangeRestrictionMessage = null;
+
+        if ($isAdministratorAccount) {
+            $roleChangeRestrictionMessage =
+                'Administrator accounts have a protected role and cannot change roles.';
+        } elseif ($roleChangeOnCooldown) {
+            $roleChangeRestrictionMessage = sprintf(
+                'This role was changed recently. It can be changed again on %s.',
+                $roleChangeAvailableAt->format('M d, Y')
+            );
+        }
+
         return view('users.edit', [
             'user' => $user,
             'roles' => $roles,
+            'canChangeRole' => $canChangeRole,
+            'roleChangeAvailableAt' => $roleChangeAvailableAt,
+            'roleChangeRestrictionMessage' =>
+                $roleChangeRestrictionMessage,
         ]);
     }
 
@@ -220,8 +251,46 @@ class UserManagementController extends Controller
                 );
         }
 
+        $user->loadMissing('role');
+
+        $roleIsChanging =
+            (int) $validated['role_id'] !== (int) $user->role_id;
+
+        if ($roleIsChanging) {
+            if ($user->role?->slug === 'administrator') {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'role_id' =>
+                            'Administrator accounts have a protected role and cannot change roles.',
+                    ]);
+            }
+
+            $roleChangeAvailableAt = $user->role_changed_at
+                ?->copy()
+                ->addMonthsNoOverflow(3);
+
+            if (
+                $roleChangeAvailableAt
+                && now()->lt($roleChangeAvailableAt)
+            ) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'role_id' => sprintf(
+                            'A user role can only be changed once every 3 months. This role can be changed again on %s.',
+                            $roleChangeAvailableAt->format('M d, Y')
+                        ),
+                    ]);
+            }
+        }
+
         try {
-            DB::transaction(function () use ($validated, $user): void {
+            DB::transaction(function () use (
+                $validated,
+                $user,
+                $roleIsChanging
+            ): void {
                 [$firstName, $lastName] = $this->splitFullName(
                     $validated['name']
                 );
@@ -230,7 +299,12 @@ class UserManagementController extends Controller
                 $user->last_name = $lastName;
                 $user->name = $validated['name'];
                 $user->email = strtolower($validated['email']);
-                $user->role_id = $validated['role_id'];
+
+                if ($roleIsChanging) {
+                    $user->role_id = $validated['role_id'];
+                    $user->role_changed_at = now();
+                }
+
                 $user->is_active = (bool) ($validated['is_active'] ?? false);
 
                 if (! empty($validated['password'])) {

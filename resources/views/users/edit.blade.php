@@ -70,9 +70,9 @@
                 <p>{{ $user->email }}</p>
 
                 <div class="summary-badges">
-                    @if ($user->role)
+                    @if ($assignedRole)
                         <span class="role-badge">
-                            {{ $user->role->name }}
+                            {{ $assignedRole->name }}
                         </span>
                     @else
                         <span class="role-badge role-unassigned">
@@ -499,7 +499,7 @@
                             <dt>Role Change Availability</dt>
 
                             <dd>
-                                @if ($user->role?->slug === 'administrator')
+                                @if ($assignedRole?->slug === 'administrator')
                                     <span class="detail-status protected-role">
                                         Protected
                                     </span>

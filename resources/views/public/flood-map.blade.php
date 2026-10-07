@@ -104,6 +104,62 @@
         .incident-popup {
             min-width: 220px;
         }
+
+        .flood-legend-swatch {
+            display: inline-block;
+            width: 28px;
+            height: 12px;
+            border: 2px solid #ffffff;
+            border-radius: 999px;
+            box-shadow:
+                0 0 0 1px rgba(15, 23, 42, 0.65),
+                0 1px 3px rgba(15, 23, 42, 0.24);
+        }
+
+        .fire-map-div-icon {
+            border: 0 !important;
+            background: transparent !important;
+        }
+
+        .fire-map-marker {
+            display: flex;
+            width: 38px;
+            height: 38px;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid #ffffff;
+            border-radius: 999px;
+            background: #dc2626;
+            color: #ffffff;
+            box-shadow:
+                0 2px 8px rgba(127, 29, 29, 0.48),
+                0 0 0 1px rgba(127, 29, 29, 0.4);
+        }
+
+        .fire-map-marker svg {
+            width: 21px;
+            height: 21px;
+        }
+
+        .fire-legend-marker {
+            display: inline-flex;
+            width: 24px;
+            height: 24px;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            border-radius: 999px;
+            background: #dc2626;
+            color: #ffffff;
+            box-shadow:
+                0 0 0 1px rgba(127, 29, 29, 0.45),
+                0 1px 3px rgba(127, 29, 29, 0.3);
+        }
+
+        .fire-legend-marker svg {
+            width: 14px;
+            height: 14px;
+        }
     </style>
 </head>
 
@@ -152,8 +208,9 @@
             </h1>
 
             <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                Flood lines show active mapped flood extents. Red markers show
-                active fire incidents reported in Mandaluyong. Use the filters
+                Flood lines keep their A–D color coding and use a high-contrast
+                outline for visibility. Red flame markers show active fire
+                incidents reported in Mandaluyong. Use the filters
                 below to view all active incidents, flood only, or fire only.
             </p>
         </section>
@@ -241,7 +298,7 @@
                         @foreach ($levels as $code => $level)
                             <span class="inline-flex items-center gap-2">
                                 <span
-                                    class="h-3 w-7 rounded-full"
+                                    class="flood-legend-swatch"
                                     style="background-color: {{ $level['color'] }}"
                                 ></span>
 
@@ -250,7 +307,14 @@
                         @endforeach
 
                         <span class="inline-flex items-center gap-2">
-                            <span class="h-3 w-3 rounded-full bg-red-600 ring-2 ring-red-200"></span>
+                            <span class="fire-legend-marker" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" role="img">
+                                    <path
+                                        fill="currentColor"
+                                        d="M12 2C8.5 6 9.2 8.6 6.7 11.1A6.9 6.9 0 0 0 5 15.6C5 19.1 8.1 22 12 22s7-2.9 7-6.4c0-3.4-2-6.5-5.6-9.2.1 2.3-.7 4.1-2.1 5.4.2-3.2-.7-6.3.7-9.8Z"
+                                    ></path>
+                                </svg>
+                            </span>
                             Active Fire
                         </span>
                     </div>
@@ -312,6 +376,24 @@
             const floodLayers = [];
             const fireLayers = [];
 
+            const fireIcon = L.divIcon({
+                className: 'fire-map-div-icon',
+                html: `
+                    <div class="fire-map-marker" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path
+                                fill="currentColor"
+                                d="M12 2C8.5 6 9.2 8.6 6.7 11.1A6.9 6.9 0 0 0 5 15.6C5 19.1 8.1 22 12 22s7-2.9 7-6.4c0-3.4-2-6.5-5.6-9.2.1 2.3-.7 4.1-2.1 5.4.2-3.2-.7-6.3.7-9.8Z"
+                            ></path>
+                        </svg>
+                    </div>
+                `,
+                iconSize: [38, 38],
+                iconAnchor: [19, 19],
+                popupAnchor: [0, -21],
+                tooltipAnchor: [0, -18],
+            });
+
             floods.forEach((flood) => {
                 if (
                     !flood.geometry
@@ -336,13 +418,37 @@
                     return;
                 }
 
+                const shadowLine = L.polyline(coordinates, {
+                    color: '#0f172a',
+                    weight: 16,
+                    opacity: 0.32,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                    interactive: false,
+                });
+
+                const casingLine = L.polyline(coordinates, {
+                    color: '#ffffff',
+                    weight: 13,
+                    opacity: 0.96,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                    interactive: false,
+                });
+
                 const line = L.polyline(coordinates, {
                     color: flood.color,
                     weight: 8,
-                    opacity: 0.9,
+                    opacity: 1,
                     lineCap: 'round',
                     lineJoin: 'round',
                 });
+
+                const floodFeature = L.featureGroup([
+                    shadowLine,
+                    casingLine,
+                    line,
+                ]);
 
                 line.bindTooltip(
                     `${escapeHtml(flood.barangay)} — Flood Level ${escapeHtml(flood.level_code)}`,
@@ -391,8 +497,8 @@
                     </div>
                 `);
 
-                line.addTo(floodGroup);
-                floodLayers.push(line);
+                floodFeature.addTo(floodGroup);
+                floodLayers.push(floodFeature);
             });
 
             fires.forEach((fire) => {
@@ -406,14 +512,13 @@
                     return;
                 }
 
-                const marker = L.circleMarker(
+                const marker = L.marker(
                     [latitude, longitude],
                     {
-                        radius: 10,
-                        color: '#991b1b',
-                        weight: 3,
-                        fillColor: '#dc2626',
-                        fillOpacity: 0.92,
+                        icon: fireIcon,
+                        riseOnHover: true,
+                        keyboard: true,
+                        alt: 'Active fire incident',
                     }
                 );
 

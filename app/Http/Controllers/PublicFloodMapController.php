@@ -10,10 +10,10 @@ use Illuminate\View\View;
 class PublicFloodMapController extends Controller
 {
     private const LEVELS = [
-        'A' => ['label' => 'Level A', 'depth' => '0.5 ft', 'color' => '#16a34a'],
-        'B' => ['label' => 'Level B', 'depth' => '1.5 ft', 'color' => '#eab308'],
-        'C' => ['label' => 'Level C', 'depth' => '3.0 ft', 'color' => '#f97316'],
-        'D' => ['label' => 'Level D', 'depth' => '4.0 ft', 'color' => '#dc2626'],
+        'A' => ['label' => 'Level A', 'depth' => '0.5 ft', 'color' => '#39FF14'],
+        'B' => ['label' => 'Level B', 'depth' => '1.5 ft', 'color' => '#FFF200'],
+        'C' => ['label' => 'Level C', 'depth' => '3.0 ft', 'color' => '#FF9500'],
+        'D' => ['label' => 'Level D', 'depth' => '4.0 ft', 'color' => '#FF3B1F'],
     ];
 
     public function index(): View

@@ -125,6 +125,7 @@ class DatabaseBackupController extends Controller
         $validated = $request->validate([
             'current_password' => ['required', 'string'],
             'confirmation' => ['required', 'in:RESTORE-MAPS'],
+            'older_backup_acknowledged' => ['nullable', 'boolean'],
         ]);
 
         if (! Hash::check($validated['current_password'], $request->user()->password)) {
@@ -137,6 +138,23 @@ class DatabaseBackupController extends Controller
             return redirect()
                 ->route('admin.backups.index')
                 ->with('error', 'Only completed and verified backups can be restored.');
+        }
+
+        $newerCompletedBackupExists = DatabaseBackup::query()
+            ->where('status', 'completed')
+            ->where('completed_at', '>', $databaseBackup->completed_at)
+            ->exists();
+
+        if (
+            $newerCompletedBackupExists
+            && ! (bool) ($validated['older_backup_acknowledged'] ?? false)
+        ) {
+            return redirect()
+                ->route('admin.backups.index')
+                ->with(
+                    'error',
+                    'A newer completed backup exists. Confirm that you want to restore this older backup before continuing.'
+                );
         }
 
         $lock = Cache::lock('maps-database-restore', (int) config('backup.timeout_seconds', 600) * 2);

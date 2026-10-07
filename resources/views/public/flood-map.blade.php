@@ -111,9 +111,11 @@
             height: 12px;
             border: 2px solid #ffffff;
             border-radius: 999px;
+            background: var(--flood-color);
             box-shadow:
-                0 0 0 1px rgba(15, 23, 42, 0.65),
-                0 1px 3px rgba(15, 23, 42, 0.24);
+                0 0 0 1px rgba(15, 23, 42, 0.72),
+                0 0 8px var(--flood-color),
+                0 1px 3px rgba(15, 23, 42, 0.28);
         }
 
         .fire-map-div-icon {
@@ -129,11 +131,12 @@
             justify-content: center;
             border: 3px solid #ffffff;
             border-radius: 999px;
-            background: #dc2626;
+            background: #FF3131;
             color: #ffffff;
             box-shadow:
-                0 2px 8px rgba(127, 29, 29, 0.48),
-                0 0 0 1px rgba(127, 29, 29, 0.4);
+                0 0 12px rgba(255, 49, 49, 0.9),
+                0 2px 9px rgba(127, 29, 29, 0.5),
+                0 0 0 1px rgba(127, 29, 29, 0.45);
         }
 
         .fire-map-marker svg {
@@ -149,9 +152,10 @@
             justify-content: center;
             border: 2px solid #ffffff;
             border-radius: 999px;
-            background: #dc2626;
+            background: #FF3131;
             color: #ffffff;
             box-shadow:
+                0 0 7px rgba(255, 49, 49, 0.85),
                 0 0 0 1px rgba(127, 29, 29, 0.45),
                 0 1px 3px rgba(127, 29, 29, 0.3);
         }
@@ -208,8 +212,8 @@
             </h1>
 
             <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                Flood lines keep their A–D color coding and use a high-contrast
-                outline for visibility. Red flame markers show active fire
+                Flood lines keep their A–D color coding with high-visibility
+                neon colors and a contrasting outline. Neon red flame markers show active fire
                 incidents reported in Mandaluyong. Use the filters
                 below to view all active incidents, flood only, or fire only.
             </p>
@@ -299,7 +303,7 @@
                             <span class="inline-flex items-center gap-2">
                                 <span
                                     class="flood-legend-swatch"
-                                    style="background-color: {{ $level['color'] }}"
+                                    style="--flood-color: {{ $level['color'] }}"
                                 ></span>
 
                                 Flood {{ $code }} — {{ $level['depth'] }}
@@ -419,9 +423,18 @@
                 }
 
                 const shadowLine = L.polyline(coordinates, {
-                    color: '#0f172a',
-                    weight: 16,
-                    opacity: 0.32,
+                    color: '#020617',
+                    weight: 20,
+                    opacity: 0.42,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                    interactive: false,
+                });
+
+                const glowLine = L.polyline(coordinates, {
+                    color: flood.color,
+                    weight: 17,
+                    opacity: 0.34,
                     lineCap: 'round',
                     lineJoin: 'round',
                     interactive: false,
@@ -446,6 +459,7 @@
 
                 const floodFeature = L.featureGroup([
                     shadowLine,
+                    glowLine,
                     casingLine,
                     line,
                 ]);
@@ -534,7 +548,7 @@
                                 width:12px;
                                 height:12px;
                                 border-radius:999px;
-                                background:#dc2626;
+                                background:#FF3131;
                                 display:inline-block;
                             "></span>
 

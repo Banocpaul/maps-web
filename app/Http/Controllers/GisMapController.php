@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FireHydrant;
 use App\Models\FireIncident;
+use App\Models\FloodTrainingRecord;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -13,8 +14,12 @@ class GisMapController extends Controller
     /**
      * Display the GIS map page.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
+        if ($request->user()->hasRole('flood-analyst')) {
+            return view('gis.flood');
+        }
+
         $statistics = [
             'hydrants' => FireHydrant::count(),
 
@@ -40,8 +45,12 @@ class GisMapController extends Controller
     /**
      * Return hydrants and ACTIVE fire incidents with valid coordinates.
      */
-    public function data(): JsonResponse
+    public function data(Request $request): JsonResponse
     {
+        if ($request->user()->hasRole('flood-analyst')) {
+            return $this->floodData();
+        }
+
         $hydrants = FireHydrant::query()
             ->with('barangay:id,name')
             ->whereNotNull('latitude')
@@ -115,6 +124,8 @@ class GisMapController extends Controller
     public function nearestHydrants(
         Request $request
     ): JsonResponse {
+        abort_if($request->user()->hasRole('flood-analyst'), 403);
+
         $validated = $request->validate([
             'latitude' => [
                 'required',
@@ -210,6 +221,59 @@ class GisMapController extends Controller
 
             'hydrants' => $hydrants,
         ]);
+    }
+
+    /** Return observed active flood extents, without querying fire records. */
+    private function floodData(): JsonResponse
+    {
+        $records = FloodTrainingRecord::query()
+            ->where('flood_status', 'Active')
+            ->latest('observed_at')
+            ->get();
+
+        $floods = $records->filter(function (FloodTrainingRecord $record): bool {
+            $geometry = $record->geometry_geojson;
+            if (! is_array($geometry) || ($geometry['type'] ?? null) !== 'LineString'
+                || ! is_array($geometry['coordinates'] ?? null) || count($geometry['coordinates']) < 2) {
+                return false;
+            }
+            foreach ($geometry['coordinates'] as $coordinate) {
+                if (! is_array($coordinate) || count($coordinate) !== 2
+                    || ! isset($coordinate[0], $coordinate[1])
+                    || ! is_numeric($coordinate[0]) || ! is_numeric($coordinate[1])
+                    || $coordinate[0] < -180 || $coordinate[0] > 180
+                    || $coordinate[1] < -90 || $coordinate[1] > 90) {
+                    return false;
+                }
+            }
+            return true;
+        })->map(fn (FloodTrainingRecord $record): array => [
+            'id' => $record->id,
+            'barangay' => $record->barangay,
+            'location' => $record->location_name,
+            'observed_at' => $this->formatDateTime($record->observed_at),
+            'level_code' => $record->flood_level_code,
+            'status' => $record->flood_status,
+            'length_m' => round((float) $record->extent_length_m, 1),
+            'geometry' => [
+                'type' => 'LineString',
+                'coordinates' => array_map(
+                    fn (array $point): array => [(float) $point[0], (float) $point[1]],
+                    $record->geometry_geojson['coordinates']
+                ),
+            ],
+        ])->values();
+
+        return response()->json([
+            'floods' => $floods,
+            'statistics' => [
+                'active_floods' => $records->count(),
+                'mapped_floods' => $floods->count(),
+                'unmapped_floods' => $records->count() - $floods->count(),
+                'barangays' => $records->pluck('barangay')->filter()->unique()->count(),
+                'extent_length_m' => round($floods->sum('length_m'), 1),
+            ],
+        ])->header('Cache-Control', 'no-store, private');
     }
 
     /**

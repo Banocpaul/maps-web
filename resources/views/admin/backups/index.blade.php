@@ -187,7 +187,7 @@
         </section>
     </div>
 
-    <dialog id="create-backup-dialog" class="w-full max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
+    <dialog id="create-backup-dialog" class="maps-backup-dialog w-full max-w-md rounded-2xl p-0 shadow-2xl">
         <form method="POST" action="{{ route('admin.backups.store') }}" class="p-6">
             @csrf
             <h2 class="text-lg font-bold text-slate-950">Create encrypted backup</h2>
@@ -204,7 +204,7 @@
     @foreach ($backups as $backup)
         @if ($backup->isCompleted())
             @foreach (['verify' => 'Verify backup integrity', 'download' => 'Download encrypted backup'] as $action => $title)
-                <dialog id="{{ $action }}-{{ $backup->uuid }}" class="w-full max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
+                <dialog id="{{ $action }}-{{ $backup->uuid }}" class="maps-backup-dialog w-full max-w-md rounded-2xl p-0 shadow-2xl">
                     <form method="POST" action="{{ route('admin.backups.'.$action, $backup) }}" class="p-6">
                         @csrf
                         <h2 class="text-lg font-bold text-slate-950">{{ $title }}</h2>
@@ -220,7 +220,7 @@
             @endforeach
 
             @if ($backup->verified_at)
-                <dialog id="restore-{{ $backup->uuid }}" class="w-full max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
+                <dialog id="restore-{{ $backup->uuid }}" class="maps-backup-dialog w-full max-w-md rounded-2xl p-0 shadow-2xl">
                     <form method="POST" action="{{ route('admin.backups.restore', $backup) }}" class="p-6">
                         @csrf
                         <h2 class="text-lg font-bold text-amber-900">Restore this database backup?</h2>
@@ -241,7 +241,7 @@
             @endif
         @endif
 
-        <dialog id="delete-{{ $backup->uuid }}" class="w-full max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-slate-950/60">
+        <dialog id="delete-{{ $backup->uuid }}" class="maps-backup-dialog w-full max-w-md rounded-2xl p-0 shadow-2xl">
             <form method="POST" action="{{ route('admin.backups.destroy', $backup) }}" class="p-6">
                 @csrf
                 @method('DELETE')
@@ -259,6 +259,57 @@
         </dialog>
     @endforeach
 @endsection
+
+@push('styles')
+    <style>
+        .maps-backup-dialog {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: auto !important;
+            width: min(calc(100vw - 2rem), 28rem) !important;
+            max-width: 28rem !important;
+            max-height: calc(100dvh - 2rem);
+            margin: 0 !important;
+            overflow-y: auto;
+            transform: translate(-50%, -50%) !important;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        }
+
+        .maps-backup-dialog::backdrop {
+            background: rgba(2, 6, 23, 0.58);
+            backdrop-filter: blur(3px);
+        }
+
+        .maps-backup-dialog[open] {
+            animation: backupDialogIn 150ms ease-out;
+        }
+
+        @keyframes backupDialogIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, calc(-50% + 8px)) scale(0.985);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .maps-backup-dialog {
+                width: calc(100vw - 1.5rem) !important;
+                max-height: calc(100dvh - 1.5rem);
+            }
+        }
+    </style>
+@endpush
 
 @push('scripts')
     <script>

@@ -40,7 +40,7 @@
             href="{{ route('public.portal') }}"
             class="text-sm font-bold text-blue-600 transition hover:text-blue-800"
         >
-            â† Back to Public Portal
+            ← Back to Public Portal
         </a>
 
         <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -178,7 +178,7 @@
 
 <footer class="mt-10 border-t border-slate-200 bg-white">
     <div class="mx-auto max-w-6xl px-4 py-6 text-center text-sm text-slate-500 sm:px-6 lg:px-8">
-        Mandaluyong Flood & Fire â€” Public Disaster Information Portal
+        Mandaluyong Flood & Fire — Public Disaster Information Portal
     </div>
 </footer>
 </body>

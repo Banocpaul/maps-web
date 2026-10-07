@@ -401,7 +401,7 @@
                                     <td>{{ $incident->incident_number }}</td>
 
                                     <td>
-                                        {{ $incident->reported_at?->format('M j, Y g:i A') ?? 'Not recorded' }}
+                                        {{ $incident->reported_at?->copy()->timezone('Asia/Manila')->format('M j, Y g:i A') ?? 'Not recorded' }}
                                     </td>
 
                                     <td>{{ $incident->barangay?->name ?? 'Unknown' }}</td>

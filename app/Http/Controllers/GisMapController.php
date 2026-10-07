@@ -298,12 +298,9 @@ class GisMapController extends Controller
         }
 
         if ($value instanceof \DateTimeInterface) {
-            return $value->format('Y-m-d H:i:s');
+            return \Carbon\CarbonImmutable::instance($value)->timezone('Asia/Manila')->toIso8601String();
         }
 
-        return date(
-            'Y-m-d H:i:s',
-            strtotime((string) $value)
-        );
+        return \Carbon\CarbonImmutable::parse((string) $value, 'UTC')->timezone('Asia/Manila')->toIso8601String();
     }
 }

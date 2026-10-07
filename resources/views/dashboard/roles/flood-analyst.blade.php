@@ -7,7 +7,7 @@
 
     $temperature = data_get($liveWeather, 'avg_temp_mean_c');
     $humidity = data_get($liveWeather, 'avg_rh_pct');
-    $rainfall24h = data_get($liveWeather, 'avg_rainfall_24h_mm');
+    $rainfall24h = data_get($liveWeather, 'rainfall_24h_mm');
     $rainfall3d = data_get($liveWeather, 'rainfall_3d_mm');
 @endphp
 
@@ -181,7 +181,7 @@
 
             {{-- GIS --}}
             <a
-                href="{{ route('gis.index') }}"
+                href="{{ route('public.flood-map', ['filter' => 'flood']) }}"
                 class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
                 Flood GIS Map
@@ -249,14 +249,6 @@
 
                     <th class="px-5 py-3">
                         Flood Code
-                    </th>
-
-                    <th class="px-5 py-3">
-                        Depth
-                    </th>
-
-                    <th class="px-5 py-3">
-                        Duration
                     </th>
 
                     <th class="px-5 py-3">
@@ -368,56 +360,6 @@
                         </td>
 
 
-                        {{-- Flood Depth --}}
-                        <td
-                            class="whitespace-nowrap px-5 py-3 text-slate-600"
-                        >
-
-                            @if (
-                                isset($record->flood_depth_mm) &&
-                                $record->flood_depth_mm !== null
-                            )
-
-                                {{ number_format(
-                                    (float) $record->flood_depth_mm,
-                                    1
-                                ) }}
-                                mm
-
-                            @else
-
-                                N/A
-
-                            @endif
-
-                        </td>
-
-
-                        {{-- Duration --}}
-                        <td
-                            class="whitespace-nowrap px-5 py-3 text-slate-600"
-                        >
-
-                            @if (
-                                isset($record->duration_hours) &&
-                                $record->duration_hours !== null
-                            )
-
-                                {{ number_format(
-                                    (float) $record->duration_hours,
-                                    1
-                                ) }}
-                                hrs
-
-                            @else
-
-                                N/A
-
-                            @endif
-
-                        </td>
-
-
                         {{-- Rainfall --}}
                         <td
                             class="whitespace-nowrap px-5 py-3 text-slate-600"
@@ -449,7 +391,7 @@
                     <tr>
 
                         <td
-                            colspan="7"
+                            colspan="5"
                             class="px-5 py-10 text-center text-slate-500"
                         >
                             No flood records match the selected filters.

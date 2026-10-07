@@ -275,7 +275,7 @@
                     <div class="flex flex-wrap gap-2" aria-label="Map filters">
                         <button
                             type="button"
-                            data-map-filter="all"
+                            data-map-filter="all" aria-pressed="true"
                             class="map-filter rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white"
                         >
                             All Active
@@ -283,7 +283,7 @@
 
                         <button
                             type="button"
-                            data-map-filter="flood"
+                            data-map-filter="flood" aria-pressed="false"
                             class="map-filter rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-700 transition hover:bg-blue-50"
                         >
                             Flood
@@ -291,7 +291,7 @@
 
                         <button
                             type="button"
-                            data-map-filter="fire"
+                            data-map-filter="fire" aria-pressed="false"
                             class="map-filter rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
                         >
                             Fire
@@ -532,9 +532,14 @@
                         icon: fireIcon,
                         riseOnHover: true,
                         keyboard: true,
-                        alt: 'Active fire incident',
+                        title: `Active fire incident ${fire.incident_number || ''} in ${fire.barangay || 'Mandaluyong'}`,
+                        alt: `Active fire incident in ${fire.barangay || 'Mandaluyong'}`,
                     }
                 );
+
+                marker.on('add', function () {
+                    this.getElement()?.setAttribute('aria-label', this.options.title);
+                });
 
                 marker.bindTooltip(
                     `${escapeHtml(fire.barangay)} — Active Fire`,
@@ -677,6 +682,7 @@
                     const isActive =
                         button.dataset.mapFilter === filter;
 
+                    button.setAttribute('aria-pressed', String(isActive));
                     button.classList.toggle(
                         'bg-slate-900',
                         isActive
@@ -700,6 +706,9 @@
                     setFilter(button.dataset.mapFilter || 'all');
                 });
             });
+
+            const requestedFilter = new URLSearchParams(window.location.search).get('filter');
+            setFilter(['all', 'flood', 'fire'].includes(requestedFilter) ? requestedFilter : 'all');
 
             requestAnimationFrame(() => {
                 updateStatus();

@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -114,6 +115,10 @@ if (!$role || !$role->is_active) {
      */
     public function logout(Request $request): RedirectResponse
     {
+        if ($request->user() && Schema::hasColumn('users', 'last_seen_at')) {
+            $request->user()->forceFill(['last_seen_at' => null])->save();
+        }
+
         Auth::logout();
 
         $request->session()->invalidate();

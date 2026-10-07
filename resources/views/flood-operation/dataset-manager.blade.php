@@ -131,6 +131,8 @@
     class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/70 p-4"
     role="dialog"
     aria-modal="true"
+    aria-labelledby="dataset-modal-title"
+    tabindex="-1"
 >
     <div class="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
@@ -147,6 +149,7 @@
             <button
                 id="dataset-close-button"
                 type="button"
+                aria-label="Close flood record dialog"
                 class="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
             >
                 ✕
@@ -290,6 +293,28 @@ document.addEventListener('DOMContentLoaded', function () {
     let searchTimer = null;
     let floodMap = null;
     let drawnItems = null;
+    let modalTrigger = null;
+
+    modal.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeModal();
+        }
+        if (event.key !== 'Tab') return;
+        const controls = [...modal.querySelectorAll('button, input, select, textarea, a[href], [tabindex]')]
+            .filter(element => !element.disabled && element.tabIndex >= 0 && element.getClientRects().length > 0);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (!first) {
+            event.preventDefault();
+            modal.focus();
+        } else if (event.shiftKey && (document.activeElement === first || document.activeElement === modal)) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === modal)) {
+            event.preventDefault();
+            first.focus();
+        }
+    });
 
     loadDataset();
 
@@ -454,6 +479,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function openCreateModal() {
+        modalTrigger = document.activeElement;
         form.reset();
         document.getElementById('dataset-record-id').value = '';
         document.getElementById('dataset-modal-title').textContent = 'Add Flood Record';
@@ -467,6 +493,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function editRecord(id) {
+        // Capture before the asynchronous fetch can change focus.
+        modalTrigger = document.activeElement;
         try {
             const response = await fetch(endpoint + '/' + id, {
                 headers: {
@@ -588,6 +616,8 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.classList.add('flex');
         document.body.classList.add('overflow-hidden');
         initializeFloodMap();
+        form.querySelector('select')?.focus();
+        if (!modal.contains(document.activeElement)) modal.focus();
         setTimeout(() => floodMap.invalidateSize(), 100);
     }
 
@@ -595,6 +625,8 @@ document.addEventListener('DOMContentLoaded', function () {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
         document.body.classList.remove('overflow-hidden');
+        if (modalTrigger?.isConnected) modalTrigger.focus();
+        else document.getElementById('dataset-refresh-button').focus();
     }
 
     function initializeFloodMap() {

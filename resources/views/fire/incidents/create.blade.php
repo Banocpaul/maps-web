@@ -681,7 +681,7 @@
                                 type="datetime-local"
                                 value="{{ old(
                                     'reported_at',
-                                    now()->format('Y-m-d\TH:i')
+                                    now('Asia/Manila')->format('Y-m-d\TH:i')
                                 ) }}"
                                 required
                             >

@@ -90,6 +90,34 @@ class PublicIncidentReportingTest extends TestCase
         $this->assertCount(1, Storage::disk('local')->allFiles('incident-report-photos'));
     }
 
+    public function test_photo_stays_on_its_original_private_disk_after_configuration_changes(): void
+    {
+        Storage::fake('report-archive');
+        config(['filesystems.incident_report_disk' => 'report-archive']);
+        $this->post(route('public.incident-reports.store'), $this->submission() + ['photo' => $this->photo()])
+            ->assertRedirect()->assertSessionHas('report_reference');
+        $report = PublicIncidentReport::sole();
+        $this->assertSame('report-archive', $report->photo_disk);
+        Storage::disk('report-archive')->assertExists($report->photo_path);
+        $this->assertSame('private', Storage::disk('report-archive')->getVisibility($report->photo_path));
+        Storage::disk('local')->assertMissing($report->photo_path);
+
+        config(['filesystems.incident_report_disk' => 'local']);
+        $this->get(route('public-submissions.photo', $report))->assertRedirect(route('login'));
+        $this->actingAs($this->operator())->get(route('public-submissions.photo', $report))
+            ->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $this->get(route('public-submissions.show', $report))->assertSee('Open the photo');
+    }
+
+    public function test_missing_legacy_photo_has_a_visible_explanation_without_a_broken_image(): void
+    {
+        $report = $this->report();
+        $report->forceFill(['photo_path' => 'incident-report-photos/missing.png'])->save();
+        $this->actingAs($this->operator())->get(route('public-submissions.show', $report))
+            ->assertOk()->assertSee('The attached photo is currently unavailable.')
+            ->assertDontSee('alt="Public photo', false);
+    }
+
     public function test_invalid_and_oversized_photos_are_rejected_without_saving_a_report(): void
     {
         foreach ([

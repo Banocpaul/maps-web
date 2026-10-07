@@ -17,6 +17,9 @@ return [
 
     'advisory_disk' => env('ADVISORY_FILESYSTEM_DISK', 'public'),
 
+    // Use a private persistent disk (for example s3) on ephemeral hosts.
+    'incident_report_disk' => env('INCIDENT_REPORT_FILESYSTEM_DISK', 'local'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -34,7 +37,7 @@ return [
 
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app/private'),
+            'root' => env('PRIVATE_FILESYSTEM_ROOT', storage_path('app/private')),
             'serve' => true,
             'throw' => false,
             'report' => false,

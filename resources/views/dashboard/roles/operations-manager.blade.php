@@ -4,7 +4,7 @@
     $activeIncidents = collect($fireOperations['recent_active'] ?? []);
     $recentFloods = collect($floodDashboard['recent_records'] ?? []);
     $selectedAnalytics = $selectedAnalytics ?? 'fire';
-    $rainfall24h = data_get($liveWeather, 'avg_rainfall_24h_mm');
+    $rainfall24h = data_get($liveWeather, 'rainfall_24h_mm');
     $temperature = data_get($liveWeather, 'avg_temp_mean_c');
     $humidity = data_get($liveWeather, 'avg_rh_pct');
 @endphp
@@ -58,7 +58,7 @@
                 <article class="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm"><p class="text-sm font-medium text-sky-700">Flood Records</p><p class="mt-2 text-3xl font-bold text-sky-800">{{ number_format($floodKpis['total_records'] ?? 0) }}</p><p class="mt-2 text-xs text-sky-700">Matches the selected filters</p></article>
                 <article class="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm"><p class="text-sm font-medium text-red-700">High-Risk Flood Records</p><p class="mt-2 text-3xl font-bold text-red-700">{{ number_format($floodKpis['high_risk_records'] ?? 0) }}</p><p class="mt-2 text-xs text-red-600">Priority analytical observations</p></article>
                 <article class="rounded-2xl border border-cyan-200 bg-white p-5 shadow-sm"><p class="text-sm font-medium text-slate-500">Rainfall — 24 Hours</p><p class="mt-2 text-3xl font-bold text-cyan-700">{{ $rainfall24h !== null ? number_format((float) $rainfall24h, 1).' mm' : 'N/A' }}</p><p class="mt-2 text-xs text-slate-500">Current citywide weather</p></article>
-                <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-sm font-medium text-slate-500">Average Flood Depth</p><p class="mt-2 text-3xl font-bold text-slate-950">{{ $floodKpis['average_flood_depth_label'] ?? 'N/A' }}</p><p class="mt-2 text-xs text-slate-500">Temperature: {{ $temperature !== null ? number_format((float) $temperature, 1).'°C' : 'N/A' }} · Humidity: {{ $humidity !== null ? number_format((float) $humidity, 1).'%' : 'N/A' }}</p></article>
+                <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-sm font-medium text-slate-500">Temperature</p><p class="mt-2 text-3xl font-bold text-slate-950">{{ $temperature !== null ? number_format((float) $temperature, 1).'°C' : 'N/A' }}</p><p class="mt-2 text-xs text-slate-500">Temperature: {{ $temperature !== null ? number_format((float) $temperature, 1).'°C' : 'N/A' }} · Humidity: {{ $humidity !== null ? number_format((float) $humidity, 1).'%' : 'N/A' }}</p></article>
             </section>
 
             <section class="mt-6 rounded-2xl border border-sky-200 bg-white p-5 shadow-sm">
@@ -70,10 +70,10 @@
                     @forelse ($recentFloods->take(6) as $record)
                         @php
                             $recordBarangay = data_get($record, 'barangay', 'Unknown barangay');
-                            $recordDepth = (float) data_get($record, 'flood_depth_mm', 0);
+                            $recordCode = data_get($record, 'flood_code', 'N/A');
                             $recordRisk = data_get($record, 'risk_level', 'Unknown');
                         @endphp
-                        <div class="flex items-center justify-between gap-4 px-3 py-3"><div class="min-w-0"><p class="truncate font-semibold text-slate-900">{{ $recordBarangay }}</p><p class="mt-1 text-sm text-slate-500">{{ number_format($recordDepth, 1) }} mm recorded depth</p></div><span @class(['flex-none rounded-full px-2.5 py-1 text-xs font-semibold','bg-red-100 text-red-800' => $recordRisk === 'High','bg-amber-100 text-amber-800' => $recordRisk === 'Medium','bg-emerald-100 text-emerald-800' => $recordRisk === 'Low','bg-slate-100 text-slate-700' => !in_array($recordRisk, ['High', 'Medium', 'Low'], true),])>{{ $recordRisk }}</span></div>
+                        <div class="flex items-center justify-between gap-4 px-3 py-3"><div class="min-w-0"><p class="truncate font-semibold text-slate-900">{{ $recordBarangay }}</p><p class="mt-1 text-sm text-slate-500">Flood code {{ $recordCode }}</p></div><span @class(['flex-none rounded-full px-2.5 py-1 text-xs font-semibold','bg-red-100 text-red-800' => $recordRisk === 'High','bg-amber-100 text-amber-800' => $recordRisk === 'Medium','bg-emerald-100 text-emerald-800' => $recordRisk === 'Low','bg-slate-100 text-slate-700' => !in_array($recordRisk, ['High', 'Medium', 'Low'], true),])>{{ $recordRisk }}</span></div>
                     @empty
                         <p class="px-3 py-8 text-center text-sm text-slate-500">No flood records match the selected filters.</p>
                     @endforelse

@@ -52,18 +52,27 @@ class IncidentReportReviewController extends Controller
         $canReject = $request->user()->hasPermission('public-submissions.reject');
         $canPublish = $request->user()->hasPermission('public-submissions.approve')
             && $request->user()->hasPermission($publicReport->incident_type.'.create');
+        $photoAvailable = false;
+        if ($publicReport->photo_path) {
+            try {
+                $photoAvailable = Storage::disk($publicReport->photo_disk ?: 'local')->exists($publicReport->photo_path);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
 
         return view('incident-reports.show', compact(
-            'publicReport', 'barangays', 'boundaries', 'canReview', 'canReject', 'canPublish'
+            'publicReport', 'barangays', 'boundaries', 'canReview', 'canReject', 'canPublish', 'photoAvailable'
         ));
     }
 
     public function photo(Request $request, PublicIncidentReport $publicReport, IncidentReportWorkflow $workflow): StreamedResponse
     {
         $workflow->authorize($request->user(), $publicReport->incident_type);
-        abort_unless($publicReport->photo_path && Storage::disk('local')->exists($publicReport->photo_path), 404);
+        $disk = Storage::disk($publicReport->photo_disk ?: 'local');
+        abort_unless($publicReport->photo_path && $disk->exists($publicReport->photo_path), 404);
 
-        return Storage::disk('local')->response($publicReport->photo_path, null, [
+        return $disk->response($publicReport->photo_path, null, [
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
         ], 'inline');

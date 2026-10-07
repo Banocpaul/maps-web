@@ -26,7 +26,11 @@ class DashboardRoleAnalyticsTest extends TestCase
             ->assertSee('floodMonthlyChart', false)
             ->assertSee('floodRiskChart', false)
             ->assertSee('floodBarangayChart', false)
-            ->assertSee('floodDepthRainChart', false);
+            ->assertSee('floodRainfallChart', false)
+            ->assertDontSee('Average Flood Depth')
+            ->assertDontSee('Monthly Depth and Rainfall')
+            ->assertDontSee('Average Flood Depth (mm)')
+            ->assertSee('7.5 mm');
     }
 
     public function test_fire_responder_dashboard_shows_only_fire_analytics(): void
@@ -46,7 +50,11 @@ class DashboardRoleAnalyticsTest extends TestCase
 
         $response
             ->assertSee('Flood Risk Intelligence')
-            ->assertSee('floodDepthRainChart', false)
+            ->assertSee('floodRainfallChart', false)
+            ->assertSee(route('public.flood-map', ['filter' => 'flood']), false)
+            ->assertDontSee('Average Flood Depth (mm)')
+            ->assertDontSee('Duration')
+            ->assertSee('7.5 mm')
             ->assertDontSee('Fire Incident Intelligence')
             ->assertDontSee('fireMonthlyChart', false);
     }
@@ -75,7 +83,7 @@ class DashboardRoleAnalyticsTest extends TestCase
             'fireOperations' => ['recent_active' => collect()],
             'floodDashboard' => $this->floodDashboard(),
             'operationsSummary' => [],
-            'liveWeather' => null,
+            'liveWeather' => ['rainfall_24h_mm' => 7.5],
             'liveWeatherError' => null,
             'barangays' => collect(),
             'availableYears' => [],

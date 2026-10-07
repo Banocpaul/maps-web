@@ -29,10 +29,14 @@
 
 @if($publicReport->photo_path)
 <div class="report-panel"><h2>Photo attached by the public</h2>
+    @if($photoAvailable)
     <a href="{{ route('public-submissions.photo', $publicReport) }}" target="_blank" rel="noopener">
         <img src="{{ route('public-submissions.photo', $publicReport) }}" alt="Public photo for {{ $publicReport->reference }}" style="display:block;max-width:100%;max-height:440px;object-fit:contain;border-radius:12px" loading="lazy">
     </a>
     <p class="report-muted mt-3">Open the photo to view it at full size. Verify it alongside the report location and your field checks.</p>
+    @else
+    <p class="report-muted" role="status">The attached photo is currently unavailable. Ask your administrator to check the report photo storage or restore the original file from a backup.</p>
+    @endif
 </div>
 @endif
 

@@ -358,7 +358,7 @@
                                     </span>
 
                                     <small class="date-detail">
-                                        {{ $user->approved_at->format(
+                                        {{ $user->approved_at->copy()->timezone('Asia/Manila')->format(
                                             'M d, Y'
                                         ) }}
                                     </small>
@@ -372,13 +372,13 @@
                             <td>
                                 @if ($user->last_login_at)
                                     <strong class="last-login-date">
-                                        {{ $user->last_login_at->format(
+                                        {{ $user->last_login_at->copy()->timezone('Asia/Manila')->format(
                                             'M d, Y'
                                         ) }}
                                     </strong>
 
                                     <small class="date-detail">
-                                        {{ $user->last_login_at->format(
+                                        {{ $user->last_login_at->copy()->timezone('Asia/Manila')->format(
                                             'h:i A'
                                         ) }}
                                     </small>
@@ -606,7 +606,7 @@
                             <dt>Last Login</dt>
                             <dd>
                                 {{ $user->last_login_at
-                                    ? $user->last_login_at->format(
+                                    ? $user->last_login_at->copy()->timezone('Asia/Manila')->format(
                                         'M d, Y h:i A'
                                     )
                                     : 'Never logged in'

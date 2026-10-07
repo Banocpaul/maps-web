@@ -278,6 +278,12 @@
         <header class="forecast-header">
             <h1>7-Day Weather Forecast</h1>
             <p>Select a day to view its forecast details.</p>
+            @if ($weatherFetchedAt ?? null)
+                <p>Weather snapshot updated {{ \Carbon\CarbonImmutable::parse($weatherFetchedAt)->timezone('Asia/Manila')->format('M d, Y g:i A') }} (Manila time).</p>
+            @endif
+            @if ($weatherIsStale ?? false)
+                <p role="status">Showing an older weather snapshot while the latest data is unavailable.</p>
+            @endif
         </header>
 
         @if ($weatherError)
@@ -298,6 +304,7 @@
                     <button
                         type="button"
                         class="day-card {{ $index === 0 ? 'active' : '' }}"
+                        aria-pressed="{{ $index === 0 ? 'true' : 'false' }}"
                         data-index="{{ $index }}"
                         data-date="{{ $date->format('l, F j, Y') }}"
                         data-condition="{{ $day['condition'] }}"
@@ -417,8 +424,12 @@
 
         cards.forEach((card) => {
             card.addEventListener('click', function () {
-                cards.forEach((item) => item.classList.remove('active'));
+                cards.forEach((item) => {
+                    item.classList.remove('active');
+                    item.setAttribute('aria-pressed', 'false');
+                });
                 this.classList.add('active');
+                this.setAttribute('aria-pressed', 'true');
 
                 setText('detailDate', this.dataset.date);
                 setText(

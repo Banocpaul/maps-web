@@ -40,8 +40,9 @@ class PublicIncidentReportController extends Controller
         }
 
         $storedPhoto = null;
+        $photoDisk = config('filesystems.incident_report_disk', 'local');
         try {
-            $report = DB::transaction(function () use ($validated, $request, &$storedPhoto): PublicIncidentReport {
+            $report = DB::transaction(function () use ($validated, $request, $photoDisk, &$storedPhoto): PublicIncidentReport {
                 $report = PublicIncidentReport::firstOrCreate(
                     ['submission_token' => $validated['submission_token']],
                     [
@@ -53,13 +54,13 @@ class PublicIncidentReportController extends Controller
                 );
                 if ($report->wasRecentlyCreated) {
                     if ($request->hasFile('photo')) {
-                        $storedPhoto = $request->file('photo')->store('incident-report-photos', 'local');
+                        $storedPhoto = $request->file('photo')->store('incident-report-photos', ['disk' => $photoDisk, 'visibility' => 'private']);
                         if (! is_string($storedPhoto) || $storedPhoto === '') {
                             throw ValidationException::withMessages([
                                 'photo' => 'Your photo could not be saved. Please try again or submit without a photo.',
                             ]);
                         }
-                        $report->forceFill(['photo_path' => $storedPhoto])->save();
+                        $report->forceFill(['photo_path' => $storedPhoto, 'photo_disk' => $photoDisk])->save();
                     }
                     $report->events()->create(['to_status' => 'Pending', 'notes' => 'Submitted by the public.']);
                 }
@@ -68,7 +69,7 @@ class PublicIncidentReportController extends Controller
             });
         } catch (Throwable $exception) {
             if (is_string($storedPhoto) && $storedPhoto !== '') {
-                Storage::disk('local')->delete($storedPhoto);
+                Storage::disk($photoDisk)->delete($storedPhoto);
             }
             throw $exception;
         }

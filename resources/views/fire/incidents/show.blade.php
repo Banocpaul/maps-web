@@ -340,21 +340,21 @@
                 <div class="incident-detail">
                     <span>Reported At</span>
                     <strong>
-                        {{ $fireIncident->reported_at?->format('F j, Y g:i A') ?? 'Not recorded' }}
+                        {{ $fireIncident->reported_at?->copy()->timezone('Asia/Manila')->format('F j, Y g:i A') ?? 'Not recorded' }}
                     </strong>
                 </div>
 
                 <div class="incident-detail">
                     <span>Responded At</span>
                     <strong>
-                        {{ $fireIncident->responded_at?->format('F j, Y g:i A') ?? 'Not recorded' }}
+                        {{ $fireIncident->responded_at?->copy()->timezone('Asia/Manila')->format('F j, Y g:i A') ?? 'Not recorded' }}
                     </strong>
                 </div>
 
                 <div class="incident-detail">
                     <span>Resolved At</span>
                     <strong>
-                        {{ $fireIncident->resolved_at?->format('F j, Y g:i A') ?? 'Not recorded' }}
+                        {{ $fireIncident->resolved_at?->copy()->timezone('Asia/Manila')->format('F j, Y g:i A') ?? 'Not recorded' }}
                     </strong>
                 </div>
 

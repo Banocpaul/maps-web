@@ -1059,8 +1059,13 @@ barangayLayer.addData(geojson);
                             [latitude, longitude],
                             {
                                 icon: createMarkerIcon('hydrant'),
+                                title: `Fire hydrant ${hydrant.code || hydrant.id} in ${hydrant.barangay || 'Mandaluyong'}`,
+                                alt: 'Fire hydrant',
                             }
                         )
+                            .on('add', function () {
+                                this.getElement()?.setAttribute('aria-label', this.options.title);
+                            })
                             .bindPopup(createHydrantPopup(hydrant))
                             .addTo(hydrantLayer);
 
@@ -1087,8 +1092,13 @@ barangayLayer.addData(geojson);
                             [latitude, longitude],
                             {
                                 icon: createMarkerIcon('incident'),
+                                title: `Fire incident ${incident.incident_number || incident.id} in ${incident.barangay || 'Mandaluyong'}`,
+                                alt: 'Fire incident',
                             }
                         )
+                            .on('add', function () {
+                                this.getElement()?.setAttribute('aria-label', this.options.title);
+                            })
                             .bindPopup(createIncidentPopup(incident))
                             .addTo(incidentLayer);
 

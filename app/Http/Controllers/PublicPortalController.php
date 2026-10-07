@@ -46,10 +46,14 @@ class PublicPortalController extends Controller
     {
         $forecast = [];
         $weatherError = null;
+        $weatherFetchedAt = null;
+        $weatherIsStale = false;
 
         try {
             $dailyForecast =
                 $this->liveWeatherService->getSevenDayForecast();
+            $weatherFetchedAt = $dailyForecast['weather_fetched_at'] ?? null;
+            $weatherIsStale = (bool) ($dailyForecast['weather_is_stale'] ?? false);
 
             $days = $dailyForecast['days'] ?? [];
 
@@ -135,6 +139,8 @@ class PublicPortalController extends Controller
         return view('public.weather', [
             'forecast' => $forecast,
             'weatherError' => $weatherError,
+            'weatherFetchedAt' => $weatherFetchedAt,
+            'weatherIsStale' => $weatherIsStale,
         ]);
     }
 

@@ -151,13 +151,7 @@ class FireIncidentController extends Controller
 
         $reportData = $request->validate(['public_report_id' => ['nullable', 'integer', 'min:1']]);
         $reportId = $reportData['public_report_id'] ?? null;
-        if ($reportId) {
-            foreach (['reported_at', 'responded_at', 'resolved_at'] as $field) {
-                if (! empty($validated[$field])) {
-                    $validated[$field] = \Carbon\Carbon::parse($validated[$field], 'Asia/Manila')->utc()->toDateTimeString();
-                }
-            }
-        }
+        $validated = $this->normalizeIncidentTimes($validated);
 
         $fireIncident = DB::transaction(
             function () use ($validated, $reportId, $reportWorkflow, $request): FireIncident {
@@ -262,7 +256,7 @@ class FireIncidentController extends Controller
             $this->validationMessages()
         );
 
-        $fireIncident->update($validated);
+        $fireIncident->update($this->normalizeIncidentTimes($validated));
 
         return redirect()
             ->route(
@@ -298,6 +292,19 @@ class FireIncidentController extends Controller
     /**
      * Prevent resolved incidents from being changed or deleted.
      */
+    private function normalizeIncidentTimes(array $validated): array
+    {
+        // datetime-local fields contain Manila wall time; the database stores UTC.
+        foreach (['reported_at', 'responded_at', 'resolved_at'] as $field) {
+            if (! empty($validated[$field])) {
+                $validated[$field] = \Carbon\Carbon::parse($validated[$field], 'Asia/Manila')
+                    ->utc()->toDateTimeString();
+            }
+        }
+
+        return $validated;
+    }
+
     private function ensureIncidentIsEditable(
         FireIncident $fireIncident
     ): void {

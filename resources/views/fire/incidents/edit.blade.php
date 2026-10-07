@@ -362,7 +362,7 @@
                                 id="reported_at"
                                 name="reported_at"
                                 type="datetime-local"
-                                value="{{ old('reported_at', optional($fireIncident->reported_at)->format('Y-m-d\TH:i')) }}"
+                                value="{{ old('reported_at', $fireIncident->reported_at?->copy()->timezone('Asia/Manila')->format('Y-m-d\TH:i')) }}"
                                 required
                             >
 
@@ -378,7 +378,7 @@
                                 id="responded_at"
                                 name="responded_at"
                                 type="datetime-local"
-                                value="{{ old('responded_at', optional($fireIncident->responded_at)->format('Y-m-d\TH:i')) }}"
+                                value="{{ old('responded_at', $fireIncident->responded_at?->copy()->timezone('Asia/Manila')->format('Y-m-d\TH:i')) }}"
                             >
 
                             @error('responded_at')
@@ -393,7 +393,7 @@
                                 id="resolved_at"
                                 name="resolved_at"
                                 type="datetime-local"
-                                value="{{ old('resolved_at', optional($fireIncident->resolved_at)->format('Y-m-d\TH:i')) }}"
+                                value="{{ old('resolved_at', $fireIncident->resolved_at?->copy()->timezone('Asia/Manila')->format('Y-m-d\TH:i')) }}"
                             >
 
                             @error('resolved_at')

@@ -93,11 +93,11 @@
                     @csrf
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
+                        <label for="sms-full_name" class="mb-1 block text-sm font-medium text-slate-700">
                             Full Name
                         </label>
 
-                        <input
+                        <input id="sms-full_name"
                             type="text"
                             name="full_name"
                             value="{{ old('full_name') }}"
@@ -107,11 +107,11 @@
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
+                        <label for="sms-phone_number" class="mb-1 block text-sm font-medium text-slate-700">
                             Phone Number
                         </label>
 
-                        <input
+                        <input id="sms-phone_number"
                             type="text"
                             name="phone_number"
                             value="{{ old('phone_number') }}"
@@ -123,11 +123,11 @@
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
+                            <label for="sms-position" class="mb-1 block text-sm font-medium text-slate-700">
                                 Position
                             </label>
 
-                            <input
+                            <input id="sms-position"
                                 type="text"
                                 name="position"
                                 value="{{ old('position') }}"
@@ -136,11 +136,11 @@
                         </div>
 
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-slate-700">
+                            <label for="sms-office_or_barangay" class="mb-1 block text-sm font-medium text-slate-700">
                                 Office or Barangay
                             </label>
 
-                            <input
+                            <input id="sms-office_or_barangay"
                                 type="text"
                                 name="office_or_barangay"
                                 value="{{ old('office_or_barangay') }}"
@@ -150,11 +150,11 @@
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
+                        <label for="sms-barangay_id" class="mb-1 block text-sm font-medium text-slate-700">
                             Assigned Barangay for Automatic Alerts
                         </label>
 
-                        <select
+                        <select id="sms-barangay_id"
                             name="barangay_id"
                             class="w-full rounded-lg border border-slate-300 px-3 py-2"
                         >
@@ -280,11 +280,11 @@
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-slate-700">
+                        <label for="sms-message" class="mb-1 block text-sm font-medium text-slate-700">
                             Message
                         </label>
 
-                        <textarea
+                        <textarea id="sms-message"
                             name="message"
                             rows="6"
                             maxlength="1000"

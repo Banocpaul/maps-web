@@ -45,5 +45,7 @@ jobs:
           npm run build
       - name: Compile Blade views
         run: php artisan view:cache
-      - name: Test public reporting, fire SMS, and flood observations
-        run: php vendor/phpunit/phpunit/phpunit -c phpunit-public-reports.xml
+      - name: Test public reporting, fire SMS, flood observations, and audit fixes
+        run: |
+          php vendor/phpunit/phpunit/phpunit -c phpunit-public-reports.xml
+          php vendor/phpunit/phpunit/phpunit --filter 'AuditTimeHandlingTest|DashboardRoleAnalyticsTest|UserManagementTest|OperationsManagerAuthorizationTest|ActivityLogExportTest|DatabaseBackupAuthorizationTest'

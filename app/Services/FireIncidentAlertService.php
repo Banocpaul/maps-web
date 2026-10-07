@@ -111,7 +111,7 @@ class FireIncidentAlertService
             $locationLine,
             sprintf('GPS: %.7f, %.7f', (float) $incident->latitude, (float) $incident->longitude),
             $hydrantLine,
-            'Reported: ' . $incident->reported_at->format('M d, Y h:i A'),
+            'Reported: ' . $incident->reported_at->copy()->timezone('Asia/Manila')->format('M d, Y h:i A').' (Manila time)',
             'Coordinate with CDRRMO.',
         ]);
     }

@@ -104,7 +104,7 @@
             <div>
                 <span class="meta-label">Created</span>
                 <strong>
-                    {{ $user->created_at?->format('M d, Y') ?? 'Not available' }}
+                    {{ $user->created_at?->copy()->timezone('Asia/Manila')->format('M d, Y') ?? 'Not available' }}
                 </strong>
             </div>
 
@@ -112,7 +112,7 @@
                 <span class="meta-label">Last Login</span>
                 <strong>
                     {{ $user->last_login_at
-                        ? $user->last_login_at->format('M d, Y h:i A')
+                        ? $user->last_login_at->copy()->timezone('Asia/Manila')->format('M d, Y h:i A')
                         : 'Never logged in'
                     }}
                 </strong>
@@ -393,7 +393,7 @@
                                     </span>
 
                                     <small>
-                                        {{ $user->email_verified_at->format(
+                                        {{ $user->email_verified_at->copy()->timezone('Asia/Manila')->format(
                                             'M d, Y h:i A'
                                         ) }}
                                     </small>
@@ -415,7 +415,7 @@
                                     </span>
 
                                     <small>
-                                        {{ $user->approved_at->format(
+                                        {{ $user->approved_at->copy()->timezone('Asia/Manila')->format(
                                             'M d, Y h:i A'
                                         ) }}
                                     </small>
@@ -433,13 +433,13 @@
                             <dd>
                                 @if ($user->last_login_at)
                                     <strong>
-                                        {{ $user->last_login_at->format(
+                                        {{ $user->last_login_at->copy()->timezone('Asia/Manila')->format(
                                             'M d, Y'
                                         ) }}
                                     </strong>
 
                                     <small>
-                                        {{ $user->last_login_at->format(
+                                        {{ $user->last_login_at->copy()->timezone('Asia/Manila')->format(
                                             'h:i A'
                                         ) }}
                                     </small>
@@ -456,14 +456,14 @@
 
                             <dd>
                                 <strong>
-                                    {{ $user->created_at?->format(
+                                    {{ $user->created_at?->copy()->timezone('Asia/Manila')->format(
                                         'M d, Y'
                                     ) ?? 'Not available' }}
                                 </strong>
 
                                 @if ($user->created_at)
                                     <small>
-                                        {{ $user->created_at->format(
+                                        {{ $user->created_at->copy()->timezone('Asia/Manila')->format(
                                             'h:i A'
                                         ) }}
                                     </small>
@@ -477,13 +477,13 @@
                             <dd>
                                 @if ($user->role_changed_at)
                                     <strong>
-                                        {{ $user->role_changed_at->format(
+                                        {{ $user->role_changed_at->copy()->timezone('Asia/Manila')->format(
                                             'M d, Y'
                                         ) }}
                                     </strong>
 
                                     <small>
-                                        {{ $user->role_changed_at->format(
+                                        {{ $user->role_changed_at->copy()->timezone('Asia/Manila')->format(
                                             'h:i A'
                                         ) }}
                                     </small>
@@ -512,7 +512,7 @@
                                     && now()->lt($roleChangeAvailableAt)
                                 )
                                     <strong>
-                                        {{ $roleChangeAvailableAt->format(
+                                        {{ $roleChangeAvailableAt->copy()->timezone('Asia/Manila')->format(
                                             'M d, Y'
                                         ) }}
                                     </strong>
@@ -533,14 +533,14 @@
 
                             <dd>
                                 <strong>
-                                    {{ $user->updated_at?->format(
+                                    {{ $user->updated_at?->copy()->timezone('Asia/Manila')->format(
                                         'M d, Y'
                                     ) ?? 'Not available' }}
                                 </strong>
 
                                 @if ($user->updated_at)
                                     <small>
-                                        {{ $user->updated_at->format(
+                                        {{ $user->updated_at->copy()->timezone('Asia/Manila')->format(
                                             'h:i A'
                                         ) }}
                                     </small>

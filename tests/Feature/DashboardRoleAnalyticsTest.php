@@ -51,7 +51,8 @@ class DashboardRoleAnalyticsTest extends TestCase
         $response
             ->assertSee('Flood Risk Intelligence')
             ->assertSee('floodRainfallChart', false)
-            ->assertSee(route('public.flood-map', ['filter' => 'flood']), false)
+            ->assertSee(route('gis.index'), false)
+            ->assertDontSee(route('public.flood-map'), false)
             ->assertDontSee('Average Flood Depth (mm)')
             ->assertDontSee('Duration')
             ->assertSee('7.5 mm')

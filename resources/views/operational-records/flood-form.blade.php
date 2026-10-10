@@ -58,8 +58,7 @@
         <p id="flood-record-profile" class="text-sm text-slate-600"></p>
         @if ($editing)
             <details class="rounded-xl bg-slate-50 p-4 text-sm">
-                <summary class="cursor-pointer font-semibold text-slate-700">Automatic data{{ $record->enrichment_status ? ' · '.$record->enrichment_status : '' }}</summary>
-                @if ($record->enrichment_note)<p class="mt-3 text-amber-800">{{ $record->enrichment_note }}</p>@endif
+                <summary class="cursor-pointer font-semibold text-slate-700">Weather & barangay details</summary>
                 <dl class="mt-3 grid gap-3 sm:grid-cols-3">
                     @foreach (['nearest_waterway' => 'Waterway', 'elevation_m' => 'Elevation (m)', 'distance_to_waterway_m' => 'Waterway distance (m)', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'rainfall_3d_mm' => 'Rainfall 3d (mm)', 'rainfall_7d_mm' => 'Rainfall 7d (mm)', 'temperature_c' => 'Temperature (°C)', 'temp_max_c' => 'Today’s elapsed max (°C)', 'temp_min_c' => 'Today’s elapsed min (°C)', 'wind_speed_kph' => 'Wind (km/h)', 'wind_direction_deg' => 'Wind direction (°)', 'humidity_pct' => 'Humidity (%)', 'drainage_index' => 'Drainage index', 'impervious_surface_ratio' => 'Impervious surface ratio', 'population_density_per_km2' => 'Population / km²', 'historical_flood_count_5y' => 'Historical flood count', 'storm_signal' => 'Storm signal', 'weather_observed_at' => 'Weather captured (PHT)'] as $field => $label)
                         <div><dt class="text-slate-500">{{ $label }}</dt><dd class="mt-1 font-medium text-slate-800">{{ $record->{$field} ?? 'Unavailable' }}</dd></div>

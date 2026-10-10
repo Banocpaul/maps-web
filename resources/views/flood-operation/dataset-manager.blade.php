@@ -96,7 +96,6 @@
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Barangay</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Flood Level</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Training Readiness</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Mapped Extent</th>
                     <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
                 </tr>
@@ -410,11 +409,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 <td class="whitespace-nowrap px-4 py-4 text-sm font-medium text-slate-950">${escapeHtml(record.barangay)}</td>
                 <td class="whitespace-nowrap px-4 py-4">${levelBadge(record.flood_level_code)}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm">${statusBadge(record.flood_status)}</td>
-                <td class="whitespace-nowrap px-4 py-4 text-sm">${trainingBadge(record)}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${extentLabel(record)}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm">
                     ${canEdit ? `<button type="button" data-edit="${record.id}" class="font-semibold text-sky-700 hover:text-sky-900">Edit</button>` : ''}
-                    ${canManageTraining && record.enrichment_status === 'Pending Enrichment' ? `<button type="button" data-enrich="${record.id}" class="ml-3 font-semibold text-violet-700 hover:text-violet-900">Retry Enrichment</button>` : ''}
                     ${canManageTraining && record.review_status === 'Ready for Review' ? `<button type="button" data-approve="${record.id}" class="ml-3 font-semibold text-emerald-700 hover:text-emerald-900">Approve</button><button type="button" data-reject="${record.id}" class="ml-3 font-semibold text-amber-700 hover:text-amber-900">Reject</button>` : ''}
                     ${canDelete ? `<button type="button" data-delete="${record.id}" class="ml-3 font-semibold text-red-600 hover:text-red-800">Delete</button>` : ''}
                 </td>
@@ -431,10 +428,6 @@ document.addEventListener('DOMContentLoaded', function () {
             button.addEventListener('click', () => deleteRecord(button.dataset.delete));
         });
 
-        tableBody.querySelectorAll('[data-enrich]').forEach(button => {
-            button.addEventListener('click', () => enrichRecord(button.dataset.enrich));
-        });
-
         tableBody.querySelectorAll('[data-approve]').forEach(button => {
             button.addEventListener('click', () => reviewRecord(button.dataset.approve, 'approve'));
         });
@@ -442,10 +435,6 @@ document.addEventListener('DOMContentLoaded', function () {
         tableBody.querySelectorAll('[data-reject]').forEach(button => {
             button.addEventListener('click', () => reviewRecord(button.dataset.reject, 'reject'));
         });
-    }
-
-    async function enrichRecord(id) {
-        await postTrainingAction(`${endpoint}/${id}/enrich`, {});
     }
 
     async function reviewRecord(id, action) {
@@ -792,23 +781,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function statusBadge(status) {
         const classes = status === 'Active' ? 'text-red-700' : status === 'Subsiding' ? 'text-amber-700' : 'text-emerald-700';
         return `<span class="font-semibold ${classes}">${escapeHtml(status || '—')}</span>`;
-    }
-
-    function trainingBadge(record) {
-        const status = record.enrichment_status !== 'Enriched'
-            ? (record.enrichment_status || 'Pending Enrichment')
-            : (record.review_status || 'Pending');
-        const classes = {
-            'Pending Enrichment': 'bg-amber-100 text-amber-800',
-            'Pending': 'bg-slate-100 text-slate-700',
-            'Ready for Review': 'bg-sky-100 text-sky-800',
-            'Approved': 'bg-emerald-100 text-emerald-800',
-            'Legacy Approved': 'bg-indigo-100 text-indigo-800',
-            'Legacy Dataset': 'bg-indigo-100 text-indigo-800',
-            'Rejected': 'bg-red-100 text-red-800'
-        };
-
-        return `<span class="rounded-full px-2.5 py-1 text-xs font-semibold ${classes[status] || 'bg-slate-100 text-slate-700'}">${escapeHtml(status)}</span>`;
     }
 
     function extentLabel(record) {

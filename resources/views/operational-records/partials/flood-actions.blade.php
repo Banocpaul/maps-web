@@ -9,7 +9,4 @@
         @endif
         <form class="ml-3 inline" method="POST" action="{{ route('operational-records.flood.subside', $record->id) }}" onsubmit="return confirm('Mark this flood as subsided? The code will be locked.');">@csrf<button class="font-semibold text-emerald-700">Mark subsided</button></form>
     @endif
-    @if (($record->enrichment_status ?? null) === 'Pending data')
-        <form class="ml-3 inline" method="POST" action="{{ route('operational-records.flood.enrich', $record->id) }}">@csrf<button class="font-semibold text-sky-700">Retry data</button></form>
-    @endif
 @endif

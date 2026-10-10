@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\FloodPredictionService;
 use App\Services\LiveWeatherService;
 use App\Services\PredictionStorageService;
+use App\Services\PredictionHistoryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -21,7 +22,8 @@ class PredictionController extends Controller
     public function __construct(
         private readonly FloodPredictionService $floodPredictionService,
         private readonly LiveWeatherService $liveWeatherService,
-        private readonly PredictionStorageService $predictionStorageService
+        private readonly PredictionStorageService $predictionStorageService,
+        private readonly PredictionHistoryService $predictionHistoryService
     ) {
     }
 
@@ -66,8 +68,10 @@ class PredictionController extends Controller
     public function citywide(Request $request): View|RedirectResponse
     {
         $forecastHours = $this->validatedForecastHours($request);
+        $execution = null;
 
         try {
+            $execution = $this->predictionHistoryService->start($request->user(), $forecastHours);
             $liveWeather = $this->liveWeatherService
                 ->getCurrentWeather();
 
@@ -94,9 +98,11 @@ class PredictionController extends Controller
              */
             $mlPredictionData = $predictionData;
             $mlPredictionData['weather_context'] = $liveWeather;
+            $this->predictionHistoryService->captureInput($execution, $mlPredictionData);
 
             $citywideResult = $this->floodPredictionService
                 ->predictCitywide($mlPredictionData);
+            $this->predictionHistoryService->complete($execution, $citywideResult);
 
             /*
              * Store the selected forecast summary in input_data_json.
@@ -105,12 +111,20 @@ class PredictionController extends Controller
             $predictionData['selected_forecast'] =
                 $citywideResult['selected_forecast'] ?? null;
 
-            $storedPredictionRuns =
-                $this->predictionStorageService->saveCitywide(
+            // Preserve the existing per-barangay records alongside the complete snapshot.
+            // A legacy schema/format error must not discard a successfully saved forecast.
+            $storedPredictionRuns = collect();
+            try {
+                $storedPredictionRuns = $this->predictionStorageService->saveCitywide(
                     input: $predictionData,
                     citywideResult: $citywideResult,
                     userId: auth()->id()
                 );
+            } catch (Throwable $storageError) {
+                Log::warning('Legacy prediction records could not be saved; full history is retained.', [
+                    'execution_id' => $execution->id, 'message' => $storageError->getMessage(),
+                ]);
+            }
 
             Log::info('Automated citywide flood prediction saved.', [
                 'barangay_profile_count' => $barangays->count(),
@@ -128,15 +142,10 @@ class PredictionController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return view('prediction.index', [
-                'apiAvailable' => true,
-                'citywideResult' => $citywideResult,
-                'selectedForecastHours' => $forecastHours,
-                'liveWeather' => $liveWeather,
-                'weatherAvailable' => true,
-                'weatherError' => null,
-            ]);
+            return redirect()->route('prediction.history.show', $execution)
+                ->with('success', 'Prediction results saved.');
         } catch (RuntimeException $exception) {
+            $this->predictionHistoryService->fail($execution, $exception);
             Log::error('Automated citywide prediction failed.', [
                 'message' => $exception->getMessage(),
                 'forecast_hours' => $forecastHours,
@@ -151,6 +160,7 @@ class PredictionController extends Controller
                     $exception->getMessage()
                 );
         } catch (Throwable $exception) {
+            $this->predictionHistoryService->fail($execution, $exception);
             Log::error(
                 'Unexpected automated citywide prediction error.',
                 [
@@ -217,13 +227,9 @@ class PredictionController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $connection = DB::selectOne(
-            'SELECT DATABASE() AS database_name'
-        );
-
         Log::info('Active database connection', [
             'database' =>
-                $connection->database_name ?? null,
+                DB::connection()->getDatabaseName(),
             'configured_host' =>
                 config('database.connections.mysql.host'),
             'configured_port' =>

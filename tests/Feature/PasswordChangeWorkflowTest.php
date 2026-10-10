@@ -40,7 +40,7 @@ class PasswordChangeWorkflowTest extends TestCase
     {
         foreach (['administrator', 'operations-manager', 'fire-responder', 'flood-analyst', 'system-viewer', 'public-resident'] as $slug) {
             $user = $this->account($slug);
-            $this->actingAs($user)->get(route('profile'))->assertOk()->assertSee('My password');
+            $this->actingAs($user)->get(route('profile'))->assertOk()->assertSee('My Profile');
             $change = $this->submit($user);
             $this->assertSame('Pending', $change->status);
             $this->assertTrue(Hash::check('NewPassword456!', $change->password_hash));
@@ -58,7 +58,7 @@ class PasswordChangeWorkflowTest extends TestCase
         $change = $this->submit($user);
         $hash = $change->password_hash;
         $admin = $this->account('administrator');
-        $this->actingAs($admin)->get(route('users.index'))->assertOk()->assertSee('Password Requests');
+        $this->actingAs($admin)->get(route('users.index'))->assertOk()->assertSee('Account Change Requests');
         $this->get(route('users.password-requests'))->assertOk()->assertSee($user->email)
             ->assertDontSee($hash, false)->assertDontSee('NewPassword456!');
         $this->post(route('users.password-requests.review', $change), ['decision' => 'Approved'])->assertRedirect();

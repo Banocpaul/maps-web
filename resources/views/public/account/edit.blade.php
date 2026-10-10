@@ -15,7 +15,7 @@
     </div>
 </section>
 <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-    <h2 class="text-xl font-bold">Password</h2>
-    <a href="{{ route('profile') }}" class="mt-3 inline-block font-semibold text-blue-700 underline">Request a password change</a>
+    <h2 class="text-xl font-bold">My Profile</h2>
+    <a href="{{ route('profile') }}" data-profile-open aria-haspopup="dialog" aria-controls="user-profile-dialog" class="mt-3 inline-block font-semibold text-blue-700 underline">Edit profile or request login changes</a>
 </section>
 @endsection

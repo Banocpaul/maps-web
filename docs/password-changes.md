@@ -1,24 +1,35 @@
-# Password changes
+# Profile and login changes
 
-All roles, including public residents and administrators, can open My Password by
-clicking their profile in the staff navbar or Request a password change in the
-public account page. They confirm their current password and submit a different
-password of at least eight characters. One request may be pending per account.
-The current password remains active until approval.
+Click your name or picture in the staff navbar, or My Profile in the public
+account header, to open the centered profile popup. It shows your name, role,
+assigned barangay (or Not assigned), and picture. Close with ×, Escape, or the
+backdrop. A standalone profile page remains available at /account/password.
 
-Administrators open User Management → Password Requests to approve or reject.
-Only a password hash is stored while pending; no submitted password or hash is
-displayed to admins or included in activity logs. Approval activates the hash,
-clears it from the request, and invalidates prior sessions and remember tokens.
-Rejection leaves the current password unchanged and permits another request.
+First and last names and profile pictures save immediately. They do not change
+roles, barangay assignments, usernames, or passwords. Public recipient names
+stay synchronized. JPEG, PNG, and WebP pictures up to 2 MB are stored in a
+separate database table so they survive deployments; only the signed-in owner
+can retrieve their picture. Image contents are excluded from activity logs.
 
-Admin Reset Password generates a temporary password to share securely with the
-account holder. It cancels pending requests and invalidates existing sessions.
-The next login requires a different new password before any other page or action
-can be used. Saving it activates it immediately without approval. This requirement
-persists across logout and login until completed. Resetting your own administrator
-account takes you directly to this required change screen.
+Username means the email used to sign in. All roles, including residents and
+administrators, can request a new username email, a new password, or both after
+confirming their current password. One request may be pending per account.
+The current login remains active until approval.
 
-The migration adds default-off reset flags and version counters, preserving
-existing account passwords. Existing sessions remain valid until a password
-change, reset, deactivation, or role deactivation invalidates access.
+Administrators open User Management → Account Change Requests to approve or
+reject. Requested emails are visible; submitted passwords are hashed immediately
+and neither passwords nor hashes appear in review screens or activity logs.
+Approval applies both requested changes atomically, clears the pending password
+hash, and invalidates prior sessions and remember tokens. Rejection leaves the
+current login unchanged and permits another request. Email uniqueness is checked
+at submission and approval. An intervening admin email edit prevents a stale
+request from overwriting the newer username.
+
+Admin Reset Password generates a temporary password to share securely. It
+cancels pending login requests and invalidates existing sessions. The next login
+requires a different new password before other pages or actions can be used.
+Saving it activates it immediately without approval. This requirement persists
+across logout and login until completed. Admin self-reset opens that screen.
+
+Migrations preserve existing passwords and pending password-only requests.
+Existing accounts do not require a password reset unless the admin resets them.

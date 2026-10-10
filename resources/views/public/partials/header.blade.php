@@ -32,6 +32,7 @@
             @endif
 
             @if(auth()->user()?->isPublicResident())
+                <a href="{{ route('profile') }}" data-profile-open aria-haspopup="dialog" aria-controls="user-profile-dialog" class="flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 text-sm font-semibold hover:bg-white/10"><span class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-blue-700">@include('auth.partials.profile-avatar', ['profileUser' => auth()->user()])</span>My Profile</a>
                 <a href="{{ route('public.reports') }}" class="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">My Reports</a>
                 <a href="{{ route('public.account') }}" class="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">My Account & Alerts</a>
                 <form method="POST" action="{{ route('logout') }}">@csrf<button class="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Sign out</button></form>
@@ -47,3 +48,5 @@
         </div>
 
     </header>
+
+@if(auth()->user()?->isPublicResident()) @include('auth.partials.profile-dialog') @endif

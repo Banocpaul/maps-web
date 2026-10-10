@@ -12,7 +12,7 @@ class PasswordChangeRequest extends Model
 
     protected function casts(): array
     {
-        return ['reviewed_at' => 'datetime', 'password_version' => 'integer'];
+        return ['reviewed_at' => 'datetime', 'password_version' => 'integer', 'changes_password' => 'boolean'];
     }
 
     public function user(): BelongsTo

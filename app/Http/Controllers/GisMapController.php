@@ -97,6 +97,8 @@ class GisMapController extends Controller
                     'occurred_at' => $this->formatDateTime($incident->occurred_at),
                     'fire_out_at' => $this->formatDateTime($incident->fire_out_at),
                     'alarm_level' => $incident->alarm_level,
+                    'cause' => $incident->cause,
+                    'is_test_data' => (bool) ($incident->source_record['test_dataset'] ?? false),
                     'individuals_affected' => $incident->individuals_affected,
                     'houses_destroyed' => $incident->houses_destroyed,
                     'location' => $incident->location,

@@ -27,7 +27,7 @@ class FireIncidentRecordsTest extends TestCase
         Http::preventStrayRequests();
     }
 
-    public function test_workbook_import_preserves_all_rows_without_fabricating_confirmed_fields(): void
+    public function test_workbook_import_completes_test_rows_and_preserves_original_source_values(): void
     {
         $result = app(FireIncidentRecordImporter::class)->import();
         $this->assertSame(['imported' => 117, 'preserved' => 0, 'dataset_rows' => 117, 'previous_records' => 0], $result);
@@ -38,25 +38,32 @@ class FireIncidentRecordsTest extends TestCase
         $this->assertSame('2026-03-15 03:03:00', $first->occurred_at->format('Y-m-d H:i:s'));
         $this->assertSame(46, $first->duration_minutes);
         $this->assertSame(35, $first->individuals_affected);
-        $this->assertNull($first->severity);
+        $this->assertSame('Moderate', $first->severity);
         $this->assertNull($first->responded_at);
-        $this->assertNull($first->alarm_level);
-        $this->assertNull($first->cause);
+        $this->assertSame('1st', $first->alarm_level);
+        $this->assertSame('Electrical fault', $first->cause);
+        $this->assertTrue($first->source_record['test_dataset']);
+        $this->assertNull($first->source_record['values']['Street / Location']);
+        $this->assertContains('Street / Location', $first->source_record['generated_fields']);
         $this->assertSame('Electrical fault', $first->cause_reference);
         $this->assertSame('1st', $first->alarm_reference);
         $this->assertSame('Approximate', $first->coordinate_accuracy);
         $this->assertTrue($first->source_record['reported_at_is_fallback']);
         $this->assertSame('Plainview', $first->barangay->name);
         $ambiguous = FireIncident::where('incident_number', 'FIR-0014')->sole();
-        $this->assertNull($ambiguous->barangay_id);
+        $this->assertSame('New Zaniga', $ambiguous->barangay->name);
+        $this->assertContains('Barangay', $ambiguous->source_record['generated_fields']);
         $this->assertSame('Zañiga (unspecified)', $ambiguous->source_barangay);
-        $this->assertNull($ambiguous->latitude);
+        $this->assertNotNull($ambiguous->latitude);
         $overnight = FireIncident::where('incident_number', 'FIR-0036')->sole();
         $this->assertSame('2020-06-02 02:10', $overnight->fire_out_at->timezone('Asia/Manila')->format('Y-m-d H:i'));
         $this->assertSame(516, $overnight->duration_minutes);
         $this->assertSame('2nd', FireIncident::where('incident_number', 'FIR-0005')->sole()->alarm_level);
         $this->assertSame('Mabini-J. Rizal', FireIncident::where('source_barangay', 'Mabini–J. Rizal')->firstOrFail()->barangay->name);
         $this->assertSame('Hagdang Bato Itaas', FireIncident::withoutGlobalScope('operational_records')->where('source_barangay', 'Hagdan Bato Itaas')->firstOrFail()->barangay->name);
+        $original = json_decode(file_get_contents(database_path('data/fire-incident-records.json')), true)['records'];
+        $imported = FireIncident::all()->keyBy('incident_number');
+        foreach ($original as $row) $this->assertSame($row, $imported[$row['Incident ID']]->source_record['values']);
         $this->assertDatabaseCount('sms_logs', 0);
         Http::assertNothingSent();
     }
@@ -81,7 +88,7 @@ class FireIncidentRecordsTest extends TestCase
         $this->artisan('fire:import')->assertSuccessful();
         $this->assertSame(117, FireIncident::count());
         $this->assertSame('Reported', $new->fresh()->record_classification);
-        $this->assertDatabaseCount('fire_dataset_activations', 1);
+        $this->assertDatabaseCount('fire_dataset_activations', 2);
     }
 
     public function test_upgrade_promotes_previous_samples_and_replaces_all_earlier_fire_records_once(): void
@@ -132,6 +139,60 @@ class FireIncidentRecordsTest extends TestCase
         }
     }
 
+    public function test_upgrade_completes_installed_rows_once_without_archiving_new_staff_reports(): void
+    {
+        $importer = app(FireIncidentRecordImporter::class);
+        $importer->import();
+        DB::table('fire_dataset_activations')->where('version', 'fire-records-complete-test-v2')->delete();
+        DB::table('fire_incidents')->update(['severity' => null, 'alarm_level' => null, 'cause' => null]);
+        $new = $this->incident(['incident_number' => 'AFTER-V1']);
+        $deleted = FireIncident::where('incident_number', 'FIR-0002')->sole();
+        $deleted->delete();
+        $importer->import();
+        $first = FireIncident::where('incident_number', 'FIR-0001')->sole();
+        $this->assertSame('Moderate', $first->severity);
+        $this->assertSame('Electrical fault', $first->cause);
+        $this->assertSame('Reported', $new->fresh()->record_classification);
+        $this->assertSoftDeleted($deleted);
+        $first->update(['cause' => 'Staff-reviewed cause', 'location' => 'Reviewed location']);
+        $importer->import();
+        $this->assertSame('Staff-reviewed cause', $first->fresh()->cause);
+        $this->assertSame('Reviewed location', $first->fresh()->location);
+        $this->assertDatabaseCount('fire_dataset_activations', 2);
+        Http::assertNothingSent();
+    }
+
+    public function test_generated_pins_are_distinct_and_inside_each_assigned_barangay(): void
+    {
+        app(FireIncidentRecordImporter::class)->import();
+        $features = json_decode(file_get_contents(public_path('geojson/mandaluyong_barangays.geojson')), true)['features'];
+        $key = fn ($name) => str_replace('hagdangbato', 'hagdanbato', preg_replace('/[^a-z0-9]/', '', strtolower(\Illuminate\Support\Str::ascii($name))));
+        $boundaries = collect($features)->keyBy(fn ($feature) => $key($feature['properties']['barangay']));
+        $pins = [];
+        foreach (FireIncident::with('barangay')->get() as $incident) {
+            $rings = $boundaries[$key($incident->barangay->name)]['geometry']['coordinates'];
+            $this->assertTrue($this->insideRing((float) $incident->longitude, (float) $incident->latitude, $rings[0]), $incident->incident_number);
+            foreach (array_slice($rings, 1) as $hole) {
+                $this->assertFalse($this->insideRing((float) $incident->longitude, (float) $incident->latitude, $hole));
+            }
+            $pins[] = $incident->latitude.','.$incident->longitude;
+            $this->assertSame('Resolved', $incident->status);
+            $this->assertSame('Approximate', $incident->coordinate_accuracy);
+        }
+        $this->assertCount(117, array_unique($pins));
+    }
+
+    private function insideRing(float $x, float $y, array $ring): bool
+    {
+        $inside = false;
+        for ($i = 0, $j = count($ring) - 1; $i < count($ring); $j = $i++) {
+            [$a, $b] = $ring[$i];
+            [$c, $d] = $ring[$j];
+            if (($b > $y) !== ($d > $y) && $x < ($c - $a) * ($y - $b) / ($d - $b) + $a) $inside = ! $inside;
+        }
+        return $inside;
+    }
+
     public function test_archived_history_keeps_audit_links_and_reserves_existing_incident_numbers(): void
     {
         $year = now()->format('Y');
@@ -164,7 +225,7 @@ class FireIncidentRecordsTest extends TestCase
         }
     }
 
-    public function test_current_analytics_include_all_uploaded_rows_and_keep_unresolved_barangays(): void
+    public function test_current_analytics_include_complete_test_rows_and_all_severity_and_alarm_values(): void
     {
         app(FireIncidentRecordImporter::class)->import();
         $analytics = app(FireAnalyticsService::class)->getDashboardData();
@@ -174,11 +235,12 @@ class FireIncidentRecordsTest extends TestCase
         $this->assertSame(100.0, $analytics['kpis']['resolution_rate']);
         $this->assertSame(117, array_sum($analytics['monthly_trend']['incidents']));
         $this->assertSame(117, array_sum($analytics['time_distribution']['values']));
-        $this->assertSame([0, 0, 0, 117], $analytics['severity_distribution']['values']);
+        $this->assertSame([9, 31, 77, 0], $analytics['severity_distribution']['values']);
         $alarms = array_combine($analytics['alarm_distribution']['labels'], $analytics['alarm_distribution']['values']);
-        $this->assertSame(115, $alarms['Unspecified']);
-        $this->assertSame(1, $alarms['2nd']);
-        $this->assertSame(1, $alarms['3rd']);
+        $this->assertSame(0, $alarms['Unspecified'] ?? 0);
+        $this->assertSame(98, $alarms['1st']);
+        $this->assertSame(13, $alarms['2nd']);
+        $this->assertSame(6, $alarms['3rd']);
         $this->assertSame(117, array_sum(app(FireAnalyticsService::class)->getTopBarangays(null, null, 100)['incidents']));
     }
 
@@ -208,9 +270,17 @@ class FireIncidentRecordsTest extends TestCase
         $csv = $this->get(route('operational-records.export', ['dataset' => 'fire-incidents']))->assertOk()->streamedContent();
         $this->assertStringContainsString('"Time Occurred (PHT)"', $csv);
         $this->assertStringContainsString('"2026-03-15 11:03:00"', $csv);
-        $this->assertStringContainsString('"Alarm (unconfirmed reference)"', $csv);
+        $lines = preg_split('/\r?\n/', trim(ltrim($csv, "\xEF\xBB\xBF")));
+        $this->assertSame(['ID', 'Incident Number', 'Time Occurred (PHT)', 'Fire Out (PHT)', 'Duration (minutes)', 'Barangay', 'Street / Location', 'Individuals Affected', 'Houses Destroyed', 'Alarm', 'Cause', 'Latitude', 'Longitude', 'Severity', 'Status'], str_getcsv(array_shift($lines)));
+        $this->assertCount(117, $lines);
+        foreach ($lines as $line) {
+            $values = str_getcsv($line);
+            $this->assertCount(15, $values);
+            $this->assertNotContains('', $values);
+        }
         $this->assertStringContainsString('FIR-EX-', $csv);
-        $this->assertStringContainsString('Modeled', $csv);
+        $this->assertStringNotContainsString('Source Origin', $csv);
+        $response->assertSee('Complete fire test dataset.');
         $this->assertStringContainsString('FIR-0014', $csv);
         $this->get(route('fire-incidents.index'))->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->total() === 117);
         $this->get(route('fire-incidents.index', ['record_classification' => 'Current']))->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->total() === 117);
@@ -227,8 +297,10 @@ class FireIncidentRecordsTest extends TestCase
         $this->getJson(route('gis.data'))->assertOk()->assertJsonCount(0, 'incidents');
         $this->get(route('gis.index'))->assertOk()->assertSee('Incident history');
         $this->get(route('public.flood-map'))->assertOk()->assertViewHas('fires', fn ($fires) => $fires->isEmpty());
-        $this->getJson(route('gis.data', ['fire_layer' => 'history']))->assertOk()->assertJsonCount(116, 'incidents')
-            ->assertJsonPath('incidents.0.coordinate_accuracy', 'Approximate');
+        $this->getJson(route('gis.data', ['fire_layer' => 'history']))->assertOk()->assertJsonCount(117, 'incidents')
+            ->assertJsonPath('incidents.0.coordinate_accuracy', 'Approximate')
+            ->assertJsonPath('incidents.0.is_test_data', true)
+            ->assertJsonPath('incidents.0.cause', 'Electrical fault');
         foreach (FireIncident::withoutGlobalScope('operational_records')->get() as $record) {
             $this->assertSame(0, app(FireIncidentAlertService::class)->sendCreatedAlert($record, null)['sent']);
             $this->assertNull(app(NearestFireHydrantService::class)->findForIncident($record));

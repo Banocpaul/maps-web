@@ -271,11 +271,11 @@ class FireIncidentRecordsTest extends TestCase
         $this->assertStringContainsString('"Time Occurred (PHT)"', $csv);
         $this->assertStringContainsString('"2026-03-15 11:03:00"', $csv);
         $lines = preg_split('/\r?\n/', trim(ltrim($csv, "\xEF\xBB\xBF")));
-        $this->assertSame(['ID', 'Incident Number', 'Time Occurred (PHT)', 'Fire Out (PHT)', 'Duration (minutes)', 'Barangay', 'Street / Location', 'Individuals Affected', 'Houses Destroyed', 'Alarm', 'Cause', 'Latitude', 'Longitude', 'Severity', 'Status'], str_getcsv(array_shift($lines)));
+        $this->assertSame(['ID', 'Incident Number', 'Time Occurred (PHT)', 'Fire Out (PHT)', 'Duration (minutes)', 'Barangay', 'Street / Location', 'Individuals Affected', 'Houses Destroyed', 'Alarm', 'Cause', 'Latitude', 'Longitude', 'Status'], str_getcsv(array_shift($lines)));
         $this->assertCount(117, $lines);
         foreach ($lines as $line) {
             $values = str_getcsv($line);
-            $this->assertCount(15, $values);
+            $this->assertCount(14, $values);
             $this->assertNotContains('', $values);
         }
         $this->assertStringContainsString('FIR-EX-', $csv);

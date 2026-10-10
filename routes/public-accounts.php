@@ -10,7 +10,7 @@ Route::prefix('public-portal')->name('public.')->group(function (): void {
         Route::get('/login', [AuthController::class, 'showPublicLoginForm'])->name('login');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.attempt');
         Route::get('/register', [PublicAccountController::class, 'register'])->name('register');
-        Route::post('/register', [PublicAccountController::class, 'store'])->middleware('throttle:5,10')->name('register.store');
+        Route::post('/register', [PublicAccountController::class, 'store'])->middleware('throttle:public-registration')->name('register.store');
     });
     Route::middleware(['auth', 'resident'])->group(function (): void {
         Route::get('/account', [PublicAccountController::class, 'edit'])->name('account');

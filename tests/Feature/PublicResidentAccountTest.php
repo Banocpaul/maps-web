@@ -117,6 +117,54 @@ class PublicResidentAccountTest extends TestCase
         $this->assertFalse($recipient->receive_fire_alerts);
     }
 
+    public function test_public_page_visits_do_not_use_registration_attempts(): void
+    {
+        for ($visit = 0; $visit < 6; $visit++) {
+            $this->get(route('public.advisories'))->assertOk();
+        }
+
+        $this->post(route('public.register.store'), $this->registration())
+            ->assertRedirect(route('public.account'));
+        $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_registration_limit_shows_retry_message_preserves_profile_and_excludes_passwords(): void
+    {
+        $payload = $this->registration(['contact_number' => 'invalid']);
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->post(route('public.register.store'), $payload)
+                ->assertSessionHasErrors('contact_number');
+        }
+
+        $this->post(route('public.register.store'), $payload)
+            ->assertStatus(429)
+            ->assertHeader('Retry-After')
+            ->assertSee('Please try again in')
+            ->assertSee('value="'.$payload['email'].'"', false);
+        $this->assertNull(session()->getOldInput('password'));
+        $this->assertNull(session()->getOldInput('password_confirmation'));
+        $this->get(route('public.register'))->assertOk();
+        $this->assertDatabaseCount('users', 0);
+
+        $this->travel(11)->minutes();
+        $this->post(route('public.register.store'), $this->registration())
+            ->assertRedirect(route('public.account'));
+    }
+
+    public function test_registration_limit_separates_forwarded_client_ips_and_returns_json_429(): void
+    {
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1']);
+        $this->withHeaders(['X-Forwarded-For' => '198.51.100.10']);
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->post(route('public.register.store'), [])->assertSessionHasErrors('first_name');
+        }
+        $this->postJson(route('public.register.store'), [])
+            ->assertStatus(429)->assertHeader('Retry-After')->assertJsonStructure(['message']);
+
+        $this->withHeaders(['X-Forwarded-For' => '198.51.100.11']);
+        $this->post(route('public.register.store'), [])->assertSessionHasErrors('first_name');
+    }
+
     public function test_registration_rejects_duplicate_phone_invalid_barangay_and_bad_password(): void
     {
         $existing = $this->resident();

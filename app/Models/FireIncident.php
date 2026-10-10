@@ -39,6 +39,8 @@ class FireIncident extends Model
         'alarm_level',
         'data_source',
 
+        'record_classification', 'source_barangay', 'coordinate_accuracy',
+        'cause', 'alarm_reference', 'cause_reference', 'source_record',
         'remarks',
     ];
 
@@ -58,6 +60,7 @@ class FireIncident extends Model
     protected function casts(): array
     {
         return [
+            'source_record' => 'array',
             'barangay_id' => 'integer',
 
             'latitude' => 'decimal:7',
@@ -78,7 +81,13 @@ class FireIncident extends Model
 
     protected static function booted(): void
     {
+        static::addGlobalScope('operational_records', fn ($query) =>
+            $query->where('fire_incidents.record_classification', 'Reported'));
+
         static::saving(function (FireIncident $incident): void {
+            if ($incident->isDirty('fire_out_at') && $incident->fire_out_at === null) {
+                $incident->duration_minutes = null;
+            }
             if (
                 $incident->occurred_at !== null &&
                 $incident->fire_out_at !== null
@@ -98,6 +107,12 @@ class FireIncident extends Model
     | Relationships
     |--------------------------------------------------------------------------
     */
+
+    public function resolveRouteBindingQuery($query, $value, $field = null)
+    {
+        return parent::resolveRouteBindingQuery($query, $value, $field)
+            ->withoutGlobalScope('operational_records');
+    }
 
     public function barangay(): BelongsTo
     {
@@ -141,12 +156,17 @@ class FireIncident extends Model
 
     public function scopeForYear($query, int $year)
     {
-        return $query->whereYear('occurred_at', $year);
+        $start = \Carbon\Carbon::create($year, 1, 1, 0, 0, 0, 'Asia/Manila');
+        return $query->where('occurred_at', '>=', $start->copy()->utc())
+            ->where('occurred_at', '<', $start->copy()->addYear()->utc());
     }
 
     public function scopeForMonth($query, int $month)
     {
-        return $query->whereMonth('occurred_at', $month);
+        $expression = $query->getConnection()->getDriverName() === 'sqlite'
+            ? "CAST(strftime('%m', occurred_at, '+8 hours') AS INTEGER)"
+            : 'MONTH(DATE_ADD(occurred_at, INTERVAL 8 HOUR))';
+        return $query->whereRaw($expression.' = ?', [$month]);
     }
 
     public function scopeForBarangay($query, int $barangayId)
@@ -175,32 +195,32 @@ class FireIncident extends Model
 
     public function getIncidentYearAttribute(): ?int
     {
-        return $this->occurred_at?->year;
+        return $this->occurred_at?->copy()->timezone('Asia/Manila')->year;
     }
 
     public function getIncidentMonthAttribute(): ?int
     {
-        return $this->occurred_at?->month;
+        return $this->occurred_at?->copy()->timezone('Asia/Manila')->month;
     }
 
     public function getIncidentMonthNameAttribute(): ?string
     {
-        return $this->occurred_at?->format('F');
+        return $this->occurred_at?->copy()->timezone('Asia/Manila')->format('F');
     }
 
     public function getIncidentDayAttribute(): ?int
     {
-        return $this->occurred_at?->day;
+        return $this->occurred_at?->copy()->timezone('Asia/Manila')->day;
     }
 
     public function getIncidentDayOfWeekAttribute(): ?string
     {
-        return $this->occurred_at?->format('l');
+        return $this->occurred_at?->copy()->timezone('Asia/Manila')->format('l');
     }
 
     public function getIncidentHourAttribute(): ?int
     {
-        return $this->occurred_at?->hour;
+        return $this->occurred_at?->copy()->timezone('Asia/Manila')->hour;
     }
 
     public function getTimeOfDayAttribute(): ?string
@@ -209,7 +229,7 @@ class FireIncident extends Model
             return null;
         }
 
-        $hour = $this->occurred_at->hour;
+        $hour = $this->occurred_at->copy()->timezone('Asia/Manila')->hour;
 
         return match (true) {
             $hour >= 5 && $hour < 12 => 'Morning',
@@ -221,11 +241,13 @@ class FireIncident extends Model
 
     public function getIsWeekendAttribute(): ?bool
     {
-        return $this->occurred_at?->isWeekend();
+        return $this->occurred_at?->copy()->timezone('Asia/Manila')->isWeekend();
     }
 
     public function getDamageSeverityAttribute(): string
     {
+        if ($this->houses_destroyed === null && $this->individuals_affected === null) return 'Unspecified';
+
         $housesDestroyed = $this->houses_destroyed ?? 0;
         $individualsAffected = $this->individuals_affected ?? 0;
 

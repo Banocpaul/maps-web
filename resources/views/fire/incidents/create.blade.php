@@ -669,6 +669,7 @@
                     </h2>
 
                     <div class="incident-grid">
+                        @include('fire.incidents.record-fields')
                         <div class="incident-field">
                             <label for="reported_at">
                                 Reported At
@@ -713,18 +714,18 @@
                         </div>
 
                         <div class="incident-field">
-                            <label for="resolved_at">
-                                Resolved At
+                            <label for="fire_out_at">
+                                Fire Out (PHT)
                             </label>
 
                             <input
-                                id="resolved_at"
-                                name="resolved_at"
+                                id="fire_out_at"
+                                name="fire_out_at"
                                 type="datetime-local"
-                                value="{{ old('resolved_at') }}"
+                                value="{{ old('fire_out_at') }}"
                             >
 
-                            @error('resolved_at')
+                            @error('fire_out_at')
                                 <span class="incident-error">
                                     {{ $message }}
                                 </span>

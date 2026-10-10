@@ -41,7 +41,7 @@ class SmsLog extends Model
         return $this->belongsTo(
             FireIncident::class,
             'fire_incident_id'
-        );
+        )->withoutGlobalScope('operational_records');
     }
 
     public function recipient(): BelongsTo

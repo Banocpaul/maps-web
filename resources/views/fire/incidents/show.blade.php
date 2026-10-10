@@ -290,14 +290,14 @@
 
             <article class="incident-summary-card">
                 <span>Barangay</span>
-                <strong>{{ $fireIncident->barangay?->name ?? 'Unknown' }}</strong>
+                <strong>{{ $fireIncident->barangay?->name ?? $fireIncident->source_barangay ?? 'Unknown' }}</strong>
             </article>
 
             <article class="incident-summary-card">
                 <span>Severity</span>
                 <strong>
-                    <span class="incident-badge incident-severity-{{ strtolower($fireIncident->severity) }}">
-                        {{ $fireIncident->severity }}
+                    <span class="incident-badge incident-severity-{{ strtolower((string) $fireIncident->severity) }}">
+                        {{ $fireIncident->severity ?? 'Unspecified' }}
                     </span>
                 </strong>
             </article>
@@ -323,7 +323,7 @@
 
                 <div class="incident-detail">
                     <span>Barangay</span>
-                    <strong>{{ $fireIncident->barangay?->name ?? 'Unknown' }}</strong>
+                    <strong>{{ $fireIncident->barangay?->name ?? $fireIncident->source_barangay ?? 'Unknown' }}</strong>
                 </div>
 
                 <div class="incident-detail incident-detail-full">
@@ -334,13 +334,33 @@
         </section>
 
         <section class="incident-panel">
+            <h2>Fire Incident Record</h2>
+            <div class="incident-detail-grid">
+                @foreach(['record_classification' => 'Record Classification', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'duration_minutes' => 'Duration (minutes)', 'alarm_level' => 'Alarm (reported)', 'cause' => 'Cause (confirmed)', 'alarm_reference' => 'Alarm (unconfirmed reference)', 'cause_reference' => 'Cause (unconfirmed reference)', 'data_source' => 'Data Source'] as $field => $label)
+                    <div class="incident-detail"><span>{{ $label }}</span><strong>{{ $fireIncident->{$field} ?? 'Not recorded' }}</strong></div>
+                @endforeach
+                @foreach(['occurred_at' => 'Time Occurred (PHT)', 'fire_out_at' => 'Fire Out (PHT)'] as $field => $label)
+                    <div class="incident-detail"><span>{{ $label }}</span><strong>{{ $fireIncident->{$field}?->copy()->timezone('Asia/Manila')->format('M j, Y g:i A') ?? 'Not recorded' }}</strong></div>
+                @endforeach
+            </div>
+            @if($fireIncident->source_record)
+                <p class="mt-3 text-sm text-slate-500">Transcribed source: report time was not supplied. Cause and reference alarm are unconfirmed. Coordinates are approximate.</p>
+                @if($fireIncident->source_record['crosses_midnight'] ?? false)<p class="mt-2 text-sm text-slate-500">Fire out is assumed to be the next day, following the source dictionary.</p>@endif
+                <details class="mt-3"><summary>Original source row</summary><dl class="incident-detail-grid mt-3">
+                    @foreach($fireIncident->source_record['values'] as $field => $value)<div class="incident-detail"><dt>{{ $field }}</dt><dd>{{ $value ?? 'Not recorded' }}</dd></div>@endforeach
+                </dl></details>
+            @endif
+            @if($fireIncident->record_classification === 'Example')<p class="mt-3 font-semibold text-amber-700">Modeled example — excluded from totals, active maps, and SMS alerts.</p>@endif
+        </section>
+
+        <section class="incident-panel">
             <h2>Response Timeline</h2>
 
             <div class="incident-detail-grid">
                 <div class="incident-detail">
                     <span>Reported At</span>
                     <strong>
-                        {{ $fireIncident->reported_at?->copy()->timezone('Asia/Manila')->format('F j, Y g:i A') ?? 'Not recorded' }}
+                        {{ ($fireIncident->source_record['reported_at_is_fallback'] ?? false) ? 'Not recorded in source' : ($fireIncident->reported_at?->copy()->timezone('Asia/Manila')->format('F j, Y g:i A') ?? 'Not recorded') }}
                     </strong>
                 </div>
 
@@ -382,7 +402,7 @@
                     </strong>
 
                     <p>
-                        These coordinates will later be displayed on the M.A.P.S GIS module.
+                        {{ $fireIncident->coordinate_accuracy === 'Approximate' ? 'Approximate barangay reference point; exact fire location is unknown.' : 'Verified incident coordinates.' }}
                     </p>
                 @else
                     <strong>No coordinates recorded</strong>

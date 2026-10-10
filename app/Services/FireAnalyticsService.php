@@ -84,14 +84,14 @@ class FireAnalyticsService
     public function getMonthlyTrend(?int $year = null, ?int $barangayId = null): array
     {
         $rows = $this->baseQuery($year, $barangayId)
-            ->selectRaw('MONTH(occurred_at) as month_number')
+            ->selectRaw($this->datePart('month').' as month_number')
             ->selectRaw('COUNT(*) as incident_count')
             ->selectRaw('COALESCE(SUM(individuals_affected), 0) as affected_count')
             ->selectRaw('COALESCE(SUM(houses_destroyed), 0) as destroyed_count')
             ->selectRaw('COALESCE(AVG(duration_minutes), 0) as average_duration')
             ->whereNotNull('occurred_at')
-            ->groupByRaw('MONTH(occurred_at)')
-            ->orderByRaw('MONTH(occurred_at)')
+            ->groupByRaw($this->datePart('month'))
+            ->orderByRaw($this->datePart('month'))
             ->get()
             ->keyBy('month_number');
 
@@ -129,13 +129,13 @@ class FireAnalyticsService
         int $limit = 10
     ): array {
         $rows = $this->baseQuery($year, $barangayId)
-            ->join('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
+            ->leftJoin('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
             ->selectRaw('barangays.id as barangay_id')
-            ->selectRaw('barangays.name as barangay_name')
+            ->selectRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified') as barangay_name")
             ->selectRaw('COUNT(fire_incidents.id) as incident_count')
             ->selectRaw('COALESCE(SUM(fire_incidents.individuals_affected), 0) as affected_count')
             ->selectRaw('COALESCE(SUM(fire_incidents.houses_destroyed), 0) as destroyed_count')
-            ->groupBy('barangays.id', 'barangays.name')
+            ->groupBy('barangays.id')->groupByRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified')")
             ->orderByDesc('incident_count')
             ->limit($limit)
             ->get();
@@ -146,7 +146,7 @@ class FireAnalyticsService
             'individuals_affected' => $rows->pluck('affected_count')->map(fn ($value) => (int) $value)->values()->all(),
             'houses_destroyed' => $rows->pluck('destroyed_count')->map(fn ($value) => (int) $value)->values()->all(),
             'rows' => $rows->map(fn ($row) => [
-                'barangay_id' => (int) $row->barangay_id,
+                'barangay_id' => $row->barangay_id !== null ? (int) $row->barangay_id : null,
                 'barangay_name' => $row->barangay_name,
                 'incident_count' => (int) $row->incident_count,
                 'individuals_affected' => (int) $row->affected_count,
@@ -161,11 +161,11 @@ class FireAnalyticsService
     public function getSeverityDistribution(?int $year = null, ?int $barangayId = null): array
     {
         $rows = $this->baseQuery($year, $barangayId)
-            ->selectRaw('severity, COUNT(*) as total')
-            ->groupBy('severity')
-            ->pluck('total', 'severity');
+            ->selectRaw("COALESCE(severity, 'Unspecified') as severity_label, COUNT(*) as total")
+            ->groupBy('severity_label')
+            ->pluck('total', 'severity_label');
 
-        $labels = ['Minor', 'Moderate', 'Major'];
+        $labels = ['Minor', 'Moderate', 'Major', 'Unspecified'];
 
         return [
             'labels' => $labels,
@@ -198,13 +198,14 @@ class FireAnalyticsService
      */
     public function getTimeOfDayDistribution(?int $year = null, ?int $barangayId = null): array
     {
+        $hour = $this->datePart('hour');
         $rows = $this->baseQuery($year, $barangayId)
             ->whereNotNull('occurred_at')
             ->selectRaw("
                 CASE
-                    WHEN HOUR(occurred_at) BETWEEN 5 AND 11 THEN 'Morning'
-                    WHEN HOUR(occurred_at) BETWEEN 12 AND 16 THEN 'Afternoon'
-                    WHEN HOUR(occurred_at) BETWEEN 17 AND 20 THEN 'Evening'
+                    WHEN {$hour} BETWEEN 5 AND 11 THEN 'Morning'
+                    WHEN {$hour} BETWEEN 12 AND 16 THEN 'Afternoon'
+                    WHEN {$hour} BETWEEN 17 AND 20 THEN 'Evening'
                     ELSE 'Night'
                 END as time_period
             ")
@@ -232,10 +233,10 @@ class FireAnalyticsService
         int $limit = 10
     ): array {
         $rows = $this->baseQuery($year, $barangayId)
-            ->join('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
-            ->selectRaw('barangays.name as barangay_name')
+            ->leftJoin('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
+            ->selectRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified') as barangay_name")
             ->selectRaw('COALESCE(SUM(fire_incidents.individuals_affected), 0) as total')
-            ->groupBy('barangays.id', 'barangays.name')
+            ->groupBy('barangays.id')->groupByRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified')")
             ->orderByDesc('total')
             ->limit($limit)
             ->get();
@@ -255,10 +256,10 @@ class FireAnalyticsService
         int $limit = 10
     ): array {
         $rows = $this->baseQuery($year, $barangayId)
-            ->join('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
-            ->selectRaw('barangays.name as barangay_name')
+            ->leftJoin('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
+            ->selectRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified') as barangay_name")
             ->selectRaw('COALESCE(SUM(fire_incidents.houses_destroyed), 0) as total')
-            ->groupBy('barangays.id', 'barangays.name')
+            ->groupBy('barangays.id')->groupByRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified')")
             ->orderByDesc('total')
             ->limit($limit)
             ->get();
@@ -295,7 +296,7 @@ class FireAnalyticsService
                 'duration_minutes',
                 'individuals_affected',
                 'houses_destroyed',
-                'alarm_level',
+                'alarm_level', 'source_barangay', 'record_classification', 'cause', 'coordinate_accuracy',
             ]);
     }
 
@@ -306,7 +307,7 @@ class FireAnalyticsService
     {
         return FireIncident::query()
             ->whereNotNull('occurred_at')
-            ->selectRaw('YEAR(occurred_at) as year')
+            ->selectRaw($this->datePart('year').' as year')
             ->distinct()
             ->orderByDesc('year')
             ->pluck('year')
@@ -318,12 +319,21 @@ class FireAnalyticsService
     /**
      * Apply common filters to every analytics query.
      */
+    private function datePart(string $part): string
+    {
+        if ((new FireIncident)->getConnection()->getDriverName() === 'sqlite') {
+            $format = ['year' => '%Y', 'month' => '%m', 'hour' => '%H'][$part];
+            return "CAST(strftime('{$format}', occurred_at, '+8 hours') AS INTEGER)";
+        }
+        return strtoupper($part).'(DATE_ADD(occurred_at, INTERVAL 8 HOUR))';
+    }
+
     private function baseQuery(?int $year = null, ?int $barangayId = null): Builder
     {
         return FireIncident::query()
             ->when(
                 $year,
-                fn (Builder $query) => $query->whereYear('occurred_at', $year)
+                fn (Builder $query) => $query->forYear($year)
             )
             ->when(
                 $barangayId,
@@ -339,11 +349,11 @@ class FireAnalyticsService
         ?int $barangayId = null
     ): ?array {
         $row = $this->baseQuery($year, $barangayId)
-            ->join('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
+            ->leftJoin('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
             ->selectRaw('barangays.id as barangay_id')
-            ->selectRaw('barangays.name as barangay_name')
+            ->selectRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified') as barangay_name")
             ->selectRaw('COUNT(fire_incidents.id) as incident_count')
-            ->groupBy('barangays.id', 'barangays.name')
+            ->groupBy('barangays.id')->groupByRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified')")
             ->orderByDesc('incident_count')
             ->first();
 
@@ -352,7 +362,7 @@ class FireAnalyticsService
         }
 
         return [
-            'barangay_id' => (int) $row->barangay_id,
+            'barangay_id' => $row->barangay_id !== null ? (int) $row->barangay_id : null,
             'barangay_name' => $row->barangay_name,
             'incident_count' => (int) $row->incident_count,
         ];

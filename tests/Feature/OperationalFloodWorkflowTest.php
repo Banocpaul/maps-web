@@ -34,8 +34,10 @@ class OperationalFloodWorkflowTest extends TestCase
 
     public function test_minimal_report_stamps_today_in_manila_and_automatically_fills_profile_and_weather(): void
     {
-        $user = $this->staff();
+        $user = $this->staff(['records.view', 'gis.view', 'flood.create', 'flood.edit', 'prediction.view']);
         $this->mockWeather();
+        $this->actingAs($user)->get(route('flood-operation.index'))->assertOk()
+            ->assertDontSee('Training Readiness')->assertDontSee('Retry Enrichment')->assertDontSee('Pending Enrichment');
         $this->actingAs($user)->get(route('operational-records.flood.create'))->assertOk()
             ->assertSee('Today only')->assertSee('flood-record-map', false)
             ->assertDontSee('name="event_id"', false)->assertDontSee('name="wind_speed_kph"', false)
@@ -61,7 +63,7 @@ class OperationalFloodWorkflowTest extends TestCase
         $this->assertGreaterThan(100, $record->extent_length_m);
         $this->assertGreaterThan(14, $record->latitude);
         $this->assertStringStartsWith('MAPS-', $record->event_id);
-        $this->get(route('operational-records.flood.edit', $record))->assertOk()->assertSee('Automatic data');
+        $this->get(route('operational-records.flood.edit', $record))->assertOk()->assertSee('Weather & barangay details', false);
         $this->assertSame(6875, FloodIncidentRecord::count());
     }
 
@@ -157,7 +159,7 @@ class OperationalFloodWorkflowTest extends TestCase
         $this->assertNull($record->wind_speed_kph);
         $this->assertSame('Pending data', $record->enrichment_status);
         $this->get(route('gis.data', ['hazard' => 'flood']))->assertJsonCount(1, 'floods');
-        $this->get(route('operational-records.index'))->assertSee('Retry data');
+        $this->get(route('operational-records.index'))->assertDontSee('Retry data')->assertDontSee('Automatic Data')->assertDontSee('Pending data');
         $this->mockWeather();
         $this->post(route('operational-records.flood.enrich', $record))->assertSessionHasNoErrors();
         $this->assertSame('Complete', $record->fresh()->enrichment_status);

@@ -806,7 +806,7 @@
                         <p><strong>Status:</strong> ${escapeHtml(incident.status || 'Not recorded')}</p>
                         <p><strong>Occurred (PHT):</strong> ${escapeHtml(incident.occurred_at || incident.reported_at || 'Not recorded')}</p>
                         <p><strong>Fire out (PHT):</strong> ${escapeHtml(incident.fire_out_at || 'Not recorded')}</p>
-                        <p><strong>Coordinates:</strong> ${escapeHtml(incident.coordinate_accuracy || 'Unspecified')}${incident.coordinate_accuracy === 'Approximate' ? ' — barangay reference, exact site unknown' : ''}</p>
+                        <p><strong>Coordinates:</strong> ${escapeHtml(incident.coordinate_accuracy || 'Unspecified')}${incident.is_test_data ? ' — generated test pin' : (incident.coordinate_accuracy === 'Approximate' ? ' — barangay reference, exact site unknown' : '')}</p>
                         <a href="${escapeHtml(incident.url)}">View incident record</a>
                         ${incident.status !== 'Resolved' && incident.coordinate_accuracy !== 'Approximate' ? `<button
                             type="button"

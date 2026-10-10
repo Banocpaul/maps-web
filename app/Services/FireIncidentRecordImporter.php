@@ -50,10 +50,36 @@ class FireIncidentRecordImporter
             throw new RuntimeException('Replacement requires the complete 117-row fire dataset.');
         }
 
-        return DB::transaction(function () use ($source, $rows): array {
+        $testData = json_decode(file_get_contents(database_path('data/fire-incident-test-records.json')), true, 512, JSON_THROW_ON_ERROR);
+        if (($testData['source_sha256'] ?? null) !== $source['sha256'] || count($testData['records'] ?? []) !== 117) {
+            throw new RuntimeException('Invalid complete fire test dataset.');
+        }
+        foreach (array_keys($rows) as $id) {
+            $test = $testData['records'][$id] ?? [];
+            foreach (['barangay', 'location', 'alarm_level', 'cause', 'severity'] as $field) {
+                if (! is_string($test[$field] ?? null) || trim($test[$field]) === '') {
+                    throw new RuntimeException('Incomplete fire test row: '.$id);
+                }
+            }
+            if (! in_array($test['severity'], ['Minor', 'Moderate', 'Major'], true)
+                || ! in_array($test['alarm_level'], ['1st', '2nd', '3rd', '4th', '5th', 'Task Force Alpha', 'Task Force Bravo', 'General Alarm'], true)
+                || ! is_array($test['generated_fields'] ?? null)) {
+                throw new RuntimeException('Invalid fire test classification: '.$id);
+            }
+            foreach (['latitude' => 90, 'longitude' => 180] as $field => $limit) {
+                if (! is_numeric($test[$field] ?? null) || abs($test[$field]) > $limit) {
+                    throw new RuntimeException('Invalid fire test coordinate: '.$id);
+                }
+            }
+        }
+
+        return DB::transaction(function () use ($source, $rows, $testData): array {
             // Claim activation atomically. A later deployment must not archive new staff reports.
             $activate = DB::table('fire_dataset_activations')->insertOrIgnore([
                 'version' => 'fire-records-117-v1', 'source_sha256' => $source['sha256'], 'created_at' => now(),
+            ]) === 1;
+            $complete = DB::table('fire_dataset_activations')->insertOrIgnore([
+                'version' => 'fire-records-complete-test-v2', 'source_sha256' => $source['sha256'], 'created_at' => now(),
             ]) === 1;
             // Only create missing canonical barangays; never alter existing assignments/profiles.
             $canonical = ['Addition Hills' => 1, 'Bagong Silang' => 1, 'Barangka Drive' => 2,
@@ -106,6 +132,20 @@ class FireIncidentRecordImporter
                     }
                     $incident->deleted_at = null;
                     $incident->save();
+                }
+                if ($complete || $incident->wasRecentlyCreated) {
+                    $test = $testData['records'][$id];
+                    $barangay = $barangays->get($this->key($test['barangay']));
+                    if (! $barangay) throw new RuntimeException('Unknown fire test barangay: '.$id);
+                    $provenance = $incident->source_record ?? ['sha256' => $source['sha256'], 'values' => $row];
+                    $provenance['test_dataset'] = true;
+                    $provenance['generated_fields'] = $test['generated_fields'];
+                    $incident->fill([
+                        'barangay_id' => $barangay->id, 'street' => $test['location'], 'location' => $test['location'],
+                        'alarm_level' => $test['alarm_level'], 'cause' => $test['cause'], 'severity' => $test['severity'],
+                        'latitude' => $test['latitude'], 'longitude' => $test['longitude'],
+                        'coordinate_accuracy' => 'Approximate', 'source_record' => $provenance,
+                    ])->save();
                 }
             }
             if ($activate) {

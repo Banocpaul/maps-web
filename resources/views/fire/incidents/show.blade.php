@@ -336,7 +336,7 @@
         <section class="incident-panel">
             <h2>Fire Incident Record</h2>
             <div class="incident-detail-grid">
-                @foreach(['record_classification' => 'Record Classification', 'source_origin' => 'Source Origin', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'duration_minutes' => 'Duration (minutes)', 'alarm_level' => 'Alarm (reported)', 'cause' => 'Cause (confirmed)', 'alarm_reference' => 'Alarm (unconfirmed reference)', 'cause_reference' => 'Cause (unconfirmed reference)', 'data_source' => 'Data Source'] as $field => $label)
+                @foreach(['individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'duration_minutes' => 'Duration (minutes)', 'alarm_level' => 'Alarm', 'cause' => 'Cause'] as $field => $label)
                     <div class="incident-detail"><span>{{ $label }}</span><strong>{{ $fireIncident->{$field} ?? 'Not recorded' }}</strong></div>
                 @endforeach
                 @foreach(['occurred_at' => 'Time Occurred (PHT)', 'fire_out_at' => 'Fire Out (PHT)'] as $field => $label)
@@ -344,13 +344,14 @@
                 @endforeach
             </div>
             @if($fireIncident->source_record)
-                <p class="mt-3 text-sm text-slate-500">Imported source: report time was not supplied. Cause and reference alarm are unconfirmed. Coordinates are approximate.</p>
+                <p class="mt-3 text-sm text-slate-500">{{ ($fireIncident->source_record['test_dataset'] ?? false) ? 'Test data includes generated values and map pins.' : 'Imported source values are unconfirmed; coordinates are approximate.' }}</p>
                 @if($fireIncident->source_record['crosses_midnight'] ?? false)<p class="mt-2 text-sm text-slate-500">Fire out is assumed to be the next day, following the source dictionary.</p>@endif
-                <details class="mt-3"><summary>Original source row</summary><dl class="incident-detail-grid mt-3">
+                <details class="mt-3"><summary>Original source row</summary>
+                    @if($fireIncident->source_record['test_dataset'] ?? false)<p class="mt-2 text-sm text-slate-500">Generated test fields: {{ implode(', ', $fireIncident->source_record['generated_fields'] ?? []) }}. Source origin: {{ $fireIncident->source_origin }}.</p>@endif
+                    <dl class="incident-detail-grid mt-3">
                     @foreach($fireIncident->source_record['values'] as $field => $value)<div class="incident-detail"><dt>{{ $field }}</dt><dd>{{ $value ?? 'Not recorded' }}</dd></div>@endforeach
                 </dl></details>
             @endif
-            @if($fireIncident->record_classification === 'Dataset')<p class="mt-3 text-sm text-slate-500">Included in the current project dataset and analytics. Source origin: {{ $fireIncident->source_origin }}.</p>@endif
         </section>
 
         <section class="incident-panel">
@@ -402,7 +403,7 @@
                     </strong>
 
                     <p>
-                        {{ $fireIncident->coordinate_accuracy === 'Approximate' ? 'Approximate barangay reference point; exact fire location is unknown.' : 'Verified incident coordinates.' }}
+                        {{ $fireIncident->coordinate_accuracy === 'Approximate' ? (($fireIncident->source_record['test_dataset'] ?? false) ? 'Generated test pin within the assigned barangay.' : 'Approximate barangay reference point; exact fire location is unknown.') : 'Verified incident coordinates.' }}
                     </p>
                 @else
                     <strong>No coordinates recorded</strong>

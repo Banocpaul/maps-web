@@ -1,0 +1,1889 @@
+{
+  "version": "fire-records-complete-test-v2",
+  "source_sha256": "45c8b5e4857e62d59917f73825df99efc9a7a3290a4eef3e0ec692cdc88548f1",
+  "description": "Complete test data. Added values and pins are synthetic, not verified incident facts.",
+  "severity_rule": "Major: houses >=10, people >=50, or 3rd alarm; Moderate: houses >=3, people >=15, or 2nd alarm; otherwise Minor.",
+  "records": {
+    "FIR-0001": {
+      "barangay": "Plainview",
+      "location": "Test Street 0001, Plainview",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Moderate",
+      "latitude": 14.5740151,
+      "longitude": 121.0339844,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0002": {
+      "barangay": "San Jose",
+      "location": "Test Street 0002, San Jose",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5795654,
+      "longitude": 121.0291694,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0003": {
+      "barangay": "San Jose",
+      "location": "sitio 4",
+      "alarm_level": "2nd",
+      "cause": "Open flame",
+      "severity": "Major",
+      "latitude": 14.5806869,
+      "longitude": 121.0299776,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0004": {
+      "barangay": "Addition Hills",
+      "location": "block 36",
+      "alarm_level": "3rd",
+      "cause": "Faulty wiring",
+      "severity": "Major",
+      "latitude": 14.5811368,
+      "longitude": 121.034847,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0005": {
+      "barangay": "Addition Hills",
+      "location": "block 34",
+      "alarm_level": "2nd",
+      "cause": "Electrical overload",
+      "severity": "Major",
+      "latitude": 14.5893771,
+      "longitude": 121.0357416,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause"
+      ]
+    },
+    "FIR-0006": {
+      "barangay": "Addition Hills",
+      "location": "Test Street 0006, Addition Hills",
+      "alarm_level": "2nd",
+      "cause": "Undetermined origin",
+      "severity": "Major",
+      "latitude": 14.5857098,
+      "longitude": 121.0382058,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0007": {
+      "barangay": "New Zañiga",
+      "location": "Test Street 0007, New Zañiga",
+      "alarm_level": "1st",
+      "cause": "Appliance malfunction",
+      "severity": "Major",
+      "latitude": 14.583244,
+      "longitude": 121.0295945,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0008": {
+      "barangay": "Namayan",
+      "location": "JP RIZAL",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Major",
+      "latitude": 14.5794597,
+      "longitude": 121.0208561,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0009": {
+      "barangay": "Barangka Itaas",
+      "location": "Makaturing",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5683289,
+      "longitude": 121.0408929,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0010": {
+      "barangay": "Mabini–J. Rizal",
+      "location": "Mendoza",
+      "alarm_level": "1st",
+      "cause": "Open flame",
+      "severity": "Major",
+      "latitude": 14.5846429,
+      "longitude": 121.022104,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0011": {
+      "barangay": "Addition Hills",
+      "location": "Block 27 & 29",
+      "alarm_level": "3rd",
+      "cause": "Faulty wiring",
+      "severity": "Major",
+      "latitude": 14.591218,
+      "longitude": 121.0385231,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0012": {
+      "barangay": "Barangka Ilaya",
+      "location": "17G lions head",
+      "alarm_level": "2nd",
+      "cause": "Electrical overload",
+      "severity": "Major",
+      "latitude": 14.5720349,
+      "longitude": 121.0437317,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0013": {
+      "barangay": "Barangka Itaas",
+      "location": "Natib j. Salinga",
+      "alarm_level": "1st",
+      "cause": "Undetermined origin",
+      "severity": "Major",
+      "latitude": 14.571115,
+      "longitude": 121.0417084,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0014": {
+      "barangay": "New Zaniga",
+      "location": "Test Street 0014, New Zaniga",
+      "alarm_level": "1st",
+      "cause": "Appliance malfunction",
+      "severity": "Major",
+      "latitude": 14.5848289,
+      "longitude": 121.0308626,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Barangay",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0015": {
+      "barangay": "Poblacion",
+      "location": "Sunday",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Major",
+      "latitude": 14.5856125,
+      "longitude": 121.0257282,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0016": {
+      "barangay": "Addition Hills",
+      "location": "BLock 32",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5889052,
+      "longitude": 121.0359473,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0017": {
+      "barangay": "Addition Hills",
+      "location": "Block 37",
+      "alarm_level": "1st",
+      "cause": "Open flame",
+      "severity": "Major",
+      "latitude": 14.5896506,
+      "longitude": 121.0368168,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0018": {
+      "barangay": "Plainview",
+      "location": "Sto Rosario",
+      "alarm_level": "1st",
+      "cause": "Faulty wiring",
+      "severity": "Major",
+      "latitude": 14.5735203,
+      "longitude": 121.0333951,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0019": {
+      "barangay": "Addition Hills",
+      "location": "block 32 & 6",
+      "alarm_level": "1st",
+      "cause": "Electrical overload",
+      "severity": "Major",
+      "latitude": 14.5870239,
+      "longitude": 121.0390128,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0020": {
+      "barangay": "Addition Hills",
+      "location": "Block 32",
+      "alarm_level": "1st",
+      "cause": "Undetermined origin",
+      "severity": "Major",
+      "latitude": 14.5897722,
+      "longitude": 121.0371272,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0021": {
+      "barangay": "Hulo",
+      "location": "F Bluementritt",
+      "alarm_level": "1st",
+      "cause": "Appliance malfunction",
+      "severity": "Major",
+      "latitude": 14.5713925,
+      "longitude": 121.0312487,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0022": {
+      "barangay": "Addition Hills",
+      "location": "Block 19",
+      "alarm_level": "2nd",
+      "cause": "Electrical fault",
+      "severity": "Major",
+      "latitude": 14.5864308,
+      "longitude": 121.0374449,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0023": {
+      "barangay": "Addition Hills",
+      "location": "Block 40",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5909085,
+      "longitude": 121.0427141,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0024": {
+      "barangay": "Vergara",
+      "location": "Backside",
+      "alarm_level": "1st",
+      "cause": "Open flame",
+      "severity": "Major",
+      "latitude": 14.5770928,
+      "longitude": 121.0234964,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0025": {
+      "barangay": "Addition Hills",
+      "location": "Test Street 0025, Addition Hills",
+      "alarm_level": "2nd",
+      "cause": "Faulty wiring",
+      "severity": "Major",
+      "latitude": 14.5876165,
+      "longitude": 121.0395367,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0026": {
+      "barangay": "Addition Hills",
+      "location": "Kawayan",
+      "alarm_level": "1st",
+      "cause": "Electrical overload",
+      "severity": "Major",
+      "latitude": 14.5840664,
+      "longitude": 121.0365159,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0027": {
+      "barangay": "Addition Hills",
+      "location": "Block 37",
+      "alarm_level": "1st",
+      "cause": "Undetermined origin",
+      "severity": "Major",
+      "latitude": 14.589225,
+      "longitude": 121.0408362,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0028": {
+      "barangay": "Old Zañiga",
+      "location": "Pitong gatang",
+      "alarm_level": "2nd",
+      "cause": "Appliance malfunction",
+      "severity": "Major",
+      "latitude": 14.5805199,
+      "longitude": 121.0247948,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0029": {
+      "barangay": "Addition Hills",
+      "location": "Test Street 0029, Addition Hills",
+      "alarm_level": "2nd",
+      "cause": "Electrical fault",
+      "severity": "Major",
+      "latitude": 14.5866753,
+      "longitude": 121.0368293,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0030": {
+      "barangay": "Barangka Ibaba",
+      "location": "Test Street 0030, Barangka Ibaba",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5705223,
+      "longitude": 121.0402112,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0031": {
+      "barangay": "Addition Hills",
+      "location": "Block 35",
+      "alarm_level": "3rd",
+      "cause": "Open flame",
+      "severity": "Major",
+      "latitude": 14.5877173,
+      "longitude": 121.0380547,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause"
+      ]
+    },
+    "FIR-0032": {
+      "barangay": "Barangka Ibaba",
+      "location": "Agudo",
+      "alarm_level": "1st",
+      "cause": "Faulty wiring",
+      "severity": "Major",
+      "latitude": 14.5699649,
+      "longitude": 121.037806,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0033": {
+      "barangay": "Addition Hills",
+      "location": "Block 32",
+      "alarm_level": "3rd",
+      "cause": "Electrical overload",
+      "severity": "Major",
+      "latitude": 14.5893824,
+      "longitude": 121.0384851,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0034": {
+      "barangay": "Addition Hills",
+      "location": "Block 34",
+      "alarm_level": "2nd",
+      "cause": "Undetermined origin",
+      "severity": "Major",
+      "latitude": 14.5903448,
+      "longitude": 121.0354174,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-0035": {
+      "barangay": "Addition Hills",
+      "location": "Test Street 0035, Addition Hills",
+      "alarm_level": "2nd",
+      "cause": "Appliance malfunction",
+      "severity": "Major",
+      "latitude": 14.5882317,
+      "longitude": 121.0363805,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0036": {
+      "barangay": "Addition Hills",
+      "location": "Test Street 0036, Addition Hills",
+      "alarm_level": "3rd",
+      "cause": "Electrical fault",
+      "severity": "Major",
+      "latitude": 14.5870618,
+      "longitude": 121.03665,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Street / Location",
+        "Alarm"
+      ]
+    },
+    "FIR-0037": {
+      "barangay": "Addition Hills",
+      "location": "Block 39",
+      "alarm_level": "3rd",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5871271,
+      "longitude": 121.0358779,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0001": {
+      "barangay": "Addition Hills",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Minor",
+      "latitude": 14.5890105,
+      "longitude": 121.0440268,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0002": {
+      "barangay": "Poblacion",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Major",
+      "latitude": 14.5859587,
+      "longitude": 121.028864,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0003": {
+      "barangay": "Barangka Ibaba",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Major",
+      "latitude": 14.5691808,
+      "longitude": 121.0394357,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0004": {
+      "barangay": "Pleasant Hills",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Moderate",
+      "latitude": 14.5892304,
+      "longitude": 121.0383895,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0005": {
+      "barangay": "Vergara",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Appliance overheating",
+      "severity": "Minor",
+      "latitude": 14.5756332,
+      "longitude": 121.0241249,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0006": {
+      "barangay": "Pleasant Hills",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Minor",
+      "latitude": 14.5887228,
+      "longitude": 121.0410393,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0007": {
+      "barangay": "Old Zañiga",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Major",
+      "latitude": 14.5787271,
+      "longitude": 121.0261492,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0008": {
+      "barangay": "Bagong Silang",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Minor",
+      "latitude": 14.5904062,
+      "longitude": 121.0321002,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0009": {
+      "barangay": "New Zañiga",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Improper electrical connection",
+      "severity": "Major",
+      "latitude": 14.5835148,
+      "longitude": 121.0289092,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0010": {
+      "barangay": "Daang Bakal",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Moderate",
+      "latitude": 14.5921298,
+      "longitude": 121.027428,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0011": {
+      "barangay": "Mauway",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5810805,
+      "longitude": 121.0408146,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0012": {
+      "barangay": "New Zañiga",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Major",
+      "latitude": 14.5832927,
+      "longitude": 121.0300718,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0013": {
+      "barangay": "Addition Hills",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Improper electrical connection",
+      "severity": "Moderate",
+      "latitude": 14.5883243,
+      "longitude": 121.0356291,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0014": {
+      "barangay": "San Jose",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Minor",
+      "latitude": 14.5834839,
+      "longitude": 121.0313668,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0015": {
+      "barangay": "Poblacion",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5853708,
+      "longitude": 121.0278077,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0016": {
+      "barangay": "Hulo",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Open flame / candle",
+      "severity": "Major",
+      "latitude": 14.5740855,
+      "longitude": 121.0265633,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0017": {
+      "barangay": "Mabini–J. Rizal",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Appliance overheating",
+      "severity": "Moderate",
+      "latitude": 14.5838032,
+      "longitude": 121.0216791,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0018": {
+      "barangay": "Barangka Ibaba",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5727974,
+      "longitude": 121.0401757,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0019": {
+      "barangay": "Barangka Drive",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Appliance overheating",
+      "severity": "Moderate",
+      "latitude": 14.5701211,
+      "longitude": 121.0368046,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0020": {
+      "barangay": "New Zañiga",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Improper electrical connection",
+      "severity": "Major",
+      "latitude": 14.5826572,
+      "longitude": 121.0274713,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0021": {
+      "barangay": "Old Zañiga",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5782064,
+      "longitude": 121.0265579,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0022": {
+      "barangay": "San Jose",
+      "location": "Block / sitio not specified",
+      "alarm_level": "2nd",
+      "cause": "Appliance overheating",
+      "severity": "Major",
+      "latitude": 14.5819414,
+      "longitude": 121.0303989,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0023": {
+      "barangay": "Barangka Ibaba",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Appliance overheating",
+      "severity": "Moderate",
+      "latitude": 14.5711726,
+      "longitude": 121.0380524,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0024": {
+      "barangay": "Hagdan Bato Libis",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5878739,
+      "longitude": 121.0360998,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0025": {
+      "barangay": "San Jose",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5770961,
+      "longitude": 121.0281776,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0026": {
+      "barangay": "San Jose",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5767339,
+      "longitude": 121.0279088,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0027": {
+      "barangay": "Addition Hills",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Open flame / candle",
+      "severity": "Moderate",
+      "latitude": 14.5817143,
+      "longitude": 121.0363808,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0028": {
+      "barangay": "San Jose",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Major",
+      "latitude": 14.579036,
+      "longitude": 121.0290738,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0029": {
+      "barangay": "Hulo",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Moderate",
+      "latitude": 14.5739319,
+      "longitude": 121.0270476,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0030": {
+      "barangay": "New Zañiga",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Minor",
+      "latitude": 14.5832849,
+      "longitude": 121.0280363,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0031": {
+      "barangay": "Barangka Drive",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Major",
+      "latitude": 14.573695,
+      "longitude": 121.0373886,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0032": {
+      "barangay": "New Zañiga",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5839776,
+      "longitude": 121.028623,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0033": {
+      "barangay": "Barangka Ibaba",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Moderate",
+      "latitude": 14.5704703,
+      "longitude": 121.0367899,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0034": {
+      "barangay": "Mabini–J. Rizal",
+      "location": "Block / sitio not specified",
+      "alarm_level": "2nd",
+      "cause": "Appliance overheating",
+      "severity": "Major",
+      "latitude": 14.5815165,
+      "longitude": 121.0211516,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0035": {
+      "barangay": "Addition Hills",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Improper electrical connection",
+      "severity": "Major",
+      "latitude": 14.5888362,
+      "longitude": 121.0359406,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0036": {
+      "barangay": "Plainview",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Major",
+      "latitude": 14.577496,
+      "longitude": 121.0401279,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0037": {
+      "barangay": "Pleasant Hills",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Moderate",
+      "latitude": 14.5888199,
+      "longitude": 121.0411615,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0038": {
+      "barangay": "San Jose",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Major",
+      "latitude": 14.5771767,
+      "longitude": 121.0281379,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0039": {
+      "barangay": "New Zañiga",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Open flame / candle",
+      "severity": "Major",
+      "latitude": 14.5837286,
+      "longitude": 121.0288415,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0040": {
+      "barangay": "Buayang Bato",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Open flame / candle",
+      "severity": "Moderate",
+      "latitude": 14.569616,
+      "longitude": 121.0515442,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0041": {
+      "barangay": "Plainview",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Improper electrical connection",
+      "severity": "Moderate",
+      "latitude": 14.5794909,
+      "longitude": 121.0333767,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0042": {
+      "barangay": "Addition Hills",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Minor",
+      "latitude": 14.5816296,
+      "longitude": 121.0352638,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0043": {
+      "barangay": "Hagdan Bato Itaas",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Moderate",
+      "latitude": 14.5882575,
+      "longitude": 121.0305778,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0044": {
+      "barangay": "New Zañiga",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5822796,
+      "longitude": 121.0277952,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0045": {
+      "barangay": "San Jose",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Moderate",
+      "latitude": 14.5822565,
+      "longitude": 121.030618,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0046": {
+      "barangay": "Barangka Itaas",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5689492,
+      "longitude": 121.0430115,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0047": {
+      "barangay": "Hulo",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5742998,
+      "longitude": 121.0274231,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0048": {
+      "barangay": "Plainview",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Appliance overheating",
+      "severity": "Major",
+      "latitude": 14.5750091,
+      "longitude": 121.0369926,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0049": {
+      "barangay": "Addition Hills",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5876957,
+      "longitude": 121.03764,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0050": {
+      "barangay": "Old Zañiga",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Open flame / candle",
+      "severity": "Moderate",
+      "latitude": 14.5787882,
+      "longitude": 121.0269671,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0051": {
+      "barangay": "Namayan",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Improper electrical connection",
+      "severity": "Moderate",
+      "latitude": 14.5800444,
+      "longitude": 121.0230294,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0052": {
+      "barangay": "Pleasant Hills",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Major",
+      "latitude": 14.5889174,
+      "longitude": 121.0394765,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0053": {
+      "barangay": "Barangka Ibaba",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Appliance overheating",
+      "severity": "Major",
+      "latitude": 14.5679602,
+      "longitude": 121.0396403,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0054": {
+      "barangay": "Hagdan Bato Libis",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Moderate",
+      "latitude": 14.5869322,
+      "longitude": 121.0332808,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0055": {
+      "barangay": "Old Zañiga",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5816368,
+      "longitude": 121.0234064,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0056": {
+      "barangay": "Daang Bakal",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5926947,
+      "longitude": 121.0290182,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0057": {
+      "barangay": "Burol",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Appliance overheating",
+      "severity": "Major",
+      "latitude": 14.5896047,
+      "longitude": 121.028224,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0058": {
+      "barangay": "Plainview",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Major",
+      "latitude": 14.5773641,
+      "longitude": 121.0314037,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0059": {
+      "barangay": "Daang Bakal",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Moderate",
+      "latitude": 14.5923699,
+      "longitude": 121.0271992,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0060": {
+      "barangay": "Hagdan Bato Itaas",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Minor",
+      "latitude": 14.5883215,
+      "longitude": 121.032279,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0061": {
+      "barangay": "Hulo",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5700845,
+      "longitude": 121.0340286,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0062": {
+      "barangay": "Plainview",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Moderate",
+      "latitude": 14.5772248,
+      "longitude": 121.0380869,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0063": {
+      "barangay": "Barangka Ibaba",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Moderate",
+      "latitude": 14.5694184,
+      "longitude": 121.0367013,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0064": {
+      "barangay": "Addition Hills",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Major",
+      "latitude": 14.5860836,
+      "longitude": 121.0375971,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0065": {
+      "barangay": "San Jose",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Moderate",
+      "latitude": 14.5839113,
+      "longitude": 121.0315354,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0066": {
+      "barangay": "Old Zañiga",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Moderate",
+      "latitude": 14.5791747,
+      "longitude": 121.0257564,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0067": {
+      "barangay": "Addition Hills",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "2nd",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5925722,
+      "longitude": 121.0434962,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0068": {
+      "barangay": "Plainview",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Major",
+      "latitude": 14.5780617,
+      "longitude": 121.0317193,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0069": {
+      "barangay": "Highway Hills",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Moderate",
+      "latitude": 14.5823623,
+      "longitude": 121.0481508,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0070": {
+      "barangay": "Hulo",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Moderate",
+      "latitude": 14.5678646,
+      "longitude": 121.0368351,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0071": {
+      "barangay": "San Jose",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5776505,
+      "longitude": 121.0282305,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0072": {
+      "barangay": "New Zañiga",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Improper electrical connection",
+      "severity": "Moderate",
+      "latitude": 14.5820113,
+      "longitude": 121.0283381,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0073": {
+      "barangay": "New Zañiga",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Open flame / candle",
+      "severity": "Moderate",
+      "latitude": 14.5819427,
+      "longitude": 121.0290479,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0074": {
+      "barangay": "Addition Hills",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Open flame / candle",
+      "severity": "Major",
+      "latitude": 14.5881833,
+      "longitude": 121.0424673,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0075": {
+      "barangay": "Barangka Itaas",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Undetermined",
+      "severity": "Moderate",
+      "latitude": 14.5719133,
+      "longitude": 121.0407573,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0076": {
+      "barangay": "Hulo",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Unattended cooking",
+      "severity": "Minor",
+      "latitude": 14.5718773,
+      "longitude": 121.0316228,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0077": {
+      "barangay": "Hulo",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Open flame / candle",
+      "severity": "Moderate",
+      "latitude": 14.572292,
+      "longitude": 121.0294265,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0078": {
+      "barangay": "San Jose",
+      "location": "Block / sitio not specified",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Moderate",
+      "latitude": 14.5796082,
+      "longitude": 121.0293412,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0079": {
+      "barangay": "Pleasant Hills",
+      "location": "Residential area (unspecified)",
+      "alarm_level": "1st",
+      "cause": "Electrical fault",
+      "severity": "Moderate",
+      "latitude": 14.5876682,
+      "longitude": 121.0448955,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    },
+    "FIR-EX-0080": {
+      "barangay": "Addition Hills",
+      "location": "Street not specified",
+      "alarm_level": "1st",
+      "cause": "Smoking materials",
+      "severity": "Major",
+      "latitude": 14.5861379,
+      "longitude": 121.0407045,
+      "generated_fields": [
+        "Latitude",
+        "Longitude",
+        "Severity",
+        "Cause",
+        "Alarm"
+      ]
+    }
+  }
+}

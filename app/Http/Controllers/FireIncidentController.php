@@ -58,7 +58,9 @@ class FireIncidentController extends Controller
             });
         }
 
-        if ($request->filled('status')) {
+        if ($request->input('status') === 'active') {
+            $query->active();
+        } elseif ($request->filled('status')) {
             $query->where(
                 'status',
                 $request->string('status')->toString()

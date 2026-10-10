@@ -185,6 +185,10 @@
                 action="{{ route('users.index') }}"
                 class="filter-form"
             >
+                @if ($filters['attention'] ?? false)
+                    <input type="hidden" name="attention" value="1">
+                    <p class="text-sm text-sky-700">Inactive or unassigned accounts</p>
+                @endif
                 <div class="filter-field filter-field-search">
                     <label for="search">Search users</label>
 

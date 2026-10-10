@@ -16,9 +16,13 @@ class PredictionHistoryController extends Controller
             'forecast_hours' => ['nullable', Rule::in([24, 48, 72])],
             'kind' => ['nullable', Rule::in(['Forecast', 'Simulation'])],
             'status' => ['nullable', Rule::in(['Running', 'Completed', 'Failed'])],
+            'needs_remark' => ['nullable', 'boolean'],
         ]);
         $runs = PredictionExecution::query()->withCount('remarks');
-        foreach ($filters as $key => $value) {
+        if ($request->boolean('needs_remark')) {
+            $runs->where('kind', 'Forecast')->where('status', 'Completed')->doesntHave('remarks');
+        }
+        foreach (array_diff_key($filters, ['needs_remark' => true]) as $key => $value) {
             if ($value !== null && $value !== '') {
                 $runs->where($key, $value);
             }

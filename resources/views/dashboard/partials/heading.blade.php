@@ -1,9 +1,9 @@
 @php
     $roleMessages = [
-        'administrator' => 'Monitor users, security events, and essential system services.',
+        'administrator' => 'Review accounts, backups, and system issues.',
         'fire-responder' => 'Review active incidents and continue the next required response action.',
-        'flood-analyst' => 'Review weather, flood intelligence, and the latest analytical records.',
-        'operations-manager' => 'Maintain citywide awareness across fire, flood, GIS, and communications.',
+        'flood-analyst' => 'Review flood reports, active floods, and saved forecasts.',
+        'operations-manager' => 'Review reports, follow up incidents, and check delivery issues.',
     ];
 @endphp
 
@@ -23,7 +23,7 @@
 
         <div class="flex-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left sm:text-right">
             <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Today</p>
-            <p class="mt-1 font-semibold text-slate-900">{{ now()->format('F j, Y') }}</p>
+            <p class="mt-1 font-semibold text-slate-900">{{ now('Asia/Manila')->format('F j, Y') }}</p>
             <p class="mt-1 text-xs text-slate-500">Asia/Manila</p>
         </div>
     </div>

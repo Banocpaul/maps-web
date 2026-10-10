@@ -54,6 +54,13 @@
             'icon' => 'analytics',
         ],
         [
+            'label' => 'System Analytics',
+            'route' => 'system-analytics.index',
+            'active' => ['system-analytics.*'],
+            'permission' => 'dashboard.view',
+            'icon' => 'analytics',
+        ],
+        [
             'label' => 'Database Records',
             'route' => Route::has('operational-records.index')
                 ? 'operational-records.index'
@@ -210,17 +217,20 @@
     $visibleOperations = match ($roleSlug) {
         'administrator' => [
             'Dashboard',
+            'System Analytics',
             'Prediction History',
             'SMS Center',
         ],
         'fire-responder' => [
             'Dashboard',
+            'Incident Analytics',
             'Fire Incidents',
             'Fire Hydrants',
             'GIS Mapping',
         ],
         'flood-analyst' => [
             'Dashboard',
+            'Incident Analytics',
             'Flood Prediction',
             'Prediction History',
             'Flood Operations',

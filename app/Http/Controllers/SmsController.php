@@ -16,8 +16,13 @@ use Throwable;
 
 class SmsController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $filters = $request->validate([
+            'status' => ['nullable', 'in:pending,sent,failed'], 'date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $start = $request->filled('date') ? $request->date('date', 'Y-m-d', 'Asia/Manila')->startOfDay()->utc() : null;
+        $today = now('Asia/Manila')->startOfDay()->utc();
         $recipients = SmsRecipient::query()
             ->with('barangay')
             ->latest()
@@ -33,6 +38,8 @@ class SmsController extends Controller
             ->get();
 
         $logs = SmsLog::query()
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $filters['status']))
+            ->when($start, fn ($q) => $q->where('created_at', '>=', $start)->where('created_at', '<', $start->copy()->addDay()))
             ->with([
                 'recipient',
                 'automationRule',
@@ -52,12 +59,12 @@ class SmsController extends Controller
                 ->count(),
 
             'sent_today' => SmsLog::query()
-                ->whereDate('created_at', today())
+                ->where('created_at', '>=', $today)->where('created_at', '<', $today->copy()->addDay())
                 ->where('status', 'sent')
                 ->count(),
 
             'failed_today' => SmsLog::query()
-                ->whereDate('created_at', today())
+                ->where('created_at', '>=', $today)->where('created_at', '<', $today->copy()->addDay())
                 ->where('status', 'failed')
                 ->count(),
         ];
@@ -67,7 +74,8 @@ class SmsController extends Controller
             'automationRules',
             'logs',
             'statistics',
-            'barangays'
+            'barangays',
+            'filters'
         ));
     }
 

@@ -17,7 +17,7 @@
             Administrator only
         </p>
         <h2 class="mt-1 text-xl font-semibold text-indigo-950">
-            System Business Intelligence
+            System Analytics
         </h2>
         <p class="mt-1 text-sm text-indigo-700">
             Authentication, user adoption, system activity, and operational usage intelligence.

@@ -68,6 +68,13 @@
             <option value="D">Level D</option>
         </select>
 
+        <select id="dataset-status-filter" aria-label="Flood status" class="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
+            <option value="">All statuses</option>
+            @foreach (['Active', 'Subsided'] as $status)
+                <option value="{{ $status }}" @selected(request('flood_status') === $status)>{{ $status }}</option>
+            @endforeach
+        </select>
+
         <button
             id="dataset-refresh-button"
             type="button"
@@ -287,6 +294,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tableBody = document.getElementById('dataset-table-body');
     const search = document.getElementById('dataset-search');
     const riskFilter = document.getElementById('dataset-risk-filter');
+    const statusFilter = document.getElementById('dataset-status-filter');
 
     let currentPage = 1;
     let lastPage = 1;
@@ -317,6 +325,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     loadDataset();
+    const requestedRecord = new URL(window.location.href).searchParams.get('record_id');
+    if (canEdit && /^[1-9]\d*$/.test(requestedRecord || '')) editRecord(requestedRecord);
 
     document.getElementById('dataset-add-button')?.addEventListener('click', openCreateModal);
     document.getElementById('dataset-close-button').addEventListener('click', closeModal);
@@ -331,6 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     riskFilter.addEventListener('change', () => loadDataset(1));
+    statusFilter.addEventListener('change', () => loadDataset(1));
     form.addEventListener('submit', saveRecord);
 
     async function loadDataset(page = 1) {
@@ -340,6 +351,7 @@ document.addEventListener('DOMContentLoaded', function () {
             page,
             search: search.value.trim(),
             flood_level_code: riskFilter.value,
+            flood_status: statusFilter.value,
             per_page: 10
         });
 

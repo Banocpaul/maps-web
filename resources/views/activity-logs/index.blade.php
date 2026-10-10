@@ -20,7 +20,7 @@
             </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <a href="{{ route('activity-logs.export', request()->only(['search', 'user_id', 'module', 'action', 'date_from', 'date_to'])) }}" class="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
+            <a href="{{ route('activity-logs.export', request()->only(['search', 'user_id', 'module', 'action', 'date_from', 'date_to', 'today'])) }}" class="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800">
                 Export to Excel
             </a>
             <span class="inline-flex w-fit rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
@@ -46,6 +46,10 @@
 
     <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <form method="GET" action="{{ route('activity-logs.index') }}" class="grid gap-4 border-b border-slate-200 p-5 md:grid-cols-2 xl:grid-cols-6">
+            @if (request()->boolean('today'))
+                <input type="hidden" name="today" value="1">
+                <p class="text-sm text-sky-700">Today in Asia/Manila</p>
+            @endif
             <div class="xl:col-span-2">
                 <label class="text-xs font-semibold uppercase text-slate-500" for="search">Search</label>
                 <input id="search" name="search" value="{{ request('search') }}" placeholder="User, action, route or IP" class="mt-1 w-full rounded-lg border-slate-300 text-sm">

@@ -78,7 +78,7 @@ RUN printf '<Directory /var/www/html/public>\n\
     Require all granted\n\
 </Directory>\n' >> /etc/apache2/apache2.conf
 
-EXPOSE 80
+EXPOSE 10000
 
 # A storage link must be created inside the Linux container at every startup.
 # Refuse to remove an unexpected real directory or file at public/storage.

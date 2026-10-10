@@ -28,6 +28,11 @@ class SmsController extends Controller
             ->latest()
             ->get();
 
+        $recipientGroups = [
+            ['key' => 'internal', 'label' => 'Internal Officers', 'recipients' => $recipients->whereNull('user_id')->values()],
+            ['key' => 'public', 'label' => 'Public Residents', 'recipients' => $recipients->whereNotNull('user_id')->values()],
+        ];
+
         $barangays = Barangay::query()
             ->where('is_active', true)
             ->orderBy('name')
@@ -71,6 +76,7 @@ class SmsController extends Controller
 
         return view('sms.index', compact(
             'recipients',
+            'recipientGroups',
             'automationRules',
             'logs',
             'statistics',

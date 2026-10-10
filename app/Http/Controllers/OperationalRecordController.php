@@ -618,7 +618,7 @@ class OperationalRecordController extends Controller
         return $validated;
     }
 
-    private function baseQuery(array $dataset, string $classification = 'Reported'): Builder
+    private function baseQuery(array $dataset, string $classification = 'Current'): Builder
     {
         $table = $dataset['table'];
         $query = DB::table($table);
@@ -626,7 +626,11 @@ class OperationalRecordController extends Controller
             $query->whereNull("{$table}.deleted_at");
         }
         if ($table === 'fire_incidents') {
-            $query->where('fire_incidents.record_classification', $classification);
+            if ($classification === 'Current') {
+                $query->whereIn('fire_incidents.record_classification', ['Reported', 'Dataset']);
+            } else {
+                $query->where('fire_incidents.record_classification', $classification);
+            }
         }
         if ($dataset['public_only'] ?? false) {
             $query->whereNotNull("{$table}.user_id");
@@ -728,7 +732,7 @@ class OperationalRecordController extends Controller
     private function validatedFilters(Request $request, array $dataset): array
     {
         $validated = $request->validate([
-            'record_classification' => ['nullable', Rule::in(['Reported', 'Example', 'Superseded'])],
+            'record_classification' => ['nullable', Rule::in(['Current', 'Superseded'])],
             'search' => ['nullable', 'string', 'max:100'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
@@ -739,7 +743,7 @@ class OperationalRecordController extends Controller
         ]);
 
         return [
-            'record_classification' => $validated['record_classification'] ?? 'Reported',
+            'record_classification' => $validated['record_classification'] ?? 'Current',
             'search' => trim((string) ($validated['search'] ?? '')),
             'date_from' => (string) ($validated['date_from'] ?? ''),
             'date_to' => (string) ($validated['date_to'] ?? ''),
@@ -845,7 +849,7 @@ class OperationalRecordController extends Controller
                 'joins_barangays' => true, 'order_column' => 'occurred_at',
                 'search_columns' => ['incident_number', 'incident_type', 'location', 'barangay_name', 'source_barangay', 'alarm_level', 'cause'],
                 'statuses' => ['Reported', 'Responding', 'Controlled', 'Resolved'], 'crud_route' => 'fire-incidents.index', 'crud_permission' => 'fire.view',
-                'columns' => ['id' => 'ID', 'incident_number' => 'Incident Number', 'record_classification' => 'Record Classification', 'occurred_at' => 'Time Occurred', 'fire_out_at' => 'Fire Out', 'duration_minutes' => 'Duration (minutes)', 'barangay_name' => 'Barangay', 'location' => 'Street / Location', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'alarm_level' => 'Alarm (reported)', 'cause' => 'Cause (confirmed)', 'alarm_reference' => 'Alarm (unconfirmed reference)', 'cause_reference' => 'Cause (unconfirmed reference)', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'coordinate_accuracy' => 'Coordinate Accuracy', 'severity' => 'Severity', 'status' => 'Status', 'data_source' => 'Data Source'],
+                'columns' => ['id' => 'ID', 'incident_number' => 'Incident Number', 'record_classification' => 'Record Classification', 'source_origin' => 'Source Origin', 'occurred_at' => 'Time Occurred', 'fire_out_at' => 'Fire Out', 'duration_minutes' => 'Duration (minutes)', 'barangay_name' => 'Barangay', 'location' => 'Street / Location', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'alarm_level' => 'Alarm (reported)', 'cause' => 'Cause (confirmed)', 'alarm_reference' => 'Alarm (unconfirmed reference)', 'cause_reference' => 'Cause (unconfirmed reference)', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'coordinate_accuracy' => 'Coordinate Accuracy', 'severity' => 'Severity', 'status' => 'Status', 'data_source' => 'Data Source'],
             ],
             'fire-hydrants' => [
                 'label' => 'Fire Hydrants', 'table' => 'fire_hydrants',

@@ -19,10 +19,11 @@ class FireIncidentController extends Controller
      */
     public function index(Request $request): View
     {
-        $filters = $request->validate(['record_classification' => ['nullable', Rule::in(['Reported', 'Example', 'Superseded'])]]);
-        $classification = $filters['record_classification'] ?? 'Reported';
+        $filters = $request->validate(['record_classification' => ['nullable', Rule::in(['Current', 'Superseded'])]]);
+        $classification = $filters['record_classification'] ?? 'Current';
         $query = FireIncident::withoutGlobalScope('operational_records')
-            ->where('record_classification', $classification)
+            ->when($classification === 'Current', fn ($query) => $query->whereIn('record_classification', ['Reported', 'Dataset']),
+                fn ($query) => $query->where('record_classification', $classification))
             ->with('barangay')
             ->latest('reported_at');
 

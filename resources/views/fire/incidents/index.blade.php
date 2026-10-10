@@ -315,7 +315,7 @@
         </section>
 
         <section class="fire-panel">
-            <p class="mb-3 text-sm text-slate-500">Modeled examples and the previous dataset are excluded from incident totals.</p>
+            <p class="mb-3 text-sm text-slate-500">The uploaded dataset and new reports appear here. Previous records are available separately.</p>
             <form method="GET" action="{{ route('fire-incidents.index') }}" class="fire-filter-grid">
                 <div class="fire-field">
                     <label for="search">Search</label>
@@ -331,8 +331,8 @@
                 <div class="fire-field">
                     <label for="record_classification">Records</label>
                     <select id="record_classification" name="record_classification">
-                        @foreach(['Reported' => 'Reported incidents', 'Example' => 'Modeled examples', 'Superseded' => 'Previous dataset'] as $value => $label)
-                            <option value="{{ $value }}" @selected(request('record_classification', 'Reported') === $value)>{{ $label }}</option>
+                        @foreach(['Current' => 'Current fire records', 'Superseded' => 'Previous dataset'] as $value => $label)
+                            <option value="{{ $value }}" @selected(request('record_classification', 'Current') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>

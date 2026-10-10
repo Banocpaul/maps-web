@@ -9,7 +9,7 @@ class ImportFireIncidents extends Command
 {
     protected $signature = 'fire:import {file? : Path to the normalized fire records JSON}';
 
-    protected $description = 'Import Fire Records(1).xlsx once, preserving edits and separating examples';
+    protected $description = 'Activate all 117 Fire Records(1).xlsx rows as the current project dataset';
 
     public function handle(FireIncidentRecordImporter $importer): int
     {

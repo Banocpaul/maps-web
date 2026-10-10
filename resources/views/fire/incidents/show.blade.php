@@ -336,7 +336,7 @@
         <section class="incident-panel">
             <h2>Fire Incident Record</h2>
             <div class="incident-detail-grid">
-                @foreach(['record_classification' => 'Record Classification', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'duration_minutes' => 'Duration (minutes)', 'alarm_level' => 'Alarm (reported)', 'cause' => 'Cause (confirmed)', 'alarm_reference' => 'Alarm (unconfirmed reference)', 'cause_reference' => 'Cause (unconfirmed reference)', 'data_source' => 'Data Source'] as $field => $label)
+                @foreach(['record_classification' => 'Record Classification', 'source_origin' => 'Source Origin', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'duration_minutes' => 'Duration (minutes)', 'alarm_level' => 'Alarm (reported)', 'cause' => 'Cause (confirmed)', 'alarm_reference' => 'Alarm (unconfirmed reference)', 'cause_reference' => 'Cause (unconfirmed reference)', 'data_source' => 'Data Source'] as $field => $label)
                     <div class="incident-detail"><span>{{ $label }}</span><strong>{{ $fireIncident->{$field} ?? 'Not recorded' }}</strong></div>
                 @endforeach
                 @foreach(['occurred_at' => 'Time Occurred (PHT)', 'fire_out_at' => 'Fire Out (PHT)'] as $field => $label)
@@ -344,13 +344,13 @@
                 @endforeach
             </div>
             @if($fireIncident->source_record)
-                <p class="mt-3 text-sm text-slate-500">Transcribed source: report time was not supplied. Cause and reference alarm are unconfirmed. Coordinates are approximate.</p>
+                <p class="mt-3 text-sm text-slate-500">Imported source: report time was not supplied. Cause and reference alarm are unconfirmed. Coordinates are approximate.</p>
                 @if($fireIncident->source_record['crosses_midnight'] ?? false)<p class="mt-2 text-sm text-slate-500">Fire out is assumed to be the next day, following the source dictionary.</p>@endif
                 <details class="mt-3"><summary>Original source row</summary><dl class="incident-detail-grid mt-3">
                     @foreach($fireIncident->source_record['values'] as $field => $value)<div class="incident-detail"><dt>{{ $field }}</dt><dd>{{ $value ?? 'Not recorded' }}</dd></div>@endforeach
                 </dl></details>
             @endif
-            @if($fireIncident->record_classification === 'Example')<p class="mt-3 font-semibold text-amber-700">Modeled example — excluded from totals, active maps, and SMS alerts.</p>@endif
+            @if($fireIncident->record_classification === 'Dataset')<p class="mt-3 text-sm text-slate-500">Included in the current project dataset and analytics. Source origin: {{ $fireIncident->source_origin }}.</p>@endif
         </section>
 
         <section class="incident-panel">

@@ -215,6 +215,7 @@
                     <div>
                         <h2 class="text-lg font-semibold text-slate-950">Simulation Results</h2>
                         <p id="scenario-summary" class="mt-1 text-sm text-slate-600"></p>
+                        <p class="mt-1 text-xs text-slate-500">Confidence is the model probability of the displayed flood code.</p>
                         <a id="simulation-history-link" class="mt-2 hidden text-sm font-semibold text-sky-700 hover:text-sky-900">Review Saved Run</a>
                     </div>
 
@@ -246,6 +247,7 @@
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Rank</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Barangay</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Flood Severity</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Confidence</th>
                         </tr>
                     </thead>
                     <tbody id="results-table-body" class="divide-y divide-slate-100 bg-white"></tbody>
@@ -422,8 +424,20 @@
         return {
             barangay: String(item.barangay || ''),
             floodCode: ['A', 'B', 'C', 'D'].includes(code) ? code : 'A',
-            confidence: Number(item.flood_severity_confidence || item.confidence || 0)
+            confidence: confidencePercent(item)
         };
+    }
+
+    function confidencePercent(item) {
+        const code = String(item.flood_code ?? '').toUpperCase();
+        if (!['A', 'B', 'C', 'D'].includes(code)) return null;
+        const value = item.flood_severity_confidence ?? item.confidence
+            ?? item.flood_severity_probabilities?.[code] ?? item.probabilities?.[code];
+        if ((typeof value !== 'number' && typeof value !== 'string')
+            || String(value).trim() === '') return null;
+        if (typeof value === 'string' && !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) return null;
+        const numeric = Number(value);
+        return Number.isFinite(numeric) && numeric >= 0 && numeric <= 1 ? numeric * 100 : null;
     }
 
     function renderSummary() {
@@ -466,6 +480,9 @@
                 </td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm">
                     ${severityBadge(result.floodCode)}
+                </td>
+                <td class="whitespace-nowrap px-4 py-4 text-sm font-semibold tabular-nums text-slate-900">
+                    ${result.confidence === null ? '<span class="font-normal text-slate-400">Unavailable</span>' : result.confidence.toFixed(1) + '%'}
                 </td>
             `;
             resultsTableBody.appendChild(row);

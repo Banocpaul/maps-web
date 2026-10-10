@@ -57,6 +57,7 @@ class PredictionHistoryTest extends TestCase
             // Snapshot date differs from actual execution time; history uses the latter.
             $this->assertSame('2026-10-10 06:00:00', $run->requested_at->format('Y-m-d H:i:s'));
             $this->assertNotNull($run->completed_at);
+            $this->get(route('prediction.history.show', $run))->assertOk()->assertSee('Confidence')->assertSee('87.3%');
         }
         $this->assertDatabaseCount('prediction_executions', 3);
     }
@@ -145,6 +146,26 @@ class PredictionHistoryTest extends TestCase
         $this->get(route('prediction.history.show', 99999))->assertNotFound();
     }
 
+    public function test_each_barangay_displays_its_saved_severity_confidence_without_inventing_missing_values(): void
+    {
+        $result = $this->predictionResult(72);
+        $result['predictions'] = [
+            ['barangay' => 'Hulo', 'flood_code' => 'B', 'flood_severity_confidence' => 0.734, 'confidence' => 0.98],
+            ['barangay' => 'Plainview', 'flood_code' => 'C', 'flood_severity_probabilities' => ['C' => 0.4, 'D' => 0.6]],
+            ['barangay' => 'New Zañiga', 'flood_code' => 'A', 'confidence' => 0],
+            ['barangay' => 'Old Zañiga', 'flood_code' => 'D', 'confidence' => 1],
+            ['barangay' => 'Unknown confidence', 'flood_code' => 'C', 'probabilities' => ['Low' => 0.05, 'Medium' => 0.05, 'High' => 0.9]],
+            ['barangay' => 'Invalid confidence', 'flood_code' => 'B', 'confidence' => 1.5],
+        ];
+        $run = $this->savedRun(['forecast_hours' => 72, 'result_snapshot' => $result]);
+        $this->mock(FloodPredictionService::class, fn ($mock) => $mock->shouldNotReceive('predictCitywide'));
+        $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldNotReceive('getCurrentWeather'));
+        $this->actingAs($this->staff())->get(route('prediction.history.show', $run))->assertOk()
+            ->assertSeeInOrder(['Hulo', '73.4%', 'Plainview', '40.0%', 'New Zañiga', '0.0%', 'Old Zañiga', '100.0%', 'Unknown confidence', 'Unavailable', 'Invalid confidence', 'Unavailable'])
+            ->assertDontSee('98.0%')->assertDontSee('150.0%');
+        $this->assertSame($result, $run->fresh()->result_snapshot);
+    }
+
     public function test_failed_simulation_is_saved_but_invalid_rainfall_does_not_run(): void
     {
         $this->mock(FloodPredictionService::class, fn ($mock) => $mock->shouldReceive('predictCitywide')->once()
@@ -218,6 +239,35 @@ class PredictionHistoryTest extends TestCase
         $this->actingAs($this->staff())->get(route('prediction.history.index', [
             'forecast_hours' => 48, 'kind' => 'Forecast', 'status' => 'Completed',
         ]))->assertOk()->assertViewHas('runs', fn ($runs) => $runs->total() === 1 && $runs->first()->id === $match->id);
+    }
+
+    public function test_history_search_combines_with_filters_and_preserves_pagination(): void
+    {
+        $match = $this->savedRun(['requested_by_name' => 'Paul Bañoc', 'forecast_hours' => 48]);
+        $wrongWindow = $this->savedRun(['requested_by_name' => 'Paul Bañoc', 'forecast_hours' => 72]);
+        $other = $this->savedRun(['requested_by_name' => 'Other Staff', 'forecast_hours' => 48]);
+        $this->actingAs($this->staff())->get(route('prediction.history.index'))->assertOk()
+            ->assertViewHas('runs', fn ($runs) => $runs->total() === 3)->assertSee('Run number or staff name');
+        $this->get(route('prediction.history.index', ['search' => '  Paul  ', 'forecast_hours' => 48]))->assertOk()
+            ->assertViewHas('runs', fn ($runs) => $runs->total() === 1 && $runs->first()->id === $match->id)
+            ->assertSee('value="Paul"', false);
+        foreach ([(string) $other->id, '#'.$other->id, 'Run #'.$other->id] as $search) {
+            $this->get(route('prediction.history.index', ['search' => $search]))->assertOk()
+                ->assertViewHas('runs', fn ($runs) => $runs->total() === 1 && $runs->first()->id === $other->id);
+        }
+        // A matching run number cannot bypass the requested forecast window or review filter.
+        $this->get(route('prediction.history.index', ['search' => '#'.$wrongWindow->id, 'forecast_hours' => 48]))->assertOk()
+            ->assertViewHas('runs', fn ($runs) => $runs->total() === 0)->assertSee('No saved runs match these filters.');
+        $match->remarks()->create(['author_name' => 'Reviewer', 'body' => 'Reviewed']);
+        $this->get(route('prediction.history.index', ['search' => '#'.$match->id, 'needs_remark' => 1]))->assertOk()
+            ->assertViewHas('runs', fn ($runs) => $runs->total() === 0);
+        for ($index = 0; $index < 22; $index++) {
+            $this->savedRun(['requested_by_name' => 'Searchable Staff']);
+        }
+        $this->get(route('prediction.history.index', ['search' => 'Searchable', 'page' => 2]))->assertOk()
+            ->assertViewHas('runs', fn ($runs) => $runs->total() === 22 && $runs->count() === 2)
+            ->assertSee('search=Searchable', false);
+        $this->get(route('prediction.history.index', ['search' => str_repeat('x', 101)]))->assertSessionHasErrors('search');
     }
 
     public function test_staff_deletion_preserves_authorship_and_history(): void

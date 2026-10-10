@@ -6,12 +6,16 @@ It records the requesting staff member, the actual execution time, selected hori
 the input and weather snapshot used for inference, and the complete returned response.
 The saved result includes every barangay, A–D severity, confidence/probabilities,
 forecast summary and any model metadata returned by the existing API.
+The barangay results display confidence as the saved model probability of the
+reported A–D code (for example, 0.873 displays as 87.3%). Missing or invalid
+confidence is shown as Unavailable; combined legacy risk probabilities are not
+used to invent per-code confidence.
 
 Successful forecasts redirect to their saved result. Opening or refreshing this
 page reads the stored snapshot and does not call ML or weather services again.
 Later forecasts create separate runs and do not replace earlier results.
 
-History supports filtering by window, run type and status. A valid submitted request
+History supports search by run number or saved staff name, plus filtering by window, run type and status. A valid submitted request
 starts as Running; successful results become Completed and errors become Failed.
 Invalid forms are not prediction executions. If a worker terminates unexpectedly,
 a Running record can remain without a completion timestamp; no result is fabricated.

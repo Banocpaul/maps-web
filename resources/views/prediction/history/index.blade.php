@@ -13,6 +13,7 @@
     </div>
 
     <form method="GET" action="{{ route('prediction.history.index') }}" class="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="sm:col-span-2"><label for="history-search" class="mb-2 block text-sm font-medium">Search</label><input id="history-search" name="search" type="search" maxlength="100" value="{{ $filters['search'] ?? '' }}" placeholder="Run number or staff name" class="w-full rounded-xl border-slate-300 text-sm"></div>
         <div><label for="forecast_hours" class="mb-2 block text-sm font-medium">Forecast window</label><select id="forecast_hours" name="forecast_hours" class="w-full rounded-xl border-slate-300 text-sm"><option value="">All windows</option>@foreach ([24, 48, 72] as $hours)<option value="{{ $hours }}" @selected((string) ($filters['forecast_hours'] ?? '') === (string) $hours)>{{ $hours }} hours</option>@endforeach</select></div>
         <div><label for="kind" class="mb-2 block text-sm font-medium">Run type</label><select id="kind" name="kind" class="w-full rounded-xl border-slate-300 text-sm"><option value="">All types</option>@foreach (['Forecast', 'Simulation'] as $kind)<option @selected(($filters['kind'] ?? '') === $kind)>{{ $kind }}</option>@endforeach</select></div>
         <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="needs_remark" value="1" @checked($filters['needs_remark'] ?? false) class="rounded border-slate-300">Forecasts without remarks</label>

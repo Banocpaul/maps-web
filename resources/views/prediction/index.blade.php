@@ -300,7 +300,7 @@
                 <p class="mt-1 text-sm text-slate-500">
                     {{ $citywideResult['summary']['total_barangays'] ?? ($citywideResult['barangay_count'] ?? 0) }}
                     barangays analyzed for flood severity over the next {{ $resultHours }} hours.
-                    Each barangay is classified as Level A, B, C, or D.
+                    Each barangay is classified as Level A, B, C, or D. Confidence is the model probability of the displayed flood code.
                 </p>
             </div>
 
@@ -346,6 +346,9 @@
                                 <th class="px-4 py-3 text-left text-xs font-bold uppercase text-slate-600">
                                     Flood Severity
                                 </th>
+                                <th class="px-4 py-3 text-left text-xs font-bold uppercase text-slate-600">
+                                    Confidence
+                                </th>
                             </tr>
                         </thead>
 
@@ -389,10 +392,13 @@
                                             {{ $severityText }}
                                         </span>
                                     </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        @include('prediction.partials.confidence', ['item' => $item])
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="3" class="px-4 py-10 text-center text-sm text-slate-500">
+                                    <td colspan="4" class="px-4 py-10 text-center text-sm text-slate-500">
                                         No prediction records were returned.
                                     </td>
                                 </tr>

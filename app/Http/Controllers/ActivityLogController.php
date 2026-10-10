@@ -13,6 +13,7 @@ class ActivityLogController extends Controller
 {
     public function index(Request $request): View
     {
+        $today = now('Asia/Manila')->startOfDay()->utc();
         abort_unless(
             $request->user()?->isAdministrator(),
             403,
@@ -45,10 +46,8 @@ class ActivityLogController extends Controller
                 ->orderBy('action')
                 ->pluck('action'),
             'totalLogs' => ActivityLog::count(),
-            'todayLogs' => ActivityLog::whereDate(
-                'created_at',
-                today('Asia/Manila')
-            )->count(),
+            'todayLogs' => ActivityLog::where('created_at', '>=', $today)
+                ->where('created_at', '<', $today->copy()->addDay())->count(),
             'failedLogins' => ActivityLog::where(
                 'action',
                 'failed_login'
@@ -156,6 +155,11 @@ class ActivityLogController extends Controller
 
         if ($request->filled('action')) {
             $query->where('action', $request->string('action')->toString());
+        }
+
+        if ($request->boolean('today')) {
+            $start = now('Asia/Manila')->startOfDay()->utc();
+            $query->where('created_at', '>=', $start)->where('created_at', '<', $start->copy()->addDay());
         }
 
         if ($request->filled('date_from')) {

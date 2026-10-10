@@ -11,8 +11,10 @@ use App\Models\User;
 use App\Services\FireAnalyticsService;
 use App\Services\FloodAnalyticsService;
 use App\Services\LiveWeatherService;
+use App\Services\ProcessDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Throwable;
@@ -28,39 +30,52 @@ class DashboardController extends Controller
 
     public function index(Request $request): View
     {
-        return $this->renderWorkspace($request);
+        $assignedRole = $this->assignedRole($request);
+        return view('dashboard.index', array_merge([
+            'user' => $request->user(), 'assignedRole' => $assignedRole, 'roleSlug' => $assignedRole->slug,
+        ], app(ProcessDashboardService::class)->build($request->user(), $assignedRole)));
     }
 
     public function incidentAnalytics(Request $request): View
     {
-        return $this->renderWorkspace($request, true);
+        return $this->renderAnalytics($request);
     }
 
-    private function renderWorkspace(Request $request, bool $incidentAnalytics = false): View
+    public function systemAnalytics(Request $request): View
     {
-        $user = $request->user();
-        $assignedRole = $user->role()
+        return $this->renderAnalytics($request, true);
+    }
+
+    private function assignedRole(Request $request): Role
+    {
+        $assignedRole = $request->user()->role()
             ->with('permissions')
             ->first();
 
         abort_if(
-            $assignedRole === null,
+            $assignedRole === null || ! $assignedRole->is_active,
             403,
             'No active system role is assigned to this account.'
         );
 
-        $roleSlug = $assignedRole->slug;
-
-        if ($incidentAnalytics) {
-            abort_unless($roleSlug === 'operations-manager', 403);
-        }
-
-        abort_unless(in_array($roleSlug, [
+        abort_unless(in_array($assignedRole->slug, [
             'administrator',
             'fire-responder',
             'flood-analyst',
             'operations-manager',
         ], true), 403, 'This role does not have a personalized dashboard.');
+
+        return $assignedRole;
+    }
+
+    private function renderAnalytics(Request $request, bool $systemAnalytics = false): View
+    {
+        $user = $request->user();
+        $assignedRole = $this->assignedRole($request);
+        $roleSlug = $assignedRole->slug;
+        abort_unless($systemAnalytics ? $roleSlug === 'administrator' : in_array($roleSlug, [
+            'fire-responder', 'flood-analyst', 'operations-manager',
+        ], true), 403);
 
         $validated = $request->validate([
             'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
@@ -68,8 +83,10 @@ class DashboardController extends Controller
             'analytics' => ['nullable', 'in:fire,flood'],
         ]);
 
-        $selectedAnalytics = $validated['analytics']
-            ?? ($roleSlug === 'flood-analyst' ? 'flood' : 'fire');
+        $selectedAnalytics = match ($roleSlug) {
+            'fire-responder' => 'fire', 'flood-analyst' => 'flood',
+            default => $validated['analytics'] ?? 'fire',
+        };
 
         $selectedYear = isset($validated['year'])
             ? (int) $validated['year']
@@ -91,7 +108,6 @@ class DashboardController extends Controller
         $liveWeatherError = null;
         $adminDashboard = [];
         $fireOperations = [];
-        $operationsSummary = [];
 
         $needsFire = in_array($roleSlug, [
             'fire-responder',
@@ -149,11 +165,7 @@ class DashboardController extends Controller
             $adminDashboard = $this->administratorDashboard();
         }
 
-        if ($roleSlug === 'operations-manager') {
-            $operationsSummary = $this->operationsSummary();
-        }
-
-        return view($incidentAnalytics ? 'incident-analytics.index' : 'dashboard.index', compact(
+        return view($systemAnalytics ? 'system-analytics.index' : 'incident-analytics.index', compact(
             'user',
             'assignedRole',
             'roleSlug',
@@ -161,7 +173,6 @@ class DashboardController extends Controller
             'fireDashboard',
             'fireOperations',
             'floodDashboard',
-            'operationsSummary',
             'liveWeather',
             'liveWeatherError',
             'barangays',
@@ -305,7 +316,9 @@ class DashboardController extends Controller
 
         $rows = ActivityLog::query()
             ->selectRaw(
-                "DATE_FORMAT(created_at, '%Y-%m') as month_key, " .
+                (DB::connection()->getDriverName() === 'sqlite'
+                    ? "strftime('%Y-%m', created_at)"
+                    : "DATE_FORMAT(created_at, '%Y-%m')") . ' as month_key, ' .
                 'action, COUNT(*) as total'
             )
             ->whereIn('action', ['login', 'failed_login'])
@@ -529,23 +542,4 @@ class DashboardController extends Controller
         ];
     }
 
-    private function operationsSummary(): array
-    {
-        $hasSmsLogs = Schema::hasTable('sms_logs');
-
-        return [
-            'sms_sent_today' => $hasSmsLogs
-                ? SmsLog::query()
-                    ->where('status', 'sent')
-                    ->whereDate('created_at', today())
-                    ->count()
-                : 0,
-            'sms_failed_today' => $hasSmsLogs
-                ? SmsLog::query()
-                    ->where('status', 'failed')
-                    ->whereDate('created_at', today())
-                    ->count()
-                : 0,
-        ];
-    }
 }

@@ -44,6 +44,9 @@ class UserManagementController extends Controller
                 $status === 'inactive',
                 fn ($query) => $query->where('is_active', false)
             )
+            ->when($request->boolean('attention'), fn ($query) => $query->where(fn ($q) =>
+                $q->where('is_active', false)->orWhereDoesntHave('role', fn ($role) => $role->where('is_active', true))
+            ))
             ->latest('id')
             ->paginate(10)
             ->withQueryString();
@@ -59,6 +62,7 @@ class UserManagementController extends Controller
                 'search' => $search,
                 'role_id' => $roleId,
                 'status' => $status,
+                'attention' => $request->boolean('attention'),
             ],
         ]);
     }

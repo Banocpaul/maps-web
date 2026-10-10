@@ -331,6 +331,7 @@
                     <label for="status">Status</label>
                     <select id="status" name="status">
                         <option value="">All statuses</option>
+                        <option value="active" @selected(request('status') === 'active')>Active incidents</option>
                         @foreach (['Reported', 'Responding', 'Controlled', 'Resolved'] as $status)
                             <option value="{{ $status }}" @selected(request('status') === $status)>
                                 {{ $status }}

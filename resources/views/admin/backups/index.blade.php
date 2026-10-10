@@ -81,6 +81,11 @@
                 <p class="mt-1 text-sm text-slate-600">All dates and times are displayed in Asia/Manila.</p>
             </div>
 
+            <form method="GET" action="{{ route('admin.backups.index') }}" class="flex flex-wrap items-center gap-3 border-b border-slate-200 px-5 py-3">
+                <label for="backup-attention" class="text-sm">Show</label>
+                <select id="backup-attention" name="attention" class="rounded-lg border-slate-300 text-sm"><option value="">All backups</option><option value="unverified" @selected(($attention ?? null) === 'unverified')>Awaiting verification</option><option value="failed-today" @selected(($attention ?? null) === 'failed-today')>Failed today (Manila)</option></select>
+                <button class="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white">Apply</button>
+            </form>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                     <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -106,7 +111,7 @@
                                     );
                             @endphp
 
-                            <tr class="align-top hover:bg-slate-50/70">
+                            <tr id="backup-{{ $backup->uuid }}" class="align-top hover:bg-slate-50/70">
                                 <td class="whitespace-nowrap px-5 py-4">
                                     <p class="font-medium text-slate-900">
                                         {{ $backup->created_at->timezone('Asia/Manila')->format('M d, Y') }}

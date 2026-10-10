@@ -17,6 +17,12 @@ class DashboardRoleAnalyticsTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+    }
+
     public function test_incident_analytics_page_shows_four_fire_and_four_flood_analytics(): void
     {
         $response = $this->renderDashboard('operations-manager', 'incident-analytics.index');
@@ -41,9 +47,9 @@ class DashboardRoleAnalyticsTest extends TestCase
     public function test_operations_dashboard_has_overview_and_analytics_link_without_charts(): void
     {
         $this->renderDashboard('operations-manager')
-            ->assertSee('Active Fire Incidents')
-            ->assertSee('SMS Sent Today')
-            ->assertSee('Command Shortcuts')
+            ->assertSee('Work Queue')
+            ->assertSee('Quick Actions')
+            ->assertSee('No pending tasks')
             ->assertSee(route('incident-analytics.index'), false)
             ->assertDontSee('Business Intelligence')
             ->assertDontSee('fireMonthlyChart', false)
@@ -90,15 +96,15 @@ class DashboardRoleAnalyticsTest extends TestCase
 
     public function test_incident_analytics_does_not_expand_other_roles_access(): void
     {
-        foreach (['administrator', 'fire-responder', 'flood-analyst', 'public-resident'] as $slug) {
+        foreach (['administrator', 'public-resident'] as $slug) {
             $this->actingAs($this->createUser($slug))->get(route('incident-analytics.index'))
                 ->assertForbidden();
         }
     }
 
-    public function test_fire_responder_dashboard_shows_only_fire_analytics(): void
+    public function test_fire_responder_analytics_shows_only_fire_charts(): void
     {
-        $response = $this->renderDashboard('fire-responder');
+        $response = $this->renderDashboard('fire-responder', 'incident-analytics.index');
 
         $response
             ->assertSee('Fire Incident Intelligence')
@@ -107,14 +113,13 @@ class DashboardRoleAnalyticsTest extends TestCase
             ->assertDontSee('floodMonthlyChart', false);
     }
 
-    public function test_flood_analyst_dashboard_shows_only_flood_analytics(): void
+    public function test_flood_analyst_analytics_shows_only_flood_charts(): void
     {
-        $response = $this->renderDashboard('flood-analyst');
+        $response = $this->renderDashboard('flood-analyst', 'incident-analytics.index');
 
         $response
             ->assertSee('Flood Risk Intelligence')
             ->assertSee('floodRainfallChart', false)
-            ->assertSee(route('gis.index'), false)
             ->assertDontSee(route('public.flood-map'), false)
             ->assertDontSee('Average Flood Depth (mm)')
             ->assertDontSee('Duration')
@@ -158,7 +163,6 @@ class DashboardRoleAnalyticsTest extends TestCase
             'fireDashboard' => $this->fireDashboard(),
             'fireOperations' => ['recent_active' => collect()],
             'floodDashboard' => $this->floodDashboard(),
-            'operationsSummary' => [],
             'liveWeather' => ['rainfall_24h_mm' => 7.5],
             'liveWeatherError' => null,
             'barangays' => collect(),
@@ -167,6 +171,7 @@ class DashboardRoleAnalyticsTest extends TestCase
             'selectedBarangayId' => null,
             'selectedBarangay' => null,
             'errors' => new ViewErrorBag(),
+            ...app(\App\Services\ProcessDashboardService::class)->build($user, $role),
         ]);
     }
 

@@ -27,6 +27,10 @@ class FloodDatasetController extends Controller
                 $request->filled('flood_level_code') && $request->string('flood_level_code')->toString() !== 'all',
                 fn ($query) => $query->where('flood_level_code', $request->string('flood_level_code')->toString())
             )
+            ->when(
+                in_array($request->input('flood_status'), ['Active', 'Subsided'], true),
+                fn ($query) => $query->where('flood_status', $request->input('flood_status'))
+            )
             ->latest('observed_at')
             ->paginate(
                 perPage: min(

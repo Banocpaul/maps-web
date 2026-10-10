@@ -14,7 +14,9 @@
     $floodKpis = $floodDashboard['kpis'] ?? [];
     $activeIncidents = collect($fireOperations['recent_active'] ?? []);
     $recentFloods = collect($floodDashboard['recent_records'] ?? []);
-    $selectedAnalytics = $selectedAnalytics ?? 'fire';
+    $showFire = in_array($roleSlug, ['fire-responder', 'operations-manager'], true);
+    $showFlood = in_array($roleSlug, ['flood-analyst', 'operations-manager'], true);
+    $selectedAnalytics = $selectedAnalytics ?? ($roleSlug === 'flood-analyst' ? 'flood' : 'fire');
     $rainfall24h = data_get($liveWeather, 'rainfall_24h_mm');
     $temperature = data_get($liveWeather, 'avg_temp_mean_c');
     $humidity = data_get($liveWeather, 'avg_rh_pct');
@@ -24,14 +26,16 @@
     <div class="border-b border-blue-200 bg-gradient-to-r from-blue-50 via-sky-50 to-cyan-50 px-5 py-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">Operations officer</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">{{ $assignedRole->name }}</p>
                 <h1 class="mt-1 text-xl font-semibold text-blue-950">Incident Analytics</h1>
                 <p class="mt-1 text-sm text-blue-700">Fire and flood trends, records, and performance.</p>
             </div>
+            @if ($showFire && $showFlood)
             <div class="inline-flex w-full rounded-xl border border-blue-200 bg-white/90 p-1 shadow-sm sm:w-auto" role="tablist" aria-label="Incident analytics">
                 <button type="button" id="fire-analytics-tab" class="analytics-tab flex-1 rounded-lg px-5 py-2.5 text-sm font-semibold transition duration-200 sm:flex-none" data-analytics-target="fire" role="tab" aria-controls="fire-analytics-panel">Fire Operations</button>
                 <button type="button" id="flood-analytics-tab" class="analytics-tab flex-1 rounded-lg px-5 py-2.5 text-sm font-semibold transition duration-200 sm:flex-none" data-analytics-target="flood" role="tab" aria-controls="flood-analytics-panel">Flood Operations</button>
             </div>
+            @endif
         </div>
     </div>
 
@@ -39,7 +43,8 @@
         {{-- The hidden analytics field in this form keeps Apply and Reset on the selected hazard. --}}
         @include('dashboard.partials.filters', ['filterRoute' => 'incident-analytics.index'])
 
-        <div id="fire-analytics-panel" data-analytics-panel="fire" role="tabpanel" aria-labelledby="fire-analytics-tab">
+        @if ($showFire)
+        <div id="fire-analytics-panel" data-analytics-panel="fire" @class(['hidden' => $selectedAnalytics !== 'fire']) role="tabpanel" aria-label="Fire analytics">
             <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <article class="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm"><p class="text-sm font-medium text-red-700">Active Fire Incidents</p><p class="mt-2 text-3xl font-bold text-red-700">{{ number_format($fireOperations['active'] ?? 0) }}</p><p class="mt-2 text-xs text-red-600">Currently open citywide operations</p></article>
                 <article class="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm"><p class="text-sm font-medium text-orange-700">Major Incidents</p><p class="mt-2 text-3xl font-bold text-orange-700">{{ number_format($fireKpis['major_incidents'] ?? 0) }}</p><p class="mt-2 text-xs text-orange-600">Matches the selected filters</p></article>
@@ -64,7 +69,9 @@
             @include('dashboard.partials.fire-analytics')
         </div>
 
-        <div id="flood-analytics-panel" data-analytics-panel="flood" class="hidden" role="tabpanel" aria-labelledby="flood-analytics-tab">
+        @endif
+        @if ($showFlood)
+        <div id="flood-analytics-panel" data-analytics-panel="flood" @class(['hidden' => $selectedAnalytics !== 'flood']) role="tabpanel" aria-label="Flood analytics">
             <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <article class="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm"><p class="text-sm font-medium text-sky-700">Flood Records</p><p class="mt-2 text-3xl font-bold text-sky-800">{{ number_format($floodKpis['total_records'] ?? 0) }}</p><p class="mt-2 text-xs text-sky-700">Matches the selected filters</p></article>
                 <article class="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm"><p class="text-sm font-medium text-red-700">High-Risk Flood Records</p><p class="mt-2 text-3xl font-bold text-red-700">{{ number_format($floodKpis['high_risk_records'] ?? 0) }}</p><p class="mt-2 text-xs text-red-600">Priority analytical observations</p></article>
@@ -93,6 +100,7 @@
 
             @include('dashboard.partials.flood-analytics')
         </div>
+        @endif
     </div>
 </section>
 

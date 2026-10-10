@@ -19,13 +19,19 @@ class DatabaseBackupController extends Controller
     {
         $this->assertAdministrator($request);
 
+        $attention = $request->validate(['attention' => ['nullable', 'in:unverified,failed-today']])['attention'] ?? null;
+        $start = now('Asia/Manila')->startOfDay()->utc();
         $backups = DatabaseBackup::query()
+            ->when($attention === 'unverified', fn ($q) => $q->where('status', 'completed')->whereNull('verified_at'))
+            ->when($attention === 'failed-today', fn ($q) => $q->where('status', 'failed')
+                ->where('created_at', '>=', $start)->where('created_at', '<', $start->copy()->addDay()))
             ->with(['creator', 'verifier', 'restorer'])
             ->latest('created_at')
-            ->paginate(15);
+            ->paginate(15)->withQueryString();
 
         return view('admin.backups.index', [
             'backups' => $backups,
+            'attention' => $attention,
             'statistics' => [
                 'total' => DatabaseBackup::count(),
                 'completed' => DatabaseBackup::where('status', 'completed')->count(),

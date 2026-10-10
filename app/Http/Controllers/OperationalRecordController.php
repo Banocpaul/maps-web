@@ -849,7 +849,7 @@ class OperationalRecordController extends Controller
                 'joins_barangays' => true, 'order_column' => 'occurred_at',
                 'search_columns' => ['incident_number', 'incident_type', 'location', 'barangay_name', 'source_barangay', 'alarm_level', 'cause'],
                 'statuses' => ['Reported', 'Responding', 'Controlled', 'Resolved'], 'crud_route' => 'fire-incidents.index', 'crud_permission' => 'fire.view',
-                'columns' => ['id' => 'ID', 'incident_number' => 'Incident Number', 'occurred_at' => 'Time Occurred', 'fire_out_at' => 'Fire Out', 'duration_minutes' => 'Duration (minutes)', 'barangay_name' => 'Barangay', 'location' => 'Street / Location', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'alarm_level' => 'Alarm', 'cause' => 'Cause', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'severity' => 'Severity', 'status' => 'Status'],
+                'columns' => ['id' => 'ID', 'incident_number' => 'Incident Number', 'occurred_at' => 'Time Occurred', 'fire_out_at' => 'Fire Out', 'duration_minutes' => 'Duration (minutes)', 'barangay_name' => 'Barangay', 'location' => 'Street / Location', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'alarm_level' => 'Alarm', 'cause' => 'Cause', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'status' => 'Status'],
             ],
             'fire-hydrants' => [
                 'label' => 'Fire Hydrants', 'table' => 'fire_hydrants',

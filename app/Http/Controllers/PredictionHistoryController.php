@@ -17,12 +17,22 @@ class PredictionHistoryController extends Controller
             'kind' => ['nullable', Rule::in(['Forecast', 'Simulation'])],
             'status' => ['nullable', Rule::in(['Running', 'Completed', 'Failed'])],
             'needs_remark' => ['nullable', 'boolean'],
+            'search' => ['nullable', 'string', 'max:100'],
         ]);
+        $filters['search'] = trim((string) ($filters['search'] ?? ''));
         $runs = PredictionExecution::query()->withCount('remarks');
+        if ($filters['search'] !== '') {
+            $runs->where(function ($query) use ($filters): void {
+                $query->where('requested_by_name', 'like', '%'.$filters['search'].'%');
+                if (preg_match('/^(?:run\s*)?#?(\d+)$/i', $filters['search'], $match)) {
+                    $query->orWhere('id', $match[1]);
+                }
+            });
+        }
         if ($request->boolean('needs_remark')) {
             $runs->where('kind', 'Forecast')->where('status', 'Completed')->doesntHave('remarks');
         }
-        foreach (array_diff_key($filters, ['needs_remark' => true]) as $key => $value) {
+        foreach (array_diff_key($filters, ['needs_remark' => true, 'search' => true]) as $key => $value) {
             if ($value !== null && $value !== '') {
                 $runs->where($key, $value);
             }

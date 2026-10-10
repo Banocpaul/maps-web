@@ -46,16 +46,16 @@
             @endforeach
         </div>
         <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="border-b border-slate-200 p-5"><h2 class="font-semibold text-slate-950">Saved Barangay Results</h2><p class="mt-1 text-sm text-slate-500">Results from this run are preserved for review.</p></div>
+            <div class="border-b border-slate-200 p-5"><h2 class="font-semibold text-slate-950">Saved Barangay Results</h2><p class="mt-1 text-sm text-slate-500">Confidence is the model probability of the displayed flood code.</p></div>
             <div class="overflow-x-auto"><table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500"><tr><th class="px-5 py-3">Rank</th><th class="px-5 py-3">Barangay</th><th class="px-5 py-3">Flood Severity</th></tr></thead>
+                <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500"><tr><th class="px-5 py-3">Rank</th><th class="px-5 py-3">Barangay</th><th class="px-5 py-3">Flood Severity</th><th class="px-5 py-3">Confidence</th></tr></thead>
                 <tbody class="divide-y divide-slate-100">
                     @foreach ($predictions as $index => $item)
                         @php
                             $code = $item['flood_code'] ?? 'Unknown';
                             $description = match ($code) {'A' => 'Minor (0.5 ft)', 'B' => 'Moderate (1.5 ft)', 'C' => 'Severe (2.0 ft)', 'D' => 'Critical (2.5 ft+)', default => 'Unavailable'};
                         @endphp
-                        <tr><td class="px-5 py-4">{{ $item['rank'] ?? $index + 1 }}</td><td class="px-5 py-4 font-semibold">{{ $item['barangay'] ?? 'Unknown' }}</td><td class="px-5 py-4"><span class="mr-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold text-slate-950" style="background-color: {{ $colors[$code] ?? '#e2e8f0' }}">{{ $code }}</span>{{ $description }}</td></tr>
+                        <tr><td class="px-5 py-4">{{ $item['rank'] ?? $index + 1 }}</td><td class="px-5 py-4 font-semibold">{{ $item['barangay'] ?? 'Unknown' }}</td><td class="px-5 py-4"><span class="mr-2 inline-flex rounded-full px-2.5 py-1 text-xs font-bold text-slate-950" style="background-color: {{ $colors[$code] ?? '#e2e8f0' }}">{{ $code }}</span>{{ $description }}</td><td class="px-5 py-4">@include('prediction.partials.confidence', ['item' => $item])</td></tr>
                     @endforeach
                 </tbody>
             </table></div>

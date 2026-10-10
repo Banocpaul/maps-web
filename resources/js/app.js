@@ -54,20 +54,30 @@ function initializeSidebar() {
 }
 
 /**
- * Enables reusable dismiss buttons for alerts.
+ * Enables dismiss buttons and optional timers for alerts and panels.
  *
  * Usage:
  * <button data-dismiss-alert>...</button>
  */
 function initializeDismissibleAlerts() {
+    const timers = new WeakMap();
+
+    document.querySelectorAll("[data-auto-dismiss]").forEach((panel) => {
+        const delay = Number(panel.dataset.autoDismiss);
+        if (Number.isFinite(delay) && delay > 0) {
+            timers.set(panel, window.setTimeout(() => panel.remove(), delay));
+        }
+    });
+
     document.querySelectorAll("[data-dismiss-alert]").forEach((button) => {
         button.addEventListener("click", () => {
-            const alert = button.closest('[role="alert"]');
+            const alert = button.closest('[data-dismissible-panel], [role="alert"]');
 
             if (!alert) {
                 return;
             }
 
+            window.clearTimeout(timers.get(alert));
             alert.remove();
         });
     });

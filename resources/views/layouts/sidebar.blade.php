@@ -45,6 +45,15 @@
             'icon' => 'dashboard',
         ],
         [
+            'label' => 'Incident Analytics',
+            'route' => Route::has('incident-analytics.index')
+                ? 'incident-analytics.index'
+                : null,
+            'active' => ['incident-analytics.*'],
+            'permission' => 'dashboard.view',
+            'icon' => 'analytics',
+        ],
+        [
             'label' => 'Database Records',
             'route' => Route::has('operational-records.index')
                 ? 'operational-records.index'
@@ -210,6 +219,7 @@
         ],
         'operations-manager', 'operations-officer' => [
             'Dashboard',
+            'Incident Analytics',
             'Database Records',
             'Flood Prediction',
             'Flood Operations',
@@ -409,6 +419,12 @@
                                                 stroke-linejoin="round"
                                                 d="M4 4h6v6H4V4Zm10 0h6v6h-6V4Zm0 10h6v6h-6v-6ZM4 14h6v6H4v-6Z"
                                             />
+                                        </svg>
+                                        @break
+
+                                    @case('analytics')
+                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 20V11m5 9V5m5 15v-7m4 7V8" />
                                         </svg>
                                         @break
 

@@ -28,6 +28,16 @@ class DashboardController extends Controller
 
     public function index(Request $request): View
     {
+        return $this->renderWorkspace($request);
+    }
+
+    public function incidentAnalytics(Request $request): View
+    {
+        return $this->renderWorkspace($request, true);
+    }
+
+    private function renderWorkspace(Request $request, bool $incidentAnalytics = false): View
+    {
         $user = $request->user();
         $assignedRole = $user->role()
             ->with('permissions')
@@ -40,6 +50,10 @@ class DashboardController extends Controller
         );
 
         $roleSlug = $assignedRole->slug;
+
+        if ($incidentAnalytics) {
+            abort_unless($roleSlug === 'operations-manager', 403);
+        }
 
         abort_unless(in_array($roleSlug, [
             'administrator',
@@ -139,7 +153,7 @@ class DashboardController extends Controller
             $operationsSummary = $this->operationsSummary();
         }
 
-        return view('dashboard.index', compact(
+        return view($incidentAnalytics ? 'incident-analytics.index' : 'dashboard.index', compact(
             'user',
             'assignedRole',
             'roleSlug',

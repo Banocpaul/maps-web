@@ -137,13 +137,13 @@ class PublicResidentAccountTest extends TestCase
         }
 
         $this->post(route('public.register.store'), $payload)
-            ->assertRedirect(route('public.register'))
+            ->assertStatus(429)
             ->assertHeader('Retry-After')
-            ->assertSessionHasErrors('registration')
-            ->assertSessionHasInput('email', $payload['email']);
+            ->assertSee('Please try again in')
+            ->assertSee('value="'.$payload['email'].'"', false);
         $this->assertNull(session()->getOldInput('password'));
         $this->assertNull(session()->getOldInput('password_confirmation'));
-        $this->get(route('public.register'))->assertOk()->assertSee('Please try again in');
+        $this->get(route('public.register'))->assertOk();
         $this->assertDatabaseCount('users', 0);
 
         $this->travel(11)->minutes();
@@ -156,13 +156,13 @@ class PublicResidentAccountTest extends TestCase
         $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1']);
         $this->withHeaders(['X-Forwarded-For' => '198.51.100.10']);
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $this->postJson(route('public.register.store'), [])->assertUnprocessable();
+            $this->post(route('public.register.store'), [])->assertSessionHasErrors('first_name');
         }
         $this->postJson(route('public.register.store'), [])
             ->assertStatus(429)->assertHeader('Retry-After')->assertJsonStructure(['message']);
 
         $this->withHeaders(['X-Forwarded-For' => '198.51.100.11']);
-        $this->postJson(route('public.register.store'), [])->assertUnprocessable();
+        $this->post(route('public.register.store'), [])->assertSessionHasErrors('first_name');
     }
 
     public function test_registration_rejects_duplicate_phone_invalid_barangay_and_bad_password(): void

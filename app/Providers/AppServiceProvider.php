@@ -2,13 +2,16 @@
 
 namespace App\Providers;
 
+use App\Models\Barangay;
 use App\Models\DailyWeatherSnapshot;
 use App\Services\WeatherObservationRecorder;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\MessageBag;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\ViewErrorBag;
 use Throwable;
 
 class AppServiceProvider extends ServiceProvider
@@ -37,13 +40,15 @@ class AppServiceProvider extends ServiceProvider
                         return response()->json(['message' => $message], 429, $headers);
                     }
 
-                    return redirect()->route('public.register')
-                        ->withErrors(['registration' => $message])
-                        ->withInput($request->only([
-                            'first_name', 'last_name', 'email', 'contact_number', 'barangay_id',
-                            'receive_flood_alerts', 'receive_fire_alerts',
-                        ]))
-                        ->withHeaders($headers);
+                    $request->session()->flashInput($request->only([
+                        'first_name', 'last_name', 'email', 'contact_number', 'barangay_id',
+                        'receive_flood_alerts', 'receive_fire_alerts',
+                    ]));
+
+                    return response()->view('public.account.register', [
+                        'barangays' => Barangay::active()->orderBy('name')->get(),
+                        'errors' => (new ViewErrorBag)->put('default', new MessageBag(['registration' => $message])),
+                    ], 429, $headers);
                 });
         });
 

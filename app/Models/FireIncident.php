@@ -39,7 +39,7 @@ class FireIncident extends Model
         'alarm_level',
         'data_source',
 
-        'record_classification', 'source_barangay', 'coordinate_accuracy',
+        'record_classification', 'source_origin', 'source_barangay', 'coordinate_accuracy',
         'cause', 'alarm_reference', 'cause_reference', 'source_record',
         'remarks',
     ];
@@ -82,7 +82,7 @@ class FireIncident extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('operational_records', fn ($query) =>
-            $query->where('fire_incidents.record_classification', 'Reported'));
+            $query->whereIn('fire_incidents.record_classification', ['Reported', 'Dataset']));
 
         static::saving(function (FireIncident $incident): void {
             if ($incident->isDirty('fire_out_at') && $incident->fire_out_at === null) {

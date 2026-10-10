@@ -41,7 +41,7 @@
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        @if($datasetKey === 'fire-incidents')<p class="mb-3 text-sm text-slate-500">Examples are excluded from totals. Reference alarms, causes, and approximate coordinates are unconfirmed.</p>@endif
+        @if($datasetKey === 'fire-incidents')<p class="mb-3 text-sm text-slate-500">All uploaded rows are included. Reference alarms, causes, and approximate coordinates remain unconfirmed.</p>@endif
         <form method="GET" action="{{ route('operational-records.index') }}" class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <input type="hidden" name="dataset" value="{{ $datasetKey }}">
 
@@ -83,7 +83,7 @@
             @if ($datasetKey === 'fire-incidents')
                 <label class="text-sm font-semibold text-slate-700">Records
                     <select name="record_classification" class="mt-1 w-full rounded-xl border-slate-300 text-sm">
-                        @foreach(['Reported' => 'Reported incidents', 'Example' => 'Modeled examples', 'Superseded' => 'Previous dataset'] as $value => $label)
+                        @foreach(['Current' => 'Current fire records', 'Superseded' => 'Previous dataset'] as $value => $label)
                             <option value="{{ $value }}" @selected($filters['record_classification'] === $value)>{{ $label }}</option>
                         @endforeach
                     </select>

@@ -44,7 +44,17 @@ class FireIncidentRecordImporter
             $rows[$id] = [$row, $start, $end];
         }
 
+        $expected = array_merge(array_map(fn ($i) => sprintf('FIR-%04d', $i), range(1, 37)),
+            array_map(fn ($i) => sprintf('FIR-EX-%04d', $i), range(1, 80)));
+        if (count($rows) !== 117 || array_diff($expected, array_keys($rows)) !== []) {
+            throw new RuntimeException('Replacement requires the complete 117-row fire dataset.');
+        }
+
         return DB::transaction(function () use ($source, $rows): array {
+            // Claim activation atomically. A later deployment must not archive new staff reports.
+            $activate = DB::table('fire_dataset_activations')->insertOrIgnore([
+                'version' => 'fire-records-117-v1', 'source_sha256' => $source['sha256'], 'created_at' => now(),
+            ]) === 1;
             // Only create missing canonical barangays; never alter existing assignments/profiles.
             $canonical = ['Addition Hills' => 1, 'Bagong Silang' => 1, 'Barangka Drive' => 2,
                 'Barangka Ibaba' => 2, 'Barangka Ilaya' => 2, 'Barangka Itaas' => 2,
@@ -59,10 +69,9 @@ class FireIncidentRecordImporter
                         ['district' => $district, 'is_active' => true]));
                 }
             }
-            $summary = ['imported' => 0, 'preserved' => 0, 'reported' => 0, 'examples' => 0];
+            $summary = ['imported' => 0, 'preserved' => 0, 'dataset_rows' => count($rows), 'previous_records' => 0];
             foreach ($rows as $id => [$row, $start, $end]) {
                 $example = str_starts_with($id, 'FIR-EX-');
-                $summary[$example ? 'examples' : 'reported']++;
                 $barangay = $barangays->get($this->key($row['Barangay']));
                 $incident = FireIncident::withoutGlobalScope('operational_records')->withTrashed()
                     ->firstOrCreate(['incident_number' => $id], [
@@ -77,19 +86,33 @@ class FireIncidentRecordImporter
                         'individuals_affected' => $row['Individuals Affected'], 'houses_destroyed' => $row['Houses Destroyed'],
                         'alarm_level' => $row['Alarm (reported)'], 'alarm_reference' => $row['Alarm'],
                         'cause' => null, 'cause_reference' => $row['Cause '],
-                        'record_classification' => $example ? 'Example' : 'Reported',
+                        'record_classification' => 'Dataset',
+                        'source_origin' => $example ? 'Modeled' : 'Transcribed',
                         'data_source' => $source['source'],
                         'source_record' => ['sha256' => $source['sha256'], 'values' => $row,
-                            'reported_at_is_fallback' => true, 'crosses_midnight' => $start->toDateString() !== $end->toDateString()],
-                        'remarks' => $example ? 'Modeled example. Excluded from operational totals and alerts.'
+                            'record_origin' => $example ? 'Modeled' : 'Transcribed', 'reported_at_is_fallback' => true, 'crosses_midnight' => $start->toDateString() !== $end->toDateString()],
+                        'remarks' => $example ? 'Included in the current project dataset. Source origin: modeled.'
                             : 'Transcribed source record; not independently validated. Coordinates are approximate; cause and reference alarm are unconfirmed.',
                     ]);
                 $summary[$incident->wasRecentlyCreated ? 'imported' : 'preserved']++;
+                if ($activate) {
+                    $provenance = $incident->source_record ?? [];
+                    $provenance['record_origin'] = $example ? 'Modeled' : 'Transcribed';
+                    $incident->record_classification = 'Dataset';
+                    $incident->source_origin = $example ? 'Modeled' : 'Transcribed';
+                    $incident->source_record = $provenance;
+                    if ($incident->remarks === 'Modeled example. Excluded from operational totals and alerts.') {
+                        $incident->remarks = 'Included in the current project dataset. Source origin: modeled.';
+                    }
+                    $incident->deleted_at = null;
+                    $incident->save();
+                }
             }
-            // Preserve the previous spreadsheet, but avoid double-counting two historical sources.
-            FireIncident::withoutGlobalScope('operational_records')
-                ->where('data_source', 'Historical FireData.xlsx')
-                ->where('record_classification', 'Reported')->update(['record_classification' => 'Superseded']);
+            if ($activate) {
+                $summary['previous_records'] = FireIncident::withoutGlobalScope('operational_records')->withTrashed()
+                    ->whereNotIn('incident_number', array_keys($rows))
+                    ->update(['record_classification' => 'Superseded']);
+            }
             return $summary;
         });
     }

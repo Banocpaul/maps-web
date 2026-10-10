@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'resident' => \App\Http\Middleware\EnsurePublicResident::class,
         ]);
 
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsurePasswordState::class);
+
         $middleware->appendToGroup(
             'web',
             \App\Http\Middleware\UpdateUserLastSeen::class

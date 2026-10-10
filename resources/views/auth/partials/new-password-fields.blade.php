@@ -1,0 +1,2 @@
+<label for="password" class="block text-sm font-semibold">New password<input id="password" name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="255" class="mt-2 block w-full rounded-lg border border-slate-300 p-3"></label>
+<label for="password_confirmation" class="block text-sm font-semibold">Confirm new password<input id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" required minlength="8" maxlength="255" class="mt-2 block w-full rounded-lg border border-slate-300 p-3"></label>

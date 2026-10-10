@@ -13,6 +13,11 @@ class User extends Authenticatable
     use HasFactory;
     use Notifiable;
 
+    protected $attributes = [
+        'must_change_password' => false,
+        'password_version' => 0,
+    ];
+
     protected $fillable = [
         'role_id',
         'role_changed_at',
@@ -42,6 +47,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'role_changed_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
+            'password_version' => 'integer',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
             'last_seen_at' => 'datetime',

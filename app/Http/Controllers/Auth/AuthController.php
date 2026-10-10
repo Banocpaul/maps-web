@@ -111,6 +111,11 @@ if (!$role || !$role->is_active) {
             'last_login_at' => now(),
         ])->save();
 
+        $request->session()->put('password_version', $user->password_version);
+        if ($user->must_change_password) {
+            return redirect()->route('password.required');
+        }
+
         if ($user->isPublicResident()) {
             $intended = $request->session()->pull('url.intended');
             $allowed = [route('public.account'), route('public.reports'), route('public.incident-reports.create')];

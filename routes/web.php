@@ -1,5 +1,6 @@
 <?php
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseBackupController;
@@ -54,6 +55,14 @@ Route::middleware('guest')->group(function (): void {
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function (): void {
+    Route::get('/account/password', [PasswordChangeController::class, 'show'])->name('profile');
+    Route::post('/account/password', [PasswordChangeController::class, 'store'])->middleware('throttle:5,1,password-request-')->name('password.request');
+    Route::get('/account/password/required', [PasswordChangeController::class, 'required'])->name('password.required');
+    Route::put('/account/password/required', [PasswordChangeController::class, 'complete'])->middleware('throttle:5,1,password-complete-')->name('password.complete');
+    Route::middleware(['admin', 'permission:users.manage'])->group(function (): void {
+        Route::get('/users/password-requests', [PasswordChangeController::class, 'index'])->name('users.password-requests');
+        Route::post('/users/password-requests/{change}/review', [PasswordChangeController::class, 'review'])->middleware('throttle:30,1,password-review-')->name('users.password-requests.review');
+    });
     /*
     |--------------------------------------------------------------------------
     | Public Advisory Management
@@ -458,7 +467,7 @@ Route::resource('fire-incidents', FireIncidentController::class)
         Route::patch(
             '/users/{user}/reset-password',
             [UserManagementController::class, 'resetPassword']
-        )->name('users.reset-password');
+        )->middleware(['admin', 'throttle:10,1,password-reset-'])->name('users.reset-password');
         Route::delete(
             '/users/{user}',
             [UserManagementController::class, 'destroy']

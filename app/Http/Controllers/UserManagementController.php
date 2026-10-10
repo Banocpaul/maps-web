@@ -233,12 +233,7 @@ class UserManagementController extends Controller
                 'integer',
                 'exists:roles,id',
             ],
-            'password' => [
-                'nullable',
-                'string',
-                'min:8',
-                'confirmed',
-            ],
+            'password' => ['prohibited'],
             'is_active' => [
                 'nullable',
                 'boolean',
@@ -318,10 +313,6 @@ class UserManagementController extends Controller
 
                 $user->is_active = (bool) ($validated['is_active'] ?? false);
 
-                if (! empty($validated['password'])) {
-                    $user->password = Hash::make($validated['password']);
-                }
-
                 $user->save();
             });
 
@@ -385,18 +376,22 @@ class UserManagementController extends Controller
     /**
      * Reset a user's password.
      */
-    public function resetPassword(User $user): RedirectResponse
+    public function resetPassword(Request $request, User $user, \App\Services\PasswordChangeService $passwords): RedirectResponse
     {
         $temporaryPassword = $this->generateTemporaryPassword();
 
         try {
-            $user->password = Hash::make($temporaryPassword);
-            $user->save();
+            $user = $passwords->reset($user, $temporaryPassword);
+            if ($request->user()->id === $user->id) {
+                $request->session()->put('password_version', $user->password_version);
+
+                return redirect()->route('password.required');
+            }
 
             return back()
                 ->with(
                     'success',
-                    'Password reset successfully. Give the temporary password to the user securely.'
+                    'Password reset. Share the temporary password securely. The user must choose a new password on their next login.'
                 )
                 ->with('temporary_password', $temporaryPassword)
                 ->with('password_user_name', $user->name);

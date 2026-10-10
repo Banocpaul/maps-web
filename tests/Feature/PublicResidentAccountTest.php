@@ -224,7 +224,10 @@ class PublicResidentAccountTest extends TestCase
         $this->actingAs($resident)->put(route('public.account.password'), $payload)->assertSessionHasErrors('current_password');
         $payload['current_password'] = 'Resident123!';
         $this->put(route('public.account.password'), $payload)->assertRedirect();
-        $this->assertTrue(Hash::check('NewResident123!', $resident->fresh()->password));
+        $this->assertTrue(Hash::check('Resident123!', $resident->fresh()->password));
+        $change = \App\Models\PasswordChangeRequest::where('user_id', $resident->id)->firstOrFail();
+        $this->assertSame('Pending', $change->status);
+        $this->assertTrue(Hash::check('NewResident123!', $change->password_hash));
     }
 
     public function test_staff_recipient_actions_cannot_override_resident_preferences_or_broadcast_to_them(): void

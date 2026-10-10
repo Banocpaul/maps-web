@@ -7,7 +7,8 @@ the input and weather snapshot used for inference, and the complete returned res
 The saved result includes every barangay, A–D severity, confidence/probabilities,
 forecast summary and any model metadata returned by the existing API.
 The barangay results display confidence as the saved model probability of the
-reported A–D code (for example, 0.873 displays as 87.3%). Missing or invalid
+reported A–D code, preserving all decimal digits returned by the API without
+display rounding (for example, 0.9996 displays as 99.96%, and only 1 displays as 100%). Missing or invalid
 confidence is shown as Unavailable; combined legacy risk probabilities are not
 used to invent per-code confidence.
 

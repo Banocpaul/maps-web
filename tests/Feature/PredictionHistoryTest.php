@@ -154,6 +154,11 @@ class PredictionHistoryTest extends TestCase
             ['barangay' => 'Plainview', 'flood_code' => 'C', 'flood_severity_probabilities' => ['C' => 0.4, 'D' => 0.6]],
             ['barangay' => 'New Zañiga', 'flood_code' => 'A', 'confidence' => 0],
             ['barangay' => 'Old Zañiga', 'flood_code' => 'D', 'confidence' => 1],
+            ['barangay' => 'Near certainty', 'flood_code' => 'A', 'confidence' => 0.9996],
+            ['barangay' => 'Six decimal digits', 'flood_code' => 'B', 'confidence' => 0.123456],
+            ['barangay' => 'Decimal multiplication', 'flood_code' => 'C', 'confidence' => 0.07],
+            ['barangay' => 'Small confidence', 'flood_code' => 'D', 'confidence' => 1e-6],
+            ['barangay' => 'Numeric string', 'flood_code' => 'A', 'confidence' => '0.999999'],
             ['barangay' => 'Unknown confidence', 'flood_code' => 'C', 'probabilities' => ['Low' => 0.05, 'Medium' => 0.05, 'High' => 0.9]],
             ['barangay' => 'Invalid confidence', 'flood_code' => 'B', 'confidence' => 1.5],
         ];
@@ -161,8 +166,8 @@ class PredictionHistoryTest extends TestCase
         $this->mock(FloodPredictionService::class, fn ($mock) => $mock->shouldNotReceive('predictCitywide'));
         $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldNotReceive('getCurrentWeather'));
         $this->actingAs($this->staff())->get(route('prediction.history.show', $run))->assertOk()
-            ->assertSeeInOrder(['Hulo', '73.4%', 'Plainview', '40.0%', 'New Zañiga', '0.0%', 'Old Zañiga', '100.0%', 'Unknown confidence', 'Unavailable', 'Invalid confidence', 'Unavailable'])
-            ->assertDontSee('98.0%')->assertDontSee('150.0%');
+            ->assertSeeInOrder(['Hulo', '73.4%', 'Plainview', '40%', 'New Zañiga', '0%', 'Old Zañiga', '100%', 'Near certainty', '99.96%', 'Six decimal digits', '12.3456%', 'Decimal multiplication', '7%', 'Small confidence', '0.0001%', 'Numeric string', '99.9999%', 'Unknown confidence', 'Unavailable', 'Invalid confidence', 'Unavailable'])
+            ->assertDontSee('98%')->assertDontSee('150%')->assertDontSee('100.0%');
         $this->assertSame($result, $run->fresh()->result_snapshot);
     }
 

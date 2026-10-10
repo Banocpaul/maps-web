@@ -437,7 +437,20 @@
             || String(value).trim() === '') return null;
         if (typeof value === 'string' && !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) return null;
         const numeric = Number(value);
-        return Number.isFinite(numeric) && numeric >= 0 && numeric <= 1 ? numeric * 100 : null;
+        if (!Number.isFinite(numeric) || numeric < 0 || numeric > 1) return null;
+        if (numeric === 0) return '0';
+        // Preserve the API's decimal digits without binary multiplication artifacts.
+        const parts = String(value).trim().match(/^\+?(\d*)(?:\.(\d*))?(?:e([+-]?\d+))?$/i);
+        let digits = parts[1] + (parts[2] ?? '');
+        let point = parts[1].length + Number(parts[3] ?? 0) + 2;
+        if (point <= 0) {
+            digits = '0'.repeat(1 - point) + digits;
+            point = 1;
+        }
+        digits = digits.padEnd(point, '0');
+        const whole = digits.slice(0, point).replace(/^0+/, '') || '0';
+        const fraction = digits.slice(point).replace(/0+$/, '');
+        return whole + (fraction ? '.' + fraction : '');
     }
 
     function renderSummary() {
@@ -482,7 +495,7 @@
                     ${severityBadge(result.floodCode)}
                 </td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm font-semibold tabular-nums text-slate-900">
-                    ${result.confidence === null ? '<span class="font-normal text-slate-400">Unavailable</span>' : result.confidence.toFixed(1) + '%'}
+                    ${result.confidence === null ? '<span class="font-normal text-slate-400">Unavailable</span>' : result.confidence + '%'}
                 </td>
             `;
             resultsTableBody.appendChild(row);

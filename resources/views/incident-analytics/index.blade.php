@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Incident Analytics | Mandaluyong Flood & Fire')
+@section('title', 'Incident Analytics | M.A.P.S')
 @section('page-title', 'Incident Analytics')
 @section('page-description', 'Fire and flood incident trends and performance')
 

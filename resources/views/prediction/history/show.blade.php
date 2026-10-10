@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Prediction Run #'.$execution->id.' | Mandaluyong Flood & Fire')
+@section('title', 'Prediction Run #'.$execution->id.' | M.A.P.S')
 @section('page-title', 'Prediction Run #'.$execution->id)
 @section('page-description', 'Saved results and staff review')
 

@@ -178,7 +178,7 @@
 
 <footer class="mt-10 border-t border-slate-200 bg-white">
     <div class="mx-auto max-w-6xl px-4 py-6 text-center text-sm text-slate-500 sm:px-6 lg:px-8">
-        Mandaluyong Flood & Fire — Public Disaster Information Portal
+        M.A.P.S — Public Disaster Information Portal
     </div>
 </footer>
 </body>

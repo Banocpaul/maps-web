@@ -13,7 +13,7 @@
         content="{{ csrf_token() }}"
     >
 
-    <title>Sign In | Mandaluyong Flood & Fire</title>
+    <title>Sign In | M.A.P.S</title>
 
     @vite([
         'resources/css/app.css',
@@ -67,38 +67,15 @@
 
                         {{-- Brand --}}
                         <header class="flex items-center gap-4 border-b border-white/10 pb-8">
-                            <div
-                                class="flex h-14 w-14 flex-none items-center justify-center rounded-xl bg-blue-600"
-                            >
-                                <svg
-                                    class="h-8 w-8 text-white"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="1.8"
-                                    aria-hidden="true"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M9 6.75V15m6-6v8.25m.5-12.75-7 3-4-1.5v13.5l4 1.5 7-3 4 1.5V6l-4-1.5Z"
-                                    />
-
-                                    <circle
-                                        cx="12"
-                                        cy="12"
-                                        r="2.25"
-                                    />
-                                </svg>
-                            </div>
+                            <img src="{{ asset('images/cdrrmo-logo.jpg') }}" alt="Mandaluyong City CDRRMO logo" width="1080" height="1075" class="h-14 w-14 flex-none rounded-full bg-white object-contain" />
 
                             <div>
                                 <p class="text-2xl font-bold tracking-[0.18em]">
-                                    Mandaluyong Flood & Fire
+                                    M.A.P.S
                                 </p>
 
                                 <p class="mt-1 text-xs leading-5 text-blue-100">
-                                    Mandaluyong Flood Prediction and Fire Response System
+                                    Flood Prediction & Fire Management System
                                 </p>
                             </div>
                         </header>
@@ -287,38 +264,15 @@
                         {{-- Mobile branding --}}
                         <div class="mb-10 border-b border-slate-200 pb-6 lg:hidden">
                             <div class="flex items-center gap-3">
-                                <div
-                                    class="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-blue-700"
-                                >
-                                    <svg
-                                        class="h-7 w-7 text-white"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.8"
-                                        aria-hidden="true"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M9 6.75V15m6-6v8.25m.5-12.75-7 3-4-1.5v13.5l4 1.5 7-3 4 1.5V6l-4-1.5Z"
-                                        />
-
-                                        <circle
-                                            cx="12"
-                                            cy="12"
-                                            r="2.25"
-                                        />
-                                    </svg>
-                                </div>
+                                <img src="{{ asset('images/cdrrmo-logo.jpg') }}" alt="Mandaluyong City CDRRMO logo" width="1080" height="1075" class="h-12 w-12 flex-none rounded-full bg-white object-contain" />
 
                                 <div>
                                     <p class="text-xl font-bold tracking-[0.16em] text-slate-900">
-                                        Mandaluyong Flood & Fire
+                                        M.A.P.S
                                     </p>
 
                                     <p class="mt-1 text-xs text-slate-500">
-                                        Mandaluyong Flood Prediction and Fire Response System
+                                        Flood Prediction & Fire Management System
                                     </p>
                                 </div>
                             </div>
@@ -333,7 +287,7 @@
                             </p>
 
                             <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-                                Sign in to Mandaluyong Flood & Fire
+                                Sign in to M.A.P.S
                             </h2>
 
                             <p class="mt-3 text-sm leading-6 text-slate-500">
@@ -600,7 +554,7 @@
                             <div
                                 class="flex flex-col gap-2 text-center text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:text-left"
                             >
-                                <span>Mandaluyong Flood & Fire Version 1.0</span>
+                                <span>M.A.P.S Version 1.0</span>
 
                                 <span>CDRRMO Operations System</span>
                             </div>

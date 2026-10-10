@@ -9,7 +9,7 @@
     >
 
     <title>
-        Active Flood & Fire Map | Mandaluyong Flood & Fire
+        Active Flood & Fire Map | M.A.P.S
     </title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -171,14 +171,17 @@
 
     <header class="border-b border-slate-800 bg-slate-950 text-white shadow-lg">
         <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-            <div>
-                <p class="text-lg font-black tracking-wide">
-                    Mandaluyong Flood & Fire
-                </p>
+            <div class="flex items-center gap-3">
+                <img src="{{ asset('images/cdrrmo-logo.jpg') }}" alt="Mandaluyong City CDRRMO logo" width="1080" height="1075" class="h-11 w-11 flex-none rounded-full bg-white object-contain" />
+                <div>
+                    <p class="text-lg font-black tracking-wide">
+                        M.A.P.S
+                    </p>
 
-                <p class="text-xs text-slate-400">
-                    Public Active Flood & Fire Map
-                </p>
+                    <p class="text-xs text-slate-400">
+                        Public Active Flood & Fire Map
+                    </p>
+                </div>
             </div>
 
             <div class="flex flex-wrap gap-3">

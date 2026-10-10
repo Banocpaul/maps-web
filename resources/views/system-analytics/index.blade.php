@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'System Analytics | Mandaluyong Flood & Fire')
+@section('title', 'System Analytics | M.A.P.S')
 @section('page-title', 'System Analytics')
 @section('page-description', 'Account activity and system performance')
 @push('scripts')

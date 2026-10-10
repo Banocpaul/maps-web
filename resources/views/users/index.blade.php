@@ -12,7 +12,7 @@
             <h1 class="page-title">User Management</h1>
             <p class="page-description">
                 Create, update, activate, deactivate, reset, and manage
-                authorized Mandaluyong Flood & Fire user accounts.
+                authorized M.A.P.S user accounts.
             </p>
         </div>
 

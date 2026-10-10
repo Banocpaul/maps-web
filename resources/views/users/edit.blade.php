@@ -189,7 +189,7 @@
 
                             <p class="field-help">
                                 This email address is used when the user logs in
-                                to Mandaluyong Flood & Fire
+                                to M.A.P.S
                             </p>
 
                             @error('email')

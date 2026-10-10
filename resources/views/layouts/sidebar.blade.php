@@ -67,9 +67,16 @@
             'route' => Route::has('prediction.index')
                 ? 'prediction.index'
                 : null,
-            'active' => ['prediction.*'],
+            'active' => ['prediction.index', 'prediction.run', 'prediction.citywide'],
             'permission' => 'prediction.view',
             'icon' => 'prediction',
+        ],
+        [
+            'label' => 'Prediction History',
+            'route' => Route::has('prediction.history.index') ? 'prediction.history.index' : null,
+            'active' => ['prediction.history.*'],
+            'permission' => 'prediction.view',
+            'icon' => 'analytics',
         ],
         [
             'label' => 'Flood Operations',
@@ -203,6 +210,7 @@
     $visibleOperations = match ($roleSlug) {
         'administrator' => [
             'Dashboard',
+            'Prediction History',
             'SMS Center',
         ],
         'fire-responder' => [
@@ -214,6 +222,7 @@
         'flood-analyst' => [
             'Dashboard',
             'Flood Prediction',
+            'Prediction History',
             'Flood Operations',
             'GIS Mapping',
         ],
@@ -222,6 +231,7 @@
             'Incident Analytics',
             'Database Records',
             'Flood Prediction',
+            'Prediction History',
             'Flood Operations',
             'Fire Incidents',
             'Fire Hydrants',

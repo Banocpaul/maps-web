@@ -20,6 +20,8 @@
             </p>
         </div>
 
+        <a href="{{ route('prediction.history.index') }}" class="inline-flex w-fit rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Prediction History</a>
+
         <div class="inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold
             {{ $apiAvailable
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700'

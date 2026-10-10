@@ -124,6 +124,12 @@ class RolePermissionSeeder extends Seeder
                     'description' => 'Run barangay and citywide flood predictions.',
                 ],
                 [
+                    'name' => 'Review Prediction Results',
+                    'slug' => 'prediction.review',
+                    'module' => 'prediction',
+                    'description' => 'Add remarks to saved flood prediction runs.',
+                ],
+                [
                     'name' => 'Manage Prediction Data',
                     'slug' => 'prediction.data.manage',
                     'module' => 'prediction',
@@ -265,6 +271,7 @@ class RolePermissionSeeder extends Seeder
                     'hydrants.manage',
                     'prediction.view',
                     'prediction.run',
+                    'prediction.review',
                     'prediction.data.manage',
                     'records.view',
                     'records.export',
@@ -289,6 +296,7 @@ class RolePermissionSeeder extends Seeder
                     'flood.edit',
                     'prediction.view',
                     'prediction.run',
+                    'prediction.review',
                     'prediction.data.manage',
                     'gis.view',
                     'reports.view',

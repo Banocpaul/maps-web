@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Barangay;
 use App\Services\FloodPredictionService;
+use App\Services\PredictionHistoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,8 @@ use Throwable;
 class FloodOperationController extends Controller
 {
     public function __construct(
-        private readonly FloodPredictionService $floodPredictionService
+        private readonly FloodPredictionService $floodPredictionService,
+        private readonly PredictionHistoryService $predictionHistoryService
     ) {
     }
 
@@ -66,7 +68,9 @@ class FloodOperationController extends Controller
             ], 422);
         }
 
+        $execution = null;
         try {
+            $execution = $this->predictionHistoryService->start($request->user(), 24, 'Simulation');
             $barangays = $this->getBarangayProfiles();
 
             $payload = [
@@ -79,8 +83,10 @@ class FloodOperationController extends Controller
                 'barangays' => $barangays,
             ];
 
+            $this->predictionHistoryService->captureInput($execution, $payload);
             $result = $this->floodPredictionService
                 ->predictCitywide($payload);
+            $this->predictionHistoryService->complete($execution, $result);
 
             Log::info('Rainfall-only flood severity simulation completed.', [
                 'rainfall_24h_mm' => $rainfall24h,
@@ -90,8 +96,11 @@ class FloodOperationController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return response()->json($result);
+            return response()->json(array_merge($result, [
+                'history_url' => route('prediction.history.show', $execution),
+            ]));
         } catch (RuntimeException $exception) {
+            $this->predictionHistoryService->fail($execution, $exception);
             Log::error('Rainfall severity simulation failed.', [
                 'message' => $exception->getMessage(),
                 'user_id' => auth()->id(),
@@ -101,6 +110,7 @@ class FloodOperationController extends Controller
                 'message' => $exception->getMessage(),
             ], 502);
         } catch (Throwable $exception) {
+            $this->predictionHistoryService->fail($execution, $exception);
             Log::error('Unexpected rainfall simulation error.', [
                 'message' => $exception->getMessage(),
                 'exception' => get_class($exception),

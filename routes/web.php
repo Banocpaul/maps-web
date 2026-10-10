@@ -9,6 +9,7 @@ use App\Http\Controllers\FloodDatasetController;
 use App\Http\Controllers\FloodOperationController;
 use App\Http\Controllers\GisMapController;
 use App\Http\Controllers\PredictionController;
+use App\Http\Controllers\PredictionHistoryController;
 use App\Http\Controllers\PublicFloodMapController;
 use App\Http\Controllers\PublicPortalController;
 use App\Http\Controllers\PublicAdvisoryController;
@@ -138,6 +139,13 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/prediction', [PredictionController::class, 'index'])
         ->middleware('permission:prediction.view')
         ->name('prediction.index');
+    Route::get('/prediction/history', [PredictionHistoryController::class, 'index'])
+        ->middleware('permission:prediction.view')->name('prediction.history.index');
+    Route::get('/prediction/history/{execution}', [PredictionHistoryController::class, 'show'])
+        ->whereNumber('execution')->middleware('permission:prediction.view')->name('prediction.history.show');
+    Route::post('/prediction/history/{execution}/remarks', [PredictionHistoryController::class, 'remark'])
+        ->whereNumber('execution')->middleware(['permission:prediction.view', 'permission:prediction.review', 'throttle:30,1'])
+        ->name('prediction.history.remarks');
     Route::post('/prediction/run', [PredictionController::class, 'run'])
         ->middleware([
             'permission:prediction.run',

@@ -215,6 +215,7 @@
                     <div>
                         <h2 class="text-lg font-semibold text-slate-950">Simulation Results</h2>
                         <p id="scenario-summary" class="mt-1 text-sm text-slate-600"></p>
+                        <a id="simulation-history-link" class="mt-2 hidden text-sm font-semibold text-sky-700 hover:text-sky-900">Review Saved Run</a>
                     </div>
 
                     <div class="flex flex-col gap-3 sm:flex-row">
@@ -381,6 +382,11 @@
             renderSummary();
             renderFilteredResults();
             renderScenarioSummary(responseData);
+            const historyLink = document.getElementById('simulation-history-link');
+            if (responseData.history_url) {
+                historyLink.href = responseData.history_url;
+                historyLink.classList.remove('hidden');
+            }
 
             resultsContainer.classList.remove('hidden');
             updateModelStatus('Severity model connected', 'success');

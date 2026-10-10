@@ -249,7 +249,7 @@
                     Back to Incidents
                 </a>
 
-                @if ($fireIncident->status !== 'Resolved' && auth()->user()?->hasPermission('fire.edit'))
+                @if ($fireIncident->canUpdateResponse() && auth()->user()?->hasPermission('fire.edit'))
                     <a
                         href="{{ route('fire-incidents.edit', $fireIncident) }}"
                         class="incident-button incident-button-primary"
@@ -259,7 +259,11 @@
 
                 @endif
 
-                @if ($fireIncident->status !== 'Resolved' && auth()->user()?->hasPermission('fire.delete'))
+                @if ($fireIncident->canFinalize() && auth()->user()?->hasPermission('fire.edit'))
+                    <a href="{{ route('fire-incidents.assessment', $fireIncident) }}" class="incident-button incident-button-primary">Finalize Record</a>
+                @endif
+
+                @if ($fireIncident->canUpdateResponse() && auth()->user()?->hasPermission('fire.delete'))
                     <form
                         method="POST"
                         action="{{ route('fire-incidents.destroy', $fireIncident) }}"
@@ -281,6 +285,31 @@
                 {{ session('success') }}
             </div>
         @endif
+
+        <section class="incident-panel">
+            <h2>Record Status: {{ $fireIncident->record_status }}</h2>
+            @if($fireIncident->record_status === 'For Assessment')
+                <p>{{ $fireIncident->fire_out_at ? 'Fire is out. Complete the impact assessment to finalize this record.' : 'Record the missing fire-out time before completing the assessment.' }}</p>
+            @elseif($fireIncident->record_status === 'Finalized')
+                <p>Assessment completed. This record is locked.</p>
+                @if($fireIncident->finalized_at)<p class="mt-2 text-sm text-slate-500">Finalized {{ $fireIncident->finalized_at->copy()->timezone('Asia/Manila')->format('M j, Y g:i A') }} (PHT){{ $fireIncident->finalizedBy ? ' by '.$fireIncident->finalizedBy->full_name : '' }}.</p>@endif
+            @else
+                <p>Response is ongoing. Record fire-out time before completing the assessment.</p>
+            @endif
+            @if($fireIncident->canRecordFireOut() && auth()->user()?->hasPermission('fire.edit'))
+                <details class="mt-4" @if($errors->has('fire_out_at')) open @endif>
+                    <summary class="cursor-pointer font-semibold text-sky-700">Record Fire Out</summary>
+                    <form method="POST" action="{{ route('fire-incidents.fire-out', $fireIncident) }}" class="mt-3 flex flex-wrap items-end gap-3">
+                        @csrf
+                        <div><label for="fire_out_at" class="block text-sm font-semibold">Fire Out (PHT)</label>
+                            <input id="fire_out_at" name="fire_out_at" type="datetime-local" required value="{{ old('fire_out_at', now('Asia/Manila')->format('Y-m-d\TH:i')) }}" class="mt-1 rounded-lg border border-slate-300 px-3 py-2">
+                            @error('fire_out_at')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                        </div>
+                        <button class="incident-button incident-button-primary" type="submit">Save Fire-Out Time</button>
+                    </form>
+                </details>
+            @endif
+        </section>
 
         <section class="incident-summary">
             <article class="incident-summary-card">
@@ -337,7 +366,7 @@
             <h2>Fire Incident Record</h2>
             <div class="incident-detail-grid">
                 @foreach(['individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'duration_minutes' => 'Duration (minutes)', 'alarm_level' => 'Alarm', 'cause' => 'Cause'] as $field => $label)
-                    <div class="incident-detail"><span>{{ $label }}</span><strong>{{ $fireIncident->{$field} ?? 'Not recorded' }}</strong></div>
+                    <div class="incident-detail"><span>{{ $label }}</span><strong>{{ $fireIncident->{$field} ?? (in_array($field, ['individuals_affected', 'houses_destroyed']) ? 'Not yet assessed' : 'Not recorded') }}</strong></div>
                 @endforeach
                 @foreach(['occurred_at' => 'Time Occurred (PHT)', 'fire_out_at' => 'Fire Out (PHT)'] as $field => $label)
                     <div class="incident-detail"><span>{{ $label }}</span><strong>{{ $fireIncident->{$field}?->copy()->timezone('Asia/Manila')->format('M j, Y g:i A') ?? 'Not recorded' }}</strong></div>

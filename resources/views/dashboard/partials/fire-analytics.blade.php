@@ -10,6 +10,7 @@
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-red-700">Fire analytics</p>
         <h2 id="fire-analytics-heading" class="mt-1 text-xl font-bold text-slate-950">Fire Incident Intelligence</h2>
         <p class="mt-1 text-sm text-slate-500">Current fire records matching the selected filters.</p>
+        <p class="mt-1 text-sm text-slate-500">Impact totals include finalized records. {{ $fireDashboard['kpis']['for_assessment'] ?? 0 }} records await assessment.</p>
     </div>
 
     <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

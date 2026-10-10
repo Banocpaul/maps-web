@@ -309,8 +309,8 @@
             </article>
 
             <article class="fire-stat-card">
-                <span>Major Incidents</span>
-                <strong>{{ number_format($statistics['major'] ?? 0) }}</strong>
+                <span>For Assessment</span>
+                <strong>{{ number_format($statistics['for_assessment'] ?? 0) }}</strong>
             </article>
         </section>
 
@@ -345,6 +345,16 @@
                             <option value="{{ $status }}" @selected(request('status') === $status)>
                                 {{ $status }}
                             </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="fire-field">
+                    <label for="record_status">Record Status</label>
+                    <select id="record_status" name="record_status">
+                        <option value="">All record statuses</option>
+                        @foreach(['Open', 'For Assessment', 'Finalized'] as $stage)
+                            <option value="{{ $stage }}" @selected(request('record_status') === $stage)>{{ $stage }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -401,6 +411,7 @@
                                 <th>Location</th>
                                 <th>Severity</th>
                                 <th>Status</th>
+                                <th>Record Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -432,6 +443,8 @@
                                         </span>
                                     </td>
 
+                                    <td>{{ $incident->record_status }}</td>
+
                                     <td>
                                         <div class="fire-actions">
                                             <a
@@ -441,7 +454,7 @@
                                                 View
                                             </a>
 
-                                            @if ($incident->status !== 'Resolved' && auth()->user()?->hasPermission('fire.edit'))
+                                            @if ($incident->canUpdateResponse() && auth()->user()?->hasPermission('fire.edit'))
                                                 <a
                                                     href="{{ route('fire-incidents.edit', $incident) }}"
                                                     class="fire-action-link fire-action-edit"
@@ -451,7 +464,11 @@
 
                                             @endif
 
-                                            @if ($incident->status !== 'Resolved' && auth()->user()?->hasPermission('fire.delete'))
+                                            @if ($incident->canFinalize() && auth()->user()?->hasPermission('fire.edit'))
+                                                <a href="{{ route('fire-incidents.assessment', $incident) }}" class="fire-action-link fire-action-edit">Finalize Record</a>
+                                            @endif
+
+                                            @if ($incident->canUpdateResponse() && auth()->user()?->hasPermission('fire.delete'))
                                                 <form
                                                     method="POST"
                                                     action="{{ route('fire-incidents.destroy', $incident) }}"

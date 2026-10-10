@@ -41,6 +41,7 @@ class FireIncident extends Model
 
         'record_classification', 'source_origin', 'source_barangay', 'coordinate_accuracy',
         'cause', 'alarm_reference', 'cause_reference', 'source_record',
+        'record_status', 'finalized_at', 'finalized_by',
         'remarks',
     ];
 
@@ -61,6 +62,8 @@ class FireIncident extends Model
     {
         return [
             'source_record' => 'array',
+            'finalized_at' => 'datetime',
+            'finalized_by' => 'integer',
             'barangay_id' => 'integer',
 
             'latitude' => 'decimal:7',
@@ -85,6 +88,9 @@ class FireIncident extends Model
             $query->whereIn('fire_incidents.record_classification', ['Reported', 'Dataset']));
 
         static::saving(function (FireIncident $incident): void {
+            if ($incident->record_status !== 'Finalized') {
+                $incident->record_status = $incident->status === 'Resolved' ? 'For Assessment' : 'Open';
+            }
             if ($incident->isDirty('fire_out_at') && $incident->fire_out_at === null) {
                 $incident->duration_minutes = null;
             }
@@ -117,6 +123,31 @@ class FireIncident extends Model
     public function barangay(): BelongsTo
     {
         return $this->belongsTo(Barangay::class);
+    }
+
+    public function finalizedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'finalized_by');
+    }
+
+    public function canUpdateResponse(): bool
+    {
+        return $this->status !== 'Resolved' && $this->record_status !== 'Finalized'
+            && ! in_array($this->record_classification, ['Example', 'Superseded'], true);
+    }
+
+    public function canFinalize(): bool
+    {
+        return $this->status === 'Resolved' && $this->fire_out_at !== null
+            && $this->record_status === 'For Assessment'
+            && ! in_array($this->record_classification, ['Example', 'Superseded'], true);
+    }
+
+    public function canRecordFireOut(): bool
+    {
+        return $this->canUpdateResponse() || ($this->status === 'Resolved' && $this->fire_out_at === null
+            && $this->record_status === 'For Assessment'
+            && ! in_array($this->record_classification, ['Example', 'Superseded'], true));
     }
 
     public function smsLogs(): HasMany

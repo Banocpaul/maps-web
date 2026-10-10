@@ -62,6 +62,16 @@ class ProcessDashboardService
                         'Reported' => 0, 'Responding' => 1, default => 2
                     });
             }
+            $assessments = FireIncident::resolved()->where('record_status', 'For Assessment');
+            $this->card($cards, 'fire-assessment', 'Fire Records for Assessment', $assessments->count(),
+                route('fire-incidents.index', ['record_status' => 'For Assessment']), 'Open Assessments');
+            foreach ($assessments->with('barangay')->orderBy('fire_out_at')->orderBy('id')->limit(10)->get() as $incident) {
+                $edit = $can('fire.edit');
+                $this->task($tasks, 'fire-assessment-'.$incident->id, 'Fire assessment · '.$incident->incident_number,
+                    $incident->barangay?->name ?? 'Unassigned', 'For Assessment', $incident->updated_at,
+                    $edit ? ($incident->canFinalize() ? 'Finalize Record' : 'Record Fire Out') : 'View Assessment',
+                    route($edit && $incident->canFinalize() ? 'fire-incidents.assessment' : 'fire-incidents.show', $incident), 3);
+            }
         }
 
         if (in_array('flood', $hazards, true) && $can('prediction.view')) {

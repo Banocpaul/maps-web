@@ -287,7 +287,7 @@ class FireIncidentRecordsTest extends TestCase
         $example = FireIncident::withoutGlobalScope('operational_records')->where('incident_number', 'FIR-EX-0001')->sole();
         $this->get(route('fire-incidents.show', $example))->assertOk()->assertSee('Source origin: Modeled')->assertSee('Original source row');
         $this->get(route('fire-incidents.edit', $example))->assertForbidden();
-        $this->get(route('fire-incidents.create'))->assertOk()->assertSee('name="occurred_at"', false)->assertSee('name="houses_destroyed"', false)->assertSee('name="alarm_level"', false);
+        $this->get(route('fire-incidents.create'))->assertOk()->assertSee('name="occurred_at"', false)->assertDontSee('name="houses_destroyed"', false)->assertSee('name="alarm_level"', false);
     }
 
     public function test_imported_records_are_history_only_and_never_generate_alerts_or_routing(): void

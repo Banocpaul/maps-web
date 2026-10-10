@@ -112,7 +112,7 @@ class FireIncidentRecordImporter
                         'individuals_affected' => $row['Individuals Affected'], 'houses_destroyed' => $row['Houses Destroyed'],
                         'alarm_level' => $row['Alarm (reported)'], 'alarm_reference' => $row['Alarm'],
                         'cause' => null, 'cause_reference' => $row['Cause '],
-                        'record_classification' => 'Dataset',
+                        'record_classification' => 'Dataset', 'record_status' => 'Finalized',
                         'source_origin' => $example ? 'Modeled' : 'Transcribed',
                         'data_source' => $source['source'],
                         'source_record' => ['sha256' => $source['sha256'], 'values' => $row,

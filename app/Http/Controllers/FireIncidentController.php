@@ -19,7 +19,10 @@ class FireIncidentController extends Controller
      */
     public function index(Request $request): View
     {
-        $filters = $request->validate(['record_classification' => ['nullable', Rule::in(['Current', 'Superseded'])]]);
+        $filters = $request->validate([
+            'record_classification' => ['nullable', Rule::in(['Current', 'Superseded'])],
+            'record_status' => ['nullable', Rule::in(['Open', 'For Assessment', 'Finalized'])],
+        ]);
         $classification = $filters['record_classification'] ?? 'Current';
         $query = FireIncident::withoutGlobalScope('operational_records')
             ->when($classification === 'Current', fn ($query) => $query->whereIn('record_classification', ['Reported', 'Dataset']),
@@ -78,6 +81,7 @@ class FireIncidentController extends Controller
                 $request->string('severity')->toString()
             );
         }
+        if ($request->filled('record_status')) $query->where('record_status', $filters['record_status']);
 
         if ($request->filled('barangay_id')) {
             $query->where(
@@ -111,10 +115,7 @@ class FireIncidentController extends Controller
                 'Resolved'
             )->count(),
 
-            'major' => FireIncident::where(
-                'severity',
-                'Major'
-            )->count(),
+            'for_assessment' => FireIncident::where('record_status', 'For Assessment')->count(),
         ];
 
         return view(
@@ -216,7 +217,7 @@ class FireIncidentController extends Controller
     public function show(
         FireIncident $fireIncident
     ): View {
-        $fireIncident->load('barangay');
+        $fireIncident->load(['barangay', 'finalizedBy']);
 
         return view(
             'fire.incidents.show',
@@ -304,9 +305,62 @@ class FireIncidentController extends Controller
             );
     }
 
-    /**
-     * Prevent resolved incidents from being changed or deleted.
-     */
+    public function assessment(FireIncident $fireIncident): View
+    {
+        abort_unless($fireIncident->canFinalize(), 403, 'Only resolved incidents awaiting assessment can be finalized.');
+        $fireIncident->load('barangay');
+        return view('fire.incidents.assessment', compact('fireIncident'));
+    }
+
+    public function recordFireOut(Request $request, FireIncident $fireIncident): RedirectResponse
+    {
+        abort_unless($fireIncident->canRecordFireOut(), 403, 'Fire-out time is already recorded or this record is locked.');
+        $validated = $request->validate(['fire_out_at' => ['required', 'date']]);
+        $end = \Carbon\Carbon::parse($validated['fire_out_at'], 'Asia/Manila')->utc();
+        DB::transaction(function () use ($fireIncident, $end): void {
+            $current = FireIncident::lockForUpdate()->findOrFail($fireIncident->id);
+            abort_unless($current->canRecordFireOut(), 403, 'Fire-out time is already recorded or this record is locked.');
+            $start = $current->occurred_at ?? $current->reported_at;
+            if ($end->lt($start) || ($current->responded_at && $end->lt($current->responded_at))) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'fire_out_at' => 'Fire out cannot precede occurrence or response.',
+                ]);
+            }
+            $current->update(['status' => 'Resolved', 'fire_out_at' => $end, 'resolved_at' => $end,
+                'occurred_at' => $start]);
+        });
+        return redirect()->route('fire-incidents.show', $fireIncident)
+            ->with('success', 'Fire-out time saved. The record is now For Assessment.');
+    }
+
+    public function finalize(Request $request, FireIncident $fireIncident): RedirectResponse
+    {
+        abort_unless($fireIncident->canFinalize(), 403, 'Only resolved incidents awaiting assessment can be finalized.');
+        $validated = $request->validate([
+            'individuals_affected' => ['required', 'integer', 'min:0', 'max:4294967295'],
+            'houses_destroyed' => ['required', 'integer', 'min:0', 'max:4294967295'],
+            'cause' => ['nullable', 'string', 'max:255'],
+            'remarks' => ['nullable', 'string', 'max:2000'],
+            'record_status' => ['prohibited'], 'finalized_at' => ['prohibited'], 'finalized_by' => ['prohibited'],
+            'status' => ['prohibited'], 'fire_out_at' => ['prohibited'], 'occurred_at' => ['prohibited'],
+            'barangay_id' => ['prohibited'], 'latitude' => ['prohibited'], 'longitude' => ['prohibited'],
+        ]);
+
+        DB::transaction(function () use ($fireIncident, $validated, $request): void {
+            $current = FireIncident::lockForUpdate()->findOrFail($fireIncident->id);
+            abort_unless($current->canFinalize(), 403, 'This incident is no longer awaiting assessment.');
+            $current->fill($validated);
+            $current->record_status = 'Finalized';
+            $current->finalized_at = now();
+            $current->finalized_by = $request->user()->id;
+            $current->save();
+        });
+
+        return redirect()->route('fire-incidents.show', $fireIncident)
+            ->with('success', 'Fire incident finalized. Impact details are saved and the record is locked.');
+    }
+
+    /** Convert Philippine wall times and validate the response timeline. */
     private function normalizeIncidentTimes(array $validated, ?FireIncident $existing = null): array
     {
         // datetime-local fields contain Manila wall time; the database stores UTC.
@@ -341,11 +395,8 @@ class FireIncidentController extends Controller
     private function ensureIncidentIsEditable(
         FireIncident $fireIncident
     ): void {
-        abort_if(
-            $fireIncident->status === 'Resolved' || in_array($fireIncident->record_classification, ['Example', 'Superseded'], true),
-            403,
-            'Resolved fire incidents are locked and can no longer be edited or deleted.'
-        );
+        abort_unless($fireIncident->canUpdateResponse(), 403,
+            'Response details are closed after fire out. Complete the assessment using Finalize Record.');
     }
 
     /**
@@ -439,6 +490,7 @@ class FireIncidentController extends Controller
             'alarm_level' => ['nullable', Rule::in(['1st', '2nd', '3rd', '4th', '5th', 'Task Force Alpha', 'Task Force Bravo', 'General Alarm'])],
             'cause' => ['nullable', 'string', 'max:255'],
             'record_classification' => ['prohibited'], 'source_record' => ['prohibited'],
+            'record_status' => ['prohibited'], 'finalized_at' => ['prohibited'], 'finalized_by' => ['prohibited'],
             'remarks' => [
                 'nullable',
                 'string',

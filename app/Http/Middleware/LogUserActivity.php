@@ -120,6 +120,9 @@ class LogUserActivity
             $routeName === 'logout' =>
                 'logout',
 
+            $routeName === 'fire-incidents.fire-out' => 'record_fire_out',
+            $routeName === 'fire-incidents.finalize' => 'finalize_fire_record',
+
             str_contains($routeName, 'prediction.citywide'),
             str_contains($routeName, 'prediction.run') =>
                 'run_prediction',
@@ -206,7 +209,8 @@ class LogUserActivity
             if (
                 $request->isMethod('PUT') ||
                 $request->isMethod('PATCH') ||
-                $request->isMethod('DELETE')
+                $request->isMethod('DELETE') ||
+                $request->routeIs('fire-incidents.fire-out', 'fire-incidents.finalize')
             ) {
                 $oldValues = $this->safeModelAttributes(
                     $parameter

@@ -294,6 +294,12 @@ Route::resource('fire-incidents', FireIncidentController::class)
     Route::resource('fire-incidents', FireIncidentController::class)
         ->only(['edit', 'update'])
         ->middleware('permission:fire.edit');
+    Route::get('/fire-incidents/{fire_incident}/finalize', [FireIncidentController::class, 'assessment'])
+        ->middleware('permission:fire.edit')->name('fire-incidents.assessment');
+    Route::post('/fire-incidents/{fire_incident}/finalize', [FireIncidentController::class, 'finalize'])
+        ->middleware('permission:fire.edit')->name('fire-incidents.finalize');
+    Route::post('/fire-incidents/{fire_incident}/fire-out', [FireIncidentController::class, 'recordFireOut'])
+        ->middleware('permission:fire.edit')->name('fire-incidents.fire-out');
     Route::delete('/fire-incidents/{fire_incident}', [FireIncidentController::class, 'destroy'])
         ->middleware('permission:fire.delete')
         ->name('fire-incidents.destroy');

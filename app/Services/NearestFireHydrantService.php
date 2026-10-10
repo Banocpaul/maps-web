@@ -9,7 +9,7 @@ class NearestFireHydrantService
 {
     public function findForIncident(FireIncident $incident): ?array
     {
-        if ($incident->latitude === null || $incident->longitude === null) {
+        if ($incident->coordinate_accuracy === 'Approximate' || $incident->record_classification === 'Example' || $incident->latitude === null || $incident->longitude === null) {
             return null;
         }
 

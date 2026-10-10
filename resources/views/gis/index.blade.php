@@ -504,6 +504,15 @@
                     </div>
                 </div>
 
+                @if(auth()->user()->hasPermission('fire.view'))
+                <label class="block px-5 py-3 text-sm font-semibold">Fire layer
+                    <select id="fire-layer" class="ml-2 rounded-lg border-slate-300 text-sm">
+                        <option value="active">Active incidents</option>
+                        <option value="history" @selected(request('fire_layer') === 'history')>Incident history</option>
+                    </select>
+                    <span class="ml-2 font-normal text-slate-500">History may contain approximate barangay points.</span>
+                </label>
+                @endif
                 <div id="map-status" class="gis-status">
                     Loading GIS records...
                 </div>
@@ -795,14 +804,18 @@
                         <p><strong>Location:</strong> ${escapeHtml(incident.location || 'Not recorded')}</p>
                         <p><strong>Severity:</strong> ${escapeHtml(incident.severity || 'Not recorded')}</p>
                         <p><strong>Status:</strong> ${escapeHtml(incident.status || 'Not recorded')}</p>
-                        <button
+                        <p><strong>Occurred (PHT):</strong> ${escapeHtml(incident.occurred_at || incident.reported_at || 'Not recorded')}</p>
+                        <p><strong>Fire out (PHT):</strong> ${escapeHtml(incident.fire_out_at || 'Not recorded')}</p>
+                        <p><strong>Coordinates:</strong> ${escapeHtml(incident.coordinate_accuracy || 'Unspecified')}${incident.coordinate_accuracy === 'Approximate' ? ' — barangay reference, exact site unknown' : ''}</p>
+                        <a href="${escapeHtml(incident.url)}">View incident record</a>
+                        ${incident.status !== 'Resolved' && incident.coordinate_accuracy !== 'Approximate' ? `<button
                             type="button"
                             class="find-nearest-for-incident"
                             data-latitude="${Number(incident.latitude)}"
                             data-longitude="${Number(incident.longitude)}"
                         >
                             Find nearest hydrant
-                        </button>
+                        </button>` : ''}
                     </div>
                 `;
             }
@@ -1024,8 +1037,10 @@ barangayLayer.clearLayers();
 const geojson = await geojsonResponse.json();
 
 barangayLayer.addData(geojson);
+                    const endpoint = new URL('{{ route('gis.data') }}', window.location.origin);
+                    endpoint.searchParams.set('fire_layer', document.getElementById('fire-layer')?.value || 'active');
                     const response = await fetch(
-                        '{{ route('gis.data') }}',
+                        endpoint.toString(),
                         {
                             headers: {
                                 'Accept': 'application/json',
@@ -1088,16 +1103,19 @@ barangayLayer.addData(geojson);
                             return;
                         }
 
-                        L.marker(
+                        const marker = incident.coordinate_accuracy === 'Approximate'
+                            ? L.circleMarker([latitude, longitude], {radius: 9, color: '#b45309', fillColor: '#fbbf24', fillOpacity: 0.6})
+                            : L.marker(
                             [latitude, longitude],
                             {
                                 icon: createMarkerIcon('incident'),
                                 title: `Fire incident ${incident.incident_number || incident.id} in ${incident.barangay || 'Mandaluyong'}`,
                                 alt: 'Fire incident',
                             }
-                        )
+                        );
+                        marker
                             .on('add', function () {
-                                this.getElement()?.setAttribute('aria-label', this.options.title);
+                                this.getElement()?.setAttribute('aria-label', this.options.title || `Approximate fire reference for ${incident.incident_number}`);
                             })
                             .bindPopup(createIncidentPopup(incident))
                             .addTo(incidentLayer);
@@ -1117,7 +1135,7 @@ barangayLayer.addData(geojson);
 
                     statusElement.textContent =
                         `${hydrantCount} mapped hydrant(s) and ` +
-                        `${incidentCount} mapped incident(s) loaded.`;
+                        `${incidentCount} mapped ${data.fire_layer === 'history' ? 'historical' : 'active'} incident(s) loaded.`;
                 } catch (error) {
                     console.error(error);
 
@@ -1135,6 +1153,7 @@ barangayLayer.addData(geojson);
             }
 
             map.on('click', function (event) {
+                if (document.getElementById('fire-layer')?.value === 'history') return;
                 findNearestHydrants(
                     event.latlng.lat,
                     event.latlng.lng
@@ -1162,6 +1181,14 @@ barangayLayer.addData(geojson);
                 }
             });
 
+            document.getElementById('fire-layer')?.addEventListener('change', () => {
+                responseLayer.clearLayers();
+                nearestCard.style.display = 'none';
+                emptyState.style.display = 'block';
+                nearestList.innerHTML = '';
+                emptyState.textContent = 'No response location has been selected yet.';
+                loadMapData();
+            });
             refreshButton.addEventListener('click', loadMapData);
 
             window.addEventListener('resize', function () {

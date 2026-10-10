@@ -65,7 +65,8 @@
             <label>Operational status<select name="status" required>@foreach(['Reported','Responding','Controlled','Resolved'] as $value)<option @selected(old('status', 'Reported') === $value)>{{ $value }}</option>@endforeach</select></label>
             <label>Reported at<input type="datetime-local" name="reported_at" value="{{ old('reported_at', $publicReport->created_at->timezone('Asia/Manila')->format('Y-m-d\TH:i')) }}" required></label>
             <label>Responded at (optional)<input type="datetime-local" name="responded_at" value="{{ old('responded_at') }}"></label>
-            <label>Resolved at (optional)<input type="datetime-local" name="resolved_at" value="{{ old('resolved_at') }}"></label>
+            <label>Fire Out (PHT)<input type="datetime-local" name="fire_out_at" value="{{ old('fire_out_at') }}"></label>
+            @include('fire.incidents.record-fields')
             <input type="hidden" name="latitude" id="official-latitude" value="{{ old('latitude', $publicReport->latitude) }}"><input type="hidden" name="longitude" id="official-longitude" value="{{ old('longitude', $publicReport->longitude) }}">
         @else
             <label>Confirmed location / landmark<input name="location_name" value="{{ old('location_name') }}" required maxlength="255"></label>

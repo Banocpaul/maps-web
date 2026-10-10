@@ -41,7 +41,7 @@ class PublicIncidentReport extends Model
 
     public function fireIncident(): BelongsTo
     {
-        return $this->belongsTo(FireIncident::class);
+        return $this->belongsTo(FireIncident::class)->withoutGlobalScope('operational_records');
     }
 
     public function floodTrainingRecord(): BelongsTo

@@ -315,6 +315,7 @@
         </section>
 
         <section class="fire-panel">
+            <p class="mb-3 text-sm text-slate-500">Modeled examples and the previous dataset are excluded from incident totals.</p>
             <form method="GET" action="{{ route('fire-incidents.index') }}" class="fire-filter-grid">
                 <div class="fire-field">
                     <label for="search">Search</label>
@@ -327,6 +328,14 @@
                     >
                 </div>
 
+                <div class="fire-field">
+                    <label for="record_classification">Records</label>
+                    <select id="record_classification" name="record_classification">
+                        @foreach(['Reported' => 'Reported incidents', 'Example' => 'Modeled examples', 'Superseded' => 'Previous dataset'] as $value => $label)
+                            <option value="{{ $value }}" @selected(request('record_classification', 'Reported') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="fire-field">
                     <label for="status">Status</label>
                     <select id="status" name="status">
@@ -386,7 +395,7 @@
                         <thead>
                             <tr>
                                 <th>Incident No.</th>
-                                <th>Reported At</th>
+                                <th>Time Occurred (PHT)</th>
                                 <th>Barangay</th>
                                 <th>Type</th>
                                 <th>Location</th>
@@ -402,18 +411,18 @@
                                     <td>{{ $incident->incident_number }}</td>
 
                                     <td>
-                                        {{ $incident->reported_at?->copy()->timezone('Asia/Manila')->format('M j, Y g:i A') ?? 'Not recorded' }}
+                                        {{ ($incident->occurred_at ?? $incident->reported_at)?->copy()->timezone('Asia/Manila')->format('M j, Y g:i A') ?? 'Not recorded' }}
                                     </td>
 
-                                    <td>{{ $incident->barangay?->name ?? 'Unknown' }}</td>
+                                    <td>{{ $incident->barangay?->name ?? $incident->source_barangay ?? 'Unknown' }}</td>
 
                                     <td>{{ $incident->incident_type }}</td>
 
                                     <td class="location-cell">{{ $incident->location }}</td>
 
                                     <td>
-                                        <span class="fire-badge fire-badge-{{ strtolower($incident->severity) }}">
-                                            {{ $incident->severity }}
+                                        <span class="fire-badge fire-badge-{{ strtolower((string) $incident->severity) }}">
+                                            {{ $incident->severity ?? 'Unspecified' }}
                                         </span>
                                     </td>
 

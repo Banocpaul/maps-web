@@ -618,12 +618,15 @@ class OperationalRecordController extends Controller
         return $validated;
     }
 
-    private function baseQuery(array $dataset): Builder
+    private function baseQuery(array $dataset, string $classification = 'Reported'): Builder
     {
         $table = $dataset['table'];
         $query = DB::table($table);
         if (Schema::hasColumn($table, 'deleted_at')) {
             $query->whereNull("{$table}.deleted_at");
+        }
+        if ($table === 'fire_incidents') {
+            $query->where('fire_incidents.record_classification', $classification);
         }
         if ($dataset['public_only'] ?? false) {
             $query->whereNotNull("{$table}.user_id");
@@ -634,7 +637,7 @@ class OperationalRecordController extends Controller
     private function filteredQuery(array $dataset, array $filters): Builder
     {
         $table = $dataset['table'];
-        $query = $this->baseQuery($dataset);
+        $query = $this->baseQuery($dataset, $filters['record_classification']);
 
         if (($dataset['joins_barangays'] ?? false) && Schema::hasTable('barangays')) {
             $query->leftJoin('barangays', "{$table}.barangay_id", '=', 'barangays.id');
@@ -648,7 +651,7 @@ class OperationalRecordController extends Controller
                     ->whereColumn('prediction_execution_id', 'prediction_executions.id');
             } else {
                 $selects[] = $column === 'barangay_name'
-                    ? 'barangays.name as barangay_name'
+                    ? ($table === 'fire_incidents' ? DB::raw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified') as barangay_name") : 'barangays.name as barangay_name')
                     : "{$table}.{$column}";
             }
         }
@@ -725,6 +728,7 @@ class OperationalRecordController extends Controller
     private function validatedFilters(Request $request, array $dataset): array
     {
         $validated = $request->validate([
+            'record_classification' => ['nullable', Rule::in(['Reported', 'Example', 'Superseded'])],
             'search' => ['nullable', 'string', 'max:100'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
@@ -735,6 +739,7 @@ class OperationalRecordController extends Controller
         ]);
 
         return [
+            'record_classification' => $validated['record_classification'] ?? 'Reported',
             'search' => trim((string) ($validated['search'] ?? '')),
             'date_from' => (string) ($validated['date_from'] ?? ''),
             'date_to' => (string) ($validated['date_to'] ?? ''),
@@ -766,7 +771,7 @@ class OperationalRecordController extends Controller
                     : ($column === 'remarks_count' || Schema::hasColumn($table, $column))
             )
             ->all();
-        foreach (['requested_at', 'completed_at', 'reported_at', 'sent_at', 'observed_at', 'created_at'] as $column) {
+        foreach (['requested_at', 'completed_at', 'reported_at', 'occurred_at', 'fire_out_at', 'sent_at', 'observed_at', 'created_at'] as $column) {
             if (isset($dataset['columns'][$column])) {
                 $dataset['columns'][$column] .= ' (PHT)';
             }
@@ -797,7 +802,7 @@ class OperationalRecordController extends Controller
     private function formatRecordDates(object $record, array $dataset): object
     {
         if (! ($dataset['local_dates'] ?? false)) {
-            foreach (['requested_at', 'completed_at', 'reported_at', 'sent_at', 'observed_at', 'created_at'] as $column) {
+            foreach (['requested_at', 'completed_at', 'reported_at', 'occurred_at', 'fire_out_at', 'sent_at', 'observed_at', 'created_at'] as $column) {
                 if (! empty($record->{$column})) {
                     $record->{$column} = Carbon::parse($record->{$column}, 'UTC')->setTimezone('Asia/Manila')->format('Y-m-d H:i:s');
                 }
@@ -836,11 +841,11 @@ class OperationalRecordController extends Controller
             ],
             'fire-incidents' => [
                 'label' => 'Fire Incidents', 'table' => 'fire_incidents',
-                'date_column' => 'reported_at', 'status_column' => 'status',
-                'joins_barangays' => true, 'order_column' => 'reported_at',
-                'search_columns' => ['incident_number', 'incident_type', 'location', 'barangay_name'],
+                'date_column' => 'occurred_at', 'status_column' => 'status',
+                'joins_barangays' => true, 'order_column' => 'occurred_at',
+                'search_columns' => ['incident_number', 'incident_type', 'location', 'barangay_name', 'source_barangay', 'alarm_level', 'cause'],
                 'statuses' => ['Reported', 'Responding', 'Controlled', 'Resolved'], 'crud_route' => 'fire-incidents.index', 'crud_permission' => 'fire.view',
-                'columns' => ['id' => 'ID', 'incident_number' => 'Incident Number', 'reported_at' => 'Reported At', 'barangay_name' => 'Barangay', 'incident_type' => 'Type', 'location' => 'Location', 'severity' => 'Severity', 'status' => 'Status'],
+                'columns' => ['id' => 'ID', 'incident_number' => 'Incident Number', 'record_classification' => 'Record Classification', 'occurred_at' => 'Time Occurred', 'fire_out_at' => 'Fire Out', 'duration_minutes' => 'Duration (minutes)', 'barangay_name' => 'Barangay', 'location' => 'Street / Location', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'alarm_level' => 'Alarm (reported)', 'cause' => 'Cause (confirmed)', 'alarm_reference' => 'Alarm (unconfirmed reference)', 'cause_reference' => 'Cause (unconfirmed reference)', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'coordinate_accuracy' => 'Coordinate Accuracy', 'severity' => 'Severity', 'status' => 'Status', 'data_source' => 'Data Source'],
             ],
             'fire-hydrants' => [
                 'label' => 'Fire Hydrants', 'table' => 'fire_hydrants',

@@ -19,7 +19,10 @@ class FireIncidentController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = FireIncident::query()
+        $filters = $request->validate(['record_classification' => ['nullable', Rule::in(['Reported', 'Example', 'Superseded'])]]);
+        $classification = $filters['record_classification'] ?? 'Reported';
+        $query = FireIncident::withoutGlobalScope('operational_records')
+            ->where('record_classification', $classification)
             ->with('barangay')
             ->latest('reported_at');
 
@@ -45,6 +48,7 @@ class FireIncidentController extends Controller
                         'like',
                         "%{$search}%"
                     )
+                    ->orWhere('source_barangay', 'like', "%{$search}%")
                     ->orWhereHas(
                         'barangay',
                         function ($barangayQuery) use ($search) {
@@ -201,7 +205,7 @@ class FireIncidentController extends Controller
             )
             ->with(
                 'success',
-                'Fire incident recorded successfully. The location is now available on the GIS map.' . $smsStatus
+                'Fire incident recorded successfully.' . ($fireIncident->status === 'Resolved' ? ' Saved in history.' : ' Available on the GIS map.'.$smsStatus)
             );
     }
 
@@ -258,7 +262,11 @@ class FireIncidentController extends Controller
             $this->validationMessages()
         );
 
-        $fireIncident->update($this->normalizeIncidentTimes($validated));
+        DB::transaction(function () use ($fireIncident, $validated): void {
+            $current = FireIncident::lockForUpdate()->findOrFail($fireIncident->id);
+            $this->ensureIncidentIsEditable($current);
+            $current->update($this->normalizeIncidentTimes($validated, $current));
+        });
 
         return redirect()
             ->route(
@@ -281,7 +289,11 @@ class FireIncidentController extends Controller
             $fireIncident
         );
 
-        $fireIncident->delete();
+        DB::transaction(function () use ($fireIncident): void {
+            $current = FireIncident::withoutGlobalScope('operational_records')->lockForUpdate()->findOrFail($fireIncident->id);
+            $this->ensureIncidentIsEditable($current);
+            $current->delete();
+        });
 
         return redirect()
             ->route('fire-incidents.index')
@@ -294,16 +306,34 @@ class FireIncidentController extends Controller
     /**
      * Prevent resolved incidents from being changed or deleted.
      */
-    private function normalizeIncidentTimes(array $validated): array
+    private function normalizeIncidentTimes(array $validated, ?FireIncident $existing = null): array
     {
         // datetime-local fields contain Manila wall time; the database stores UTC.
-        foreach (['reported_at', 'responded_at', 'resolved_at'] as $field) {
+        foreach (['reported_at', 'responded_at', 'resolved_at', 'occurred_at', 'fire_out_at'] as $field) {
             if (! empty($validated[$field])) {
                 $validated[$field] = \Carbon\Carbon::parse($validated[$field], 'Asia/Manila')
                     ->utc()->toDateTimeString();
             }
         }
 
+        $validated['occurred_at'] = $validated['occurred_at'] ?? $existing?->occurred_at?->toDateTimeString() ?? $validated['reported_at'];
+        $validated['fire_out_at'] = $validated['fire_out_at'] ?? $validated['resolved_at'] ?? null;
+        if ($validated['fire_out_at']) {
+            if ($validated['fire_out_at'] < $validated['occurred_at']
+                || (! empty($validated['responded_at']) && $validated['fire_out_at'] < $validated['responded_at'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['fire_out_at' => 'Fire out cannot precede occurrence or response.']);
+            }
+            if (! empty($validated['resolved_at']) && $validated['resolved_at'] !== $validated['fire_out_at']) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['fire_out_at' => 'Fire out and resolved time must match.']);
+            }
+            if ($validated['status'] !== 'Resolved') {
+                throw \Illuminate\Validation\ValidationException::withMessages(['status' => 'Mark the incident resolved when the fire is out.']);
+            }
+            $validated['resolved_at'] = $validated['fire_out_at'];
+        } elseif ($validated['status'] === 'Resolved') {
+            throw \Illuminate\Validation\ValidationException::withMessages(['fire_out_at' => 'Enter when the fire was out.']);
+        }
+        $validated['coordinate_accuracy'] = 'Verified';
         return $validated;
     }
 
@@ -311,7 +341,7 @@ class FireIncidentController extends Controller
         FireIncident $fireIncident
     ): void {
         abort_if(
-            $fireIncident->status === 'Resolved',
+            $fireIncident->status === 'Resolved' || in_array($fireIncident->record_classification, ['Example', 'Superseded'], true),
             403,
             'Resolved fire incidents are locked and can no longer be edited or deleted.'
         );
@@ -326,7 +356,7 @@ class FireIncidentController extends Controller
             'barangay_id' => [
                 'required',
                 'integer',
-                'exists:barangays,id',
+                Rule::exists('barangays', 'id')->where('is_active', true),
             ],
 
             'incident_type' => [
@@ -401,6 +431,13 @@ class FireIncidentController extends Controller
                 'after_or_equal:reported_at',
             ],
 
+            'occurred_at' => ['nullable', 'date', 'before_or_equal:reported_at'],
+            'fire_out_at' => ['nullable', 'date'],
+            'individuals_affected' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'houses_destroyed' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'alarm_level' => ['nullable', Rule::in(['1st', '2nd', '3rd', '4th', '5th', 'Task Force Alpha', 'Task Force Bravo', 'General Alarm'])],
+            'cause' => ['nullable', 'string', 'max:255'],
+            'record_classification' => ['prohibited'], 'source_record' => ['prohibited'],
             'remarks' => [
                 'nullable',
                 'string',
@@ -475,7 +512,7 @@ class FireIncidentController extends Controller
         $year = now()->format('Y');
         $prefix = "FI-{$year}-";
 
-        $lastIncident = FireIncident::withTrashed()
+        $lastIncident = FireIncident::withoutGlobalScope('operational_records')->withTrashed()
             ->where(
                 'incident_number',
                 'like',

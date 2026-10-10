@@ -353,6 +353,7 @@
                     <h2 class="incident-section-title">Incident Timeline</h2>
 
                     <div class="incident-grid">
+                        @include('fire.incidents.record-fields')
                         <div class="incident-field">
                             <label for="reported_at">
                                 Reported At <span class="incident-required">*</span>
@@ -387,16 +388,16 @@
                         </div>
 
                         <div class="incident-field">
-                            <label for="resolved_at">Resolved At</label>
+                            <label for="fire_out_at">Fire Out (PHT)</label>
 
                             <input
-                                id="resolved_at"
-                                name="resolved_at"
+                                id="fire_out_at"
+                                name="fire_out_at"
                                 type="datetime-local"
-                                value="{{ old('resolved_at', $fireIncident->resolved_at?->copy()->timezone('Asia/Manila')->format('Y-m-d\TH:i')) }}"
+                                value="{{ old('fire_out_at', $fireIncident->fire_out_at?->copy()->timezone('Asia/Manila')->format('Y-m-d\TH:i')) }}"
                             >
 
-                            @error('resolved_at')
+                            @error('fire_out_at')
                                 <span class="incident-error">{{ $message }}</span>
                             @enderror
                         </div>

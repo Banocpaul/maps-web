@@ -78,9 +78,11 @@ class GisMapController extends Controller
             })
             ->values();
 
-        // Only show ACTIVE incidents on the GIS map
+        $layer = $request->validate(['fire_layer' => ['nullable', 'in:active,history']])['fire_layer'] ?? 'active';
+        if ($layer === 'history') abort_unless($request->user()->hasPermission('fire.view'), 403);
+        // Closed records are available only in the explicitly selected history layer.
         $incidents = FireIncident::query()
-            ->active()
+            ->when($layer === 'history', fn ($query) => $query->resolved(), fn ($query) => $query->active())
             ->with('barangay:id,name')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
@@ -90,7 +92,13 @@ class GisMapController extends Controller
                     'id' => $incident->id,
                     'type' => 'incident',
                     'incident_number' => $incident->incident_number,
-                    'barangay' => $incident->barangay?->name,
+                    'barangay' => $incident->barangay?->name ?? $incident->source_barangay,
+                    'coordinate_accuracy' => $incident->coordinate_accuracy ?? 'Verified',
+                    'occurred_at' => $this->formatDateTime($incident->occurred_at),
+                    'fire_out_at' => $this->formatDateTime($incident->fire_out_at),
+                    'alarm_level' => $incident->alarm_level,
+                    'individuals_affected' => $incident->individuals_affected,
+                    'houses_destroyed' => $incident->houses_destroyed,
                     'location' => $incident->location,
                     'latitude' => (float) $incident->latitude,
                     'longitude' => (float) $incident->longitude,
@@ -114,6 +122,7 @@ class GisMapController extends Controller
                 'zoom' => 13,
             ],
 
+            'fire_layer' => $layer,
             'hydrants' => $hydrants,
             'incidents' => $incidents,
         ]);

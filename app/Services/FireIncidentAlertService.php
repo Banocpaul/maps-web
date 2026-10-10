@@ -20,6 +20,10 @@ class FireIncidentAlertService
 
     public function sendCreatedAlert(FireIncident $incident, ?int $sentBy): array
     {
+        if ($incident->status === 'Resolved' || in_array($incident->record_classification, ['Example', 'Superseded'], true)
+            || $incident->coordinate_accuracy === 'Approximate' || $incident->barangay_id === null) {
+            return ['eligible' => 0, 'sent' => 0, 'failed' => 0, 'skipped' => 0, 'nearest_hydrant' => null];
+        }
         $incident->loadMissing('barangay');
         $nearestHydrant = $this->nearestHydrantService->findForIncident($incident);
         $message = $this->buildMessage($incident, $nearestHydrant);

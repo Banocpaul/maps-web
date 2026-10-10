@@ -10,8 +10,8 @@
     <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">Operations Manager</p>
-            <h1 class="mt-1 text-2xl font-bold text-slate-950">Operational Database Records</h1>
-            <p class="mt-2 max-w-3xl text-sm text-slate-600">Search, review, and export approved operational records. Database credentials, authentication data, and protected system settings are never exposed here.</p>
+            <h1 class="mt-1 text-2xl font-bold text-slate-950">Operational Records</h1>
+            <p class="mt-2 max-w-3xl text-sm text-slate-600">Search, review, and export incident, prediction, weather, and communication records.</p>
         </div>
 
         @if (auth()->user()?->hasPermission('records.export'))
@@ -27,7 +27,7 @@
     <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         @foreach ($datasets as $key => $definition)
             @if ($datasetCounts[$key] !== null)
-                <a href="{{ route('operational-records.index', ['dataset' => $key]) }}" @class([
+                <a data-record-section="{{ $key }}" href="{{ route('operational-records.index', ['dataset' => $key]) }}" @class([
                     'rounded-2xl border p-4 shadow-sm transition',
                     'border-sky-300 bg-sky-50 ring-2 ring-sky-100' => $datasetKey === $key,
                     'border-slate-200 bg-white hover:border-sky-200 hover:bg-slate-50' => $datasetKey !== $key,
@@ -51,7 +51,7 @@
 
             <label>
                 <span class="text-xs font-semibold text-slate-600">Barangay</span>
-                <select name="barangay_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm focus:border-sky-500 focus:ring-sky-500">
+                <select @disabled(! ($dataset['joins_barangays'] ?? false) && ! isset($dataset['barangay_text_column'])) name="barangay_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm focus:border-sky-500 focus:ring-sky-500">
                     <option value="">All barangays</option>
                     @foreach ($barangays as $barangay)
                         <option value="{{ $barangay->id }}" @selected($filters['barangay_id'] === $barangay->id)>{{ $barangay->name }}</option>
@@ -60,11 +60,11 @@
             </label>
 
             <label>
-                <span class="text-xs font-semibold text-slate-600">Status / Risk</span>
+                <span class="text-xs font-semibold text-slate-600">Status</span>
                 <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm focus:border-sky-500 focus:ring-sky-500" @disabled($dataset['statuses'] === [])>
                     <option value="">All statuses</option>
                     @foreach ($dataset['statuses'] as $status)
-                        <option value="{{ $status }}" @selected($filters['status'] === $status)>{{ ucfirst($status) }}</option>
+                        <option value="{{ $status }}" @selected($filters['status'] === $status)>{{ $dataset['status_labels'][$status] ?? ucfirst($status) }}</option>
                     @endforeach
                 </select>
             </label>
@@ -79,12 +79,34 @@
                 <input type="date" name="date_to" value="{{ $filters['date_to'] }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm focus:border-sky-500 focus:ring-sky-500">
             </label>
 
+            @if ($datasetKey === 'flood-records')
+                <label>
+                    <span class="text-xs font-semibold text-slate-600">Flood Code</span>
+                    <select name="flood_code" class="mt-1 w-full rounded-xl border-slate-300 text-sm">
+                        <option value="">All codes</option>
+                        @foreach (['A', 'B', 'C', 'D'] as $code)
+                            <option value="{{ $code }}" @selected($filters['flood_code'] === $code)>{{ $code }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            @elseif ($datasetKey === 'prediction-results')
+                <label>
+                    <span class="text-xs font-semibold text-slate-600">Forecast Window</span>
+                    <select name="forecast_hours" class="mt-1 w-full rounded-xl border-slate-300 text-sm">
+                        <option value="">All windows</option>
+                        @foreach ([24, 48, 72] as $hours)
+                            <option value="{{ $hours }}" @selected($filters['forecast_hours'] === (string) $hours)>{{ $hours }} hours</option>
+                        @endforeach
+                    </select>
+                </label>
+            @endif
+
             <div class="flex items-end gap-2 xl:col-span-6">
                 <button class="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-800">Apply filters</button>
                 <a href="{{ route('operational-records.index', ['dataset' => $datasetKey]) }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reset</a>
 
-                @if ($dataset['crud_route'] && Route::has($dataset['crud_route']))
-                    <a href="{{ route($dataset['crud_route']) }}" class="ml-auto rounded-xl border border-sky-300 px-4 py-2.5 text-sm font-semibold text-sky-700 hover:bg-sky-50">Open management interface</a>
+                @if ($dataset['crud_route'] && Route::has($dataset['crud_route']) && auth()->user()?->hasPermission($dataset['crud_permission']))
+                    <a href="{{ route($dataset['crud_route']) }}" class="ml-auto rounded-xl border border-sky-300 px-4 py-2.5 text-sm font-semibold text-sky-700 hover:bg-sky-50">{{ $datasetKey === 'prediction-results' ? 'Open Prediction History' : 'Open management' }}</a>
                 @endif
             </div>
         </form>
@@ -120,7 +142,17 @@
                             @foreach (array_keys($dataset['columns']) as $column)
                                 @php $value = data_get($record, $column); @endphp
                                 <td class="max-w-xs whitespace-nowrap px-4 py-3 text-slate-700">
-                                    @if (is_bool($value) || in_array($column, ['is_active', 'is_alert_triggered', 'receive_flood_alerts', 'receive_fire_alerts'], true))
+                                    @if ($column === 'result_snapshot')
+                                        @php $saved = json_decode($value ?? 'null', true); @endphp
+                                        @if (is_array($saved['predictions'] ?? null))
+                                            {{ count($saved['predictions']) }} saved results
+                                        @else
+                                            <span class="text-slate-400">—</span>
+                                        @endif
+                                        @if (auth()->user()?->hasPermission('prediction.view'))
+                                            <a class="ml-2 font-semibold text-sky-700" href="{{ route('prediction.history.show', $record->id) }}">Review run</a>
+                                        @endif
+                                    @elseif (is_bool($value) || in_array($column, ['is_active', 'is_alert_triggered', 'receive_flood_alerts', 'receive_fire_alerts'], true))
                                         {{ (bool) $value ? 'Yes' : 'No' }}
                                     @elseif ($value === null || $value === '')
                                         <span class="text-slate-400">—</span>

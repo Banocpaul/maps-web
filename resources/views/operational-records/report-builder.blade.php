@@ -81,11 +81,11 @@
                         </select>
                     </label>
                     <label>
-                        <span class="text-xs font-semibold text-slate-600">Risk level</span>
-                        <select name="risk_level" class="mt-1 w-full rounded-xl border-slate-300 text-sm focus:border-sky-500 focus:ring-sky-500">
-                            <option value="">All risk levels</option>
-                            @foreach (['Low', 'Medium', 'High'] as $risk)
-                                <option value="{{ $risk }}" @selected($configuration['risk_level'] === $risk)>{{ $risk }}</option>
+                        <span class="text-xs font-semibold text-slate-600">Flood code</span>
+                        <select name="flood_code" class="mt-1 w-full rounded-xl border-slate-300 text-sm focus:border-sky-500 focus:ring-sky-500">
+                            <option value="">All flood codes</option>
+                            @foreach (['A', 'B', 'C', 'D'] as $risk)
+                                <option value="{{ $risk }}" @selected($configuration['flood_code'] === $risk)>{{ $risk }}</option>
                             @endforeach
                         </select>
                     </label>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -25,6 +26,9 @@ class User extends Authenticatable
         'last_login_at',
         'last_seen_at',
         'approved_at',
+        'barangay_id',
+        'receive_flood_alerts',
+        'receive_fire_alerts',
     ];
 
     protected $hidden = [
@@ -42,12 +46,29 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'approved_at' => 'datetime',
+            'receive_flood_alerts' => 'boolean',
+            'receive_fire_alerts' => 'boolean',
         ];
     }
 
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    public function barangay(): BelongsTo
+    {
+        return $this->belongsTo(Barangay::class);
+    }
+
+    public function smsRecipient(): HasOne
+    {
+        return $this->hasOne(SmsRecipient::class);
+    }
+
+    public function isPublicResident(): bool
+    {
+        return $this->hasRole('public-resident');
     }
 
     public function hasRole(string $roleSlug): bool
@@ -72,7 +93,7 @@ class User extends Authenticatable
 
         $role = $this->role()->first();
 
-        if (! $role || ! $role->is_active) {
+        if (! $role || ! $role->is_active || $role->slug === 'public-resident') {
             return false;
         }
 

@@ -34,7 +34,7 @@
         </div>
     </section>
     <div class="report-content">
-    <div class="report-summary"><strong>No account required.</strong><p class="muted">Your report goes to staff for validation before it is added to the official incident map.</p></div>
+    <div class="report-summary"><strong>Reporting as {{ auth()->user()->name }}.</strong><p class="muted">Your report goes to staff for validation before it is added to the official incident map. <a class="font-semibold text-blue-700 underline" href="{{ route('public.reports') }}">Track your submissions in My Reports.</a></p></div>
     @if(session('report_reference'))
         <div class="notice success" role="status"><strong>Your report was submitted.</strong><br>Reference: <strong>{{ session('report_reference') }}</strong><br>Staff will validate the report before adding it to the official incident map.</div>
     @endif

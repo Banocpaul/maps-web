@@ -26,11 +26,17 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
+    public function showPublicLoginForm(): View
+    {
+        return view('public.account.login');
+    }
+
     /**
      * Authenticate the user.
      */
     public function login(Request $request): RedirectResponse
     {
+        $request->merge(['email' => Str::lower(trim((string) $request->input('email')))]);
         $credentials = $request->validate([
             'email' => [
                 'required',
@@ -105,6 +111,14 @@ if (!$role || !$role->is_active) {
             'last_login_at' => now(),
         ])->save();
 
+        if ($user->isPublicResident()) {
+            $intended = $request->session()->pull('url.intended');
+            $allowed = [route('public.account'), route('public.reports'), route('public.incident-reports.create')];
+
+            return redirect()->to(in_array($intended, $allowed, true) ? $intended : route('public.account'))
+                ->with('success', 'Welcome back, '.$user->full_name.'.');
+        }
+
         return redirect()
             ->intended(route('dashboard'))
             ->with('success', 'Welcome back, ' . $user->full_name . '.');
@@ -115,6 +129,7 @@ if (!$role || !$role->is_active) {
      */
     public function logout(Request $request): RedirectResponse
     {
+        $publicResident = $request->user()?->isPublicResident();
         if ($request->user() && Schema::hasColumn('users', 'last_seen_at')) {
             $request->user()->forceFill(['last_seen_at' => null])->save();
         }
@@ -125,7 +140,7 @@ if (!$role || !$role->is_active) {
         $request->session()->regenerateToken();
 
         return redirect()
-            ->route('login')
+            ->route($publicResident ? 'public.portal' : 'login')
             ->with('success', 'You have been signed out successfully.');
     }
 

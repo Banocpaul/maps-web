@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FloodTrainingRecord;
 use App\Services\FloodObservationEnrichmentService;
+use App\Services\FloodIncidentAlertService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -95,6 +96,11 @@ class FloodDatasetController extends Controller
             );
         });
 
+        try {
+            app(FloodIncidentAlertService::class)->sendCreatedAlert($record, $request->user()->id);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
         $record = $enrichmentService->enrich($record);
 
         return response()->json([

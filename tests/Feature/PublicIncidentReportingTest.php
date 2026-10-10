@@ -15,6 +15,7 @@ use App\Services\FloodObservationEnrichmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -27,6 +28,10 @@ class PublicIncidentReportingTest extends TestCase
         parent::setUp();
         $this->withoutVite();
         Storage::fake('local');
+        $this->actingAs(User::factory()->create([
+            'role_id' => Role::where('slug', 'public-resident')->value('id'),
+            'barangay_id' => $this->barangay()->id, 'is_active' => true,
+        ]));
     }
 
     private function operator(string $slug = 'operations-manager'): User
@@ -71,6 +76,9 @@ class PublicIncidentReportingTest extends TestCase
                 ->assertRedirect()->assertSessionHas('report_reference');
             $report = PublicIncidentReport::where('incident_type', $type)->firstOrFail();
             $this->assertSame('Pending', $report->status);
+            $this->assertDatabaseHas('activity_logs', [
+                'user_id' => Auth::id(), 'route_name' => 'public.incident-reports.store',
+            ]);
             $this->assertStringStartsWith('incident-report-photos/', $report->photo_path);
             Storage::disk('local')->assertExists($report->photo_path);
         }
@@ -103,6 +111,7 @@ class PublicIncidentReportingTest extends TestCase
         Storage::disk('local')->assertMissing($report->photo_path);
 
         config(['filesystems.incident_report_disk' => 'local']);
+        Auth::logout();
         $this->get(route('public-submissions.photo', $report))->assertRedirect(route('login'));
         $this->actingAs($this->operator())->get(route('public-submissions.photo', $report))
             ->assertOk()->assertHeader('Cache-Control', 'no-store, private');
@@ -137,6 +146,7 @@ class PublicIncidentReportingTest extends TestCase
         $this->post(route('public.incident-reports.store'), $this->submission() + ['photo' => $this->photo()])->assertRedirect();
         $report = PublicIncidentReport::firstOrFail();
         $url = route('public-submissions.photo', $report);
+        Auth::logout();
         $this->get($url)->assertRedirect(route('login'));
         $this->actingAs($this->operator('flood-analyst'))->get($url)->assertForbidden();
         $this->actingAs($this->operator('administrator'))->get($url)->assertForbidden();
@@ -256,7 +266,7 @@ class PublicIncidentReportingTest extends TestCase
         $report = PublicIncidentReport::firstOrFail();
         $this->assertSame('Pending', $report->status);
         $this->assertNull($report->fire_incident_id);
-        $this->post(route('public-submissions.publish', $report), [])->assertRedirect(route('login'));
+        $this->post(route('public-submissions.publish', $report), [])->assertForbidden();
     }
 
     public function test_fire_responder_cannot_read_or_modify_flood_reports_even_with_permissions(): void

@@ -14,6 +14,7 @@ class SmsLog extends Model
         'sms_recipient_id',
         'automation_rule_id',
         'fire_incident_id',
+        'flood_training_record_id',
         'sent_by',
         'recipient_name',
         'phone_number',

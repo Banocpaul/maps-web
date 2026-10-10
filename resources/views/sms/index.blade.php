@@ -254,7 +254,7 @@
                                         name="recipient_ids[]"
                                         value="{{ $recipient->id }}"
                                         class="mt-1 rounded border-slate-300"
-                                        @disabled(! $recipient->is_active)
+                                        @disabled(! $recipient->is_active || $recipient->user_id !== null)
                                     >
 
                                     <span>
@@ -397,7 +397,9 @@
                             </td>
 
                             <td class="px-6 py-4 text-right">
-                               @if(auth()->user()?->hasPermission('sms.recipients.manage'))
+                               @if($recipient->user_id !== null)
+                                    <span class="text-xs text-slate-500">Resident manages preferences</span>
+                               @elseif(auth()->user()?->hasPermission('sms.recipients.manage'))
                                     <div class="flex justify-end gap-2">
                                         <form
                                             method="POST"

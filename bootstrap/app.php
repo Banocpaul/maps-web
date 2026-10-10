@@ -13,11 +13,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('public-portal/*')
+            ? route('public.login') : route('login'));
+        $middleware->redirectUsersTo(fn (Request $request) => $request->user()?->isPublicResident()
+            ? route('public.account') : route('dashboard'));
 
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'admin' => \App\Http\Middleware\EnsureAdministrator::class,
             'advisory.publisher' => \App\Http\Middleware\EnsureAdvisoryPublisher::class,
+            'resident' => \App\Http\Middleware\EnsurePublicResident::class,
         ]);
 
         $middleware->appendToGroup(

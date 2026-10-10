@@ -6,6 +6,7 @@ use App\Models\Barangay;
 use App\Models\FloodTrainingRecord;
 use App\Models\PublicIncidentReport;
 use App\Services\FireIncidentAlertService;
+use App\Services\FloodIncidentAlertService;
 use App\Services\FloodObservationEnrichmentService;
 use App\Services\IncidentReportArea;
 use App\Services\IncidentReportWorkflow;
@@ -45,7 +46,7 @@ class IncidentReportReviewController extends Controller
         IncidentReportArea $area
     ): View {
         $workflow->authorize($request->user(), $publicReport->incident_type);
-        $publicReport->load(['events.actor', 'fireIncident', 'floodTrainingRecord']);
+        $publicReport->load(['events.actor', 'fireIncident', 'floodTrainingRecord', 'submitter', 'reporterBarangay']);
         $barangays = Barangay::active()->orderBy('name')->get(['id', 'name']);
         $boundaries = $area->boundaries();
         $canReview = $request->user()->hasPermission('public-submissions.review');
@@ -213,6 +214,11 @@ class IncidentReportReviewController extends Controller
 
             return $record;
         });
+        try {
+            app(FloodIncidentAlertService::class)->sendCreatedAlert($record, $request->user()->id);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
         $enrichment->enrich($record);
 
         return redirect()->route('public-submissions.show', $publicReport)

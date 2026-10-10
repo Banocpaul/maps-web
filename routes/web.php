@@ -18,6 +18,7 @@ use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\WeatherController;
 use Illuminate\Support\Facades\Route;
 require __DIR__.'/public-incident-reports.php';
+require __DIR__.'/public-accounts.php';
 Route::redirect('/', '/login');
 /*
 |--------------------------------------------------------------------------

@@ -533,8 +533,8 @@ class FloodAnalyticsService
      */
     public function getAvailableYears(): array
     {
-        return DB::table('flood_analytics_dataset')
-            ->whereNotNull('year')
+        return DB::table('flood_incident_records')
+            ->whereNull('deleted_at')->whereNotNull('year')
             ->distinct()
             ->orderByDesc('year')
             ->pluck('year')
@@ -550,7 +550,10 @@ class FloodAnalyticsService
         ?int $year = null,
         ?string $barangay = null
     ): Builder {
-        return DB::table('flood_analytics_dataset')
+        // Use the same incident source as Operational Records; retain legacy return keys for existing views.
+        $source = DB::table('flood_incident_records')->whereNull('deleted_at')->select('*')
+            ->selectRaw('NULL as flood_depth_mm, NULL as risk_level, CASE WHEN month BETWEEN 5 AND 11 THEN 1 ELSE 0 END as wet_season');
+        return DB::query()->fromSub($source, 'flood_records')
             ->when(
                 $year,
                 fn (Builder $query): Builder =>

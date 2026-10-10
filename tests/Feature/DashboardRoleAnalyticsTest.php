@@ -31,7 +31,7 @@ class DashboardRoleAnalyticsTest extends TestCase
             ->assertSee('Fire Incident Intelligence')
             ->assertSee('Flood Risk Intelligence')
             ->assertSee('fireMonthlyChart', false)
-            ->assertSee('fireSeverityChart', false)
+            ->assertSee('fireCauseChart', false)
             ->assertSee('fireBarangayChart', false)
             ->assertSee('fireTimeChart', false)
             ->assertSee('floodMonthlyChart', false)
@@ -122,7 +122,7 @@ class DashboardRoleAnalyticsTest extends TestCase
             ->assertSee('floodRainfallChart', false)
             ->assertDontSee(route('public.flood-map'), false)
             ->assertDontSee('Average Flood Depth (mm)')
-            ->assertDontSee('Duration')
+            ->assertSee('Median flood duration')
             ->assertSee('7.5 mm')
             ->assertDontSee('Fire Incident Intelligence')
             ->assertDontSee('fireMonthlyChart', false);

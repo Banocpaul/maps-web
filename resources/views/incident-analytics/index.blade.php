@@ -6,6 +6,21 @@
 
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.font.family = "'Instrument Sans', sans-serif";
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.register({id:'analyticsEmptyState',afterDraw(chart) {
+            const hasData = chart.data.datasets.some(ds => ds.data.some(value => value !== null && (typeof value === 'object' || Number(value) > 0)));
+            if (hasData) return;
+            const {ctx,chartArea} = chart;
+            if (!chartArea) return;
+            ctx.save();ctx.fillStyle='#64748b';ctx.textAlign='center';ctx.font='13px sans-serif';
+            ctx.fillText('No measurable data for this selection', (chartArea.left+chartArea.right)/2, (chartArea.top+chartArea.bottom)/2);ctx.restore();
+        }});
+    }
+    </script>
 @endpush
 
 @section('content')
@@ -22,8 +37,8 @@
     $humidity = data_get($liveWeather, 'avg_rh_pct');
 @endphp
 
-<section id="incident-analytics" class="overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/60 shadow-sm">
-    <div class="border-b border-blue-200 bg-gradient-to-r from-blue-50 via-sky-50 to-cyan-50 px-5 py-5">
+<section id="incident-analytics" class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+    <div class="border-b border-slate-200 bg-white px-5 py-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600">{{ $assignedRole->name }}</p>
@@ -45,60 +60,16 @@
 
         @if ($showFire)
         <div id="fire-analytics-panel" data-analytics-panel="fire" @class(['hidden' => $selectedAnalytics !== 'fire']) role="tabpanel" aria-label="Fire analytics">
-            <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <article class="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm"><p class="text-sm font-medium text-red-700">Active Fire Incidents</p><p class="mt-2 text-3xl font-bold text-red-700">{{ number_format($fireOperations['active'] ?? 0) }}</p><p class="mt-2 text-xs text-red-600">Currently open citywide operations</p></article>
-                <article class="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm"><p class="text-sm font-medium text-orange-700">Major Incidents</p><p class="mt-2 text-3xl font-bold text-orange-700">{{ number_format($fireKpis['major_incidents'] ?? 0) }}</p><p class="mt-2 text-xs text-orange-600">Matches the selected filters</p></article>
-                <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-sm font-medium text-slate-500">Fire Resolution Rate</p><p class="mt-2 text-3xl font-bold text-slate-950">{{ $fireKpis['resolution_rate'] ?? 0 }}%</p><p class="mt-2 text-xs text-slate-500">Resolved historical incidents</p></article>
-                <article class="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm"><p class="text-sm font-medium text-slate-500">Average Fire Duration</p><p class="mt-2 text-3xl font-bold text-amber-700">{{ $fireKpis['average_duration_label'] ?? 'N/A' }}</p><p class="mt-2 text-xs text-slate-500">For incidents with duration data</p></article>
-            </section>
-
-            <section class="mt-6 rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div><h3 class="font-semibold text-slate-950">Fire Command Queue</h3><p class="mt-1 text-sm text-slate-500">Open incidents requiring continued coordination</p></div>
-                    <div class="flex flex-wrap gap-2"><a href="{{ route('fire-incidents.index') }}" class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700">Fire Incidents</a><a href="{{ route('fire-hydrants.index') }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Fire Hydrants</a></div>
-                </div>
-                <div class="mt-4 divide-y divide-slate-100">
-                    @forelse ($activeIncidents->take(6) as $incident)
-                        <a href="{{ route('fire-incidents.show', $incident) }}" class="flex items-center justify-between gap-4 px-3 py-3 transition hover:bg-slate-50"><div class="min-w-0"><p class="truncate font-semibold text-slate-900">{{ $incident->incident_number }} · {{ $incident->barangay?->name ?? 'Unknown' }}</p><p class="mt-1 truncate text-sm text-slate-500">{{ $incident->location }}</p></div><span class="flex-none rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">{{ $incident->status }}</span></a>
-                    @empty
-                        <p class="px-3 py-8 text-center text-sm text-slate-500">There are no active fire incidents.</p>
-                    @endforelse
-                </div>
-            </section>
-
             @include('dashboard.partials.fire-analytics')
+            @include('incident-analytics.sla', ['hazard' => 'fire', 'sla' => $fireSla ?? []])
         </div>
 
         @endif
         @if ($showFlood)
         <div id="flood-analytics-panel" data-analytics-panel="flood" @class(['hidden' => $selectedAnalytics !== 'flood']) role="tabpanel" aria-label="Flood analytics">
-            <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <article class="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm"><p class="text-sm font-medium text-sky-700">Flood Records</p><p class="mt-2 text-3xl font-bold text-sky-800">{{ number_format($floodKpis['total_records'] ?? 0) }}</p><p class="mt-2 text-xs text-sky-700">Matches the selected filters</p></article>
-                <article class="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm"><p class="text-sm font-medium text-red-700">High-Risk Flood Records</p><p class="mt-2 text-3xl font-bold text-red-700">{{ number_format($floodKpis['high_risk_records'] ?? 0) }}</p><p class="mt-2 text-xs text-red-600">Priority analytical observations</p></article>
-                <article class="rounded-2xl border border-cyan-200 bg-white p-5 shadow-sm"><p class="text-sm font-medium text-slate-500">Rainfall — 24 Hours</p><p class="mt-2 text-3xl font-bold text-cyan-700">{{ $rainfall24h !== null ? number_format((float) $rainfall24h, 1).' mm' : 'N/A' }}</p><p class="mt-2 text-xs text-slate-500">Current citywide weather</p></article>
-                <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p class="text-sm font-medium text-slate-500">Temperature</p><p class="mt-2 text-3xl font-bold text-slate-950">{{ $temperature !== null ? number_format((float) $temperature, 1).'°C' : 'N/A' }}</p><p class="mt-2 text-xs text-slate-500">Temperature: {{ $temperature !== null ? number_format((float) $temperature, 1).'°C' : 'N/A' }} · Humidity: {{ $humidity !== null ? number_format((float) $humidity, 1).'%' : 'N/A' }}</p></article>
-            </section>
-
-            <section class="mt-6 rounded-2xl border border-sky-200 bg-white p-5 shadow-sm">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div><h3 class="font-semibold text-slate-950">Latest Flood Intelligence</h3><p class="mt-1 text-sm text-slate-500">Recent verified barangay observations</p></div>
-                    <div class="flex flex-wrap gap-2"><a href="{{ route('prediction.index') }}" class="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-800">Flood Prediction</a><a href="{{ route('flood-operation.index') }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Flood Operations</a></div>
-                </div>
-                <div class="mt-4 divide-y divide-slate-100">
-                    @forelse ($recentFloods->take(6) as $record)
-                        @php
-                            $recordBarangay = data_get($record, 'barangay', 'Unknown barangay');
-                            $recordCode = data_get($record, 'flood_code', 'N/A');
-                            $recordRisk = data_get($record, 'risk_level', 'Unknown');
-                        @endphp
-                        <div class="flex items-center justify-between gap-4 px-3 py-3"><div class="min-w-0"><p class="truncate font-semibold text-slate-900">{{ $recordBarangay }}</p><p class="mt-1 text-sm text-slate-500">Flood code {{ $recordCode }}</p></div><span @class(['flex-none rounded-full px-2.5 py-1 text-xs font-semibold','bg-red-100 text-red-800' => $recordRisk === 'High','bg-amber-100 text-amber-800' => $recordRisk === 'Medium','bg-emerald-100 text-emerald-800' => $recordRisk === 'Low','bg-slate-100 text-slate-700' => !in_array($recordRisk, ['High', 'Medium', 'Low'], true),])>{{ $recordRisk }}</span></div>
-                    @empty
-                        <p class="px-3 py-8 text-center text-sm text-slate-500">No flood records match the selected filters.</p>
-                    @endforelse
-                </div>
-            </section>
-
             @include('dashboard.partials.flood-analytics')
+            @include('incident-analytics.flood-insights')
+            @include('incident-analytics.sla', ['hazard' => 'flood', 'sla' => $floodSla ?? []])
         </div>
         @endif
     </div>

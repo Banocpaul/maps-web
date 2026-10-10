@@ -140,6 +140,9 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
 
+    Route::post('/incident-analytics/sla', [\App\Http\Controllers\IncidentSlaController::class, 'update'])
+        ->middleware('permission:dashboard.view')->name('incident-analytics.sla.update');
+
     Route::get('/incident-analytics', [DashboardController::class, 'incidentAnalytics'])
         ->middleware('permission:dashboard.view')
         ->name('incident-analytics.index');

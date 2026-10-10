@@ -210,6 +210,7 @@ class IncidentReportReviewController extends Controller
                 'include_in_training' => false, 'enrichment_status' => 'Pending Enrichment', 'review_status' => 'Pending',
                 'exclusion_reason' => 'Awaiting predictor enrichment and separate training review.',
             ]);
+            if ($subsided) $record->forceFill(['handling_completed_at' => now()])->save();
             $workflow->published($report, 'flood_training_record_id', $record->id, $request->user());
 
             return $record;

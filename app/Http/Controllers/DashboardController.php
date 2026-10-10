@@ -108,6 +108,16 @@ class DashboardController extends Controller
         $liveWeatherError = null;
         $adminDashboard = [];
         $fireOperations = [];
+        $fireSla = $floodSla = [];
+        $floodInsights = [];
+        if (! $systemAnalytics) {
+            $sla = app(\App\Services\IncidentSlaService::class);
+            if ($selectedAnalytics === 'fire' || $roleSlug === 'operations-manager') $fireSla = $sla->build('fire', $selectedYear, $selectedBarangayId);
+            if ($selectedAnalytics === 'flood' || $roleSlug === 'operations-manager') {
+                $floodSla = $sla->build('flood', $selectedYear, $selectedBarangayId);
+                $floodInsights = app(\App\Services\FloodOperationalAnalyticsService::class)->build($selectedYear, $selectedBarangay?->name);
+            }
+        }
 
         $needsFire = in_array($roleSlug, [
             'fire-responder',
@@ -152,6 +162,8 @@ class DashboardController extends Controller
             $availableYears = collect([
                 ...($fireDashboard['available_years'] ?? []),
                 ...($floodDashboard['available_years'] ?? []),
+                ...\App\Models\PublicIncidentReport::query()->whereIn('incident_type', $roleSlug === 'operations-manager' ? ['fire', 'flood'] : [$selectedAnalytics])->pluck('created_at')->map(fn ($date) => $date->year)->all(),
+                ...( $needsFlood ? \App\Models\FloodIncidentRecord::query()->distinct()->pluck('year')->all() : []),
             ])
                 ->filter()
                 ->map(fn ($year): int => (int) $year)
@@ -172,6 +184,7 @@ class DashboardController extends Controller
             'adminDashboard',
             'fireDashboard',
             'fireOperations',
+            'fireSla', 'floodSla', 'floodInsights',
             'floodDashboard',
             'liveWeather',
             'liveWeatherError',

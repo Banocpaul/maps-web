@@ -8,6 +8,22 @@ use Illuminate\Support\Collection;
 
 class FireAnalyticsService
 {
+    public function getCauseDistribution(?int $year = null, ?int $barangayId = null): array
+    {
+        $rows = $this->baseQuery($year, $barangayId)
+            ->selectRaw("COALESCE(NULLIF(TRIM(cause), ''), 'Unknown') as label, COUNT(*) as total")
+            ->groupBy('label')->orderByDesc('total')->get();
+        return ['labels' => $rows->pluck('label')->all(), 'values' => $rows->pluck('total')->map(fn ($n) => (int) $n)->all()];
+    }
+
+    public function getDurationByAlarm(?int $year = null, ?int $barangayId = null): array
+    {
+        $groups = $this->baseQuery($year, $barangayId)->whereNotNull('duration_minutes')->where('duration_minutes', '>=', 0)
+            ->get(['alarm_level', 'duration_minutes'])->groupBy(fn ($r) => trim($r->alarm_level ?? '') ?: 'Unknown');
+        return ['labels' => $groups->keys()->all(), 'values' => $groups->map(fn ($g) => round($g->median('duration_minutes'), 1))->values()->all(),
+            'counts' => $groups->map->count()->values()->all()];
+    }
+
     /**
      * Return all analytics data needed by the Fire BI dashboard.
      */
@@ -20,7 +36,9 @@ class FireAnalyticsService
             ],
             'kpis' => $this->getDashboardStats($year, $barangayId),
             'monthly_trend' => $this->getMonthlyTrend($year, $barangayId),
-            'top_barangays' => $this->getTopBarangays($year, $barangayId),
+            'top_barangays' => $this->getTopBarangays($year, $barangayId, 27),
+            'cause_distribution' => $this->getCauseDistribution($year, $barangayId),
+            'duration_by_alarm' => $this->getDurationByAlarm($year, $barangayId),
             'severity_distribution' => $this->getSeverityDistribution($year, $barangayId),
             'alarm_distribution' => $this->getAlarmLevelDistribution($year, $barangayId),
             'time_distribution' => $this->getTimeOfDayDistribution($year, $barangayId),
@@ -65,6 +83,7 @@ class FireAnalyticsService
 
         return [
             'total_incidents' => $totalIncidents,
+            'active_incidents' => (clone $query)->active()->count(),
             'individuals_affected' => $individualsAffected,
             'houses_destroyed' => $housesDestroyed,
             'average_duration_minutes' => round($averageDuration, 1),

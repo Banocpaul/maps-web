@@ -64,7 +64,7 @@ class ProcessDashboardTest extends TestCase
             ->assertSee('Publish Incident')->assertSee('Review Report')->assertSee('Review / Add Remark')
             ->assertSee('Map pin to verify')->assertSee('Update Flood Status')
             ->assertDontSee('chart.js')->assertDontSee('fireMonthlyChart')->assertDontSee('name="year"', false);
-        $this->assertSame(['reports-Pending' => 1, 'reports-Validated' => 1, 'fire' => 3, 'flood' => 1, 'prediction' => 1, 'sms' => 0], $this->counts($response));
+        $this->assertSame(['reports-Pending' => 1, 'reports-Validated' => 1, 'fire' => 3, 'fire-assessment' => 0, 'flood' => 1, 'prediction' => 1, 'sms' => 0], $this->counts($response));
         $queue = $response->viewData('workQueue')->keyBy('key');
         $this->assertSame(route('public-submissions.show', $validated), $queue['report-'.$validated->id]['url']);
         $this->assertSame(route('fire-incidents.edit', $reported), $queue['fire-'.$reported->id]['url']);
@@ -219,7 +219,8 @@ class ProcessDashboardTest extends TestCase
     private function fire(string $status): FireIncident
     {
         return FireIncident::create(['barangay_id' => Barangay::first()->id, 'incident_number' => 'F-'.Str::ulid(),
-            'incident_type' => 'Residential', 'location' => 'Hulo street', 'severity' => 'Minor', 'status' => $status, 'reported_at' => now()]);
+            'incident_type' => 'Residential', 'location' => 'Hulo street', 'severity' => 'Minor', 'status' => $status,
+            'record_status' => $status === 'Resolved' ? 'Finalized' : 'Open', 'reported_at' => now()]);
     }
 
     private function flood(?string $status, string $level = 'A'): FloodTrainingRecord

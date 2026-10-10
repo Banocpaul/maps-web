@@ -164,6 +164,8 @@
                                         @endif
                                     @elseif (is_bool($value) || in_array($column, ['is_active', 'is_alert_triggered', 'receive_flood_alerts', 'receive_fire_alerts'], true))
                                         {{ (bool) $value ? 'Yes' : 'No' }}
+                                    @elseif ($datasetKey === 'fire-incidents' && in_array($column, ['individuals_affected', 'houses_destroyed']) && $value === null)
+                                        Not yet assessed
                                     @elseif ($value === null || $value === '')
                                         <span class="text-slate-400">—</span>
                                     @else

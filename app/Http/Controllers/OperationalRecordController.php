@@ -100,7 +100,10 @@ class OperationalRecordController extends Controller
                 $row = [];
 
                 foreach (array_keys($dataset['columns']) as $column) {
-                    $row[] = $this->csvValue(data_get($record, $column));
+                    $value = data_get($record, $column);
+                    $row[] = $dataset['table'] === 'fire_incidents'
+                        && in_array($column, ['individuals_affected', 'houses_destroyed'], true) && $value === null
+                        ? 'Not yet assessed' : $this->csvValue($value);
                 }
 
                 fputcsv($handle, $row);

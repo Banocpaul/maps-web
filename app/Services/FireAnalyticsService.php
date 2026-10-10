@@ -41,10 +41,10 @@ class FireAnalyticsService
         $totalIncidents = (clone $query)->count();
 
         $individualsAffected = (int) (clone $query)
-            ->sum('individuals_affected');
+            ->where('record_status', 'Finalized')->sum('individuals_affected');
 
         $housesDestroyed = (int) (clone $query)
-            ->sum('houses_destroyed');
+            ->where('record_status', 'Finalized')->sum('houses_destroyed');
 
         $averageDuration = (float) ((clone $query)
             ->whereNotNull('duration_minutes')
@@ -71,6 +71,8 @@ class FireAnalyticsService
             'average_duration_label' => $this->formatDuration($averageDuration),
             'major_incidents' => $majorIncidents,
             'resolved_incidents' => $resolvedIncidents,
+            'for_assessment' => (clone $query)->where('record_status', 'For Assessment')->count(),
+            'finalized_records' => (clone $query)->where('record_status', 'Finalized')->count(),
             'resolution_rate' => $totalIncidents > 0
                 ? round(($resolvedIncidents / $totalIncidents) * 100, 1)
                 : 0,
@@ -86,8 +88,8 @@ class FireAnalyticsService
         $rows = $this->baseQuery($year, $barangayId)
             ->selectRaw($this->datePart('month').' as month_number')
             ->selectRaw('COUNT(*) as incident_count')
-            ->selectRaw('COALESCE(SUM(individuals_affected), 0) as affected_count')
-            ->selectRaw('COALESCE(SUM(houses_destroyed), 0) as destroyed_count')
+            ->selectRaw("COALESCE(SUM(CASE WHEN record_status = 'Finalized' THEN individuals_affected END), 0) as affected_count")
+            ->selectRaw("COALESCE(SUM(CASE WHEN record_status = 'Finalized' THEN houses_destroyed END), 0) as destroyed_count")
             ->selectRaw('COALESCE(AVG(duration_minutes), 0) as average_duration')
             ->whereNotNull('occurred_at')
             ->groupByRaw($this->datePart('month'))
@@ -133,8 +135,8 @@ class FireAnalyticsService
             ->selectRaw('barangays.id as barangay_id')
             ->selectRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified') as barangay_name")
             ->selectRaw('COUNT(fire_incidents.id) as incident_count')
-            ->selectRaw('COALESCE(SUM(fire_incidents.individuals_affected), 0) as affected_count')
-            ->selectRaw('COALESCE(SUM(fire_incidents.houses_destroyed), 0) as destroyed_count')
+            ->selectRaw("COALESCE(SUM(CASE WHEN fire_incidents.record_status = 'Finalized' THEN fire_incidents.individuals_affected END), 0) as affected_count")
+            ->selectRaw("COALESCE(SUM(CASE WHEN fire_incidents.record_status = 'Finalized' THEN fire_incidents.houses_destroyed END), 0) as destroyed_count")
             ->groupBy('barangays.id')->groupByRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified')")
             ->orderByDesc('incident_count')
             ->limit($limit)
@@ -235,7 +237,7 @@ class FireAnalyticsService
         $rows = $this->baseQuery($year, $barangayId)
             ->leftJoin('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
             ->selectRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified') as barangay_name")
-            ->selectRaw('COALESCE(SUM(fire_incidents.individuals_affected), 0) as total')
+            ->selectRaw("COALESCE(SUM(CASE WHEN fire_incidents.record_status = 'Finalized' THEN fire_incidents.individuals_affected END), 0) as total")
             ->groupBy('barangays.id')->groupByRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified')")
             ->orderByDesc('total')
             ->limit($limit)
@@ -258,7 +260,7 @@ class FireAnalyticsService
         $rows = $this->baseQuery($year, $barangayId)
             ->leftJoin('barangays', 'barangays.id', '=', 'fire_incidents.barangay_id')
             ->selectRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified') as barangay_name")
-            ->selectRaw('COALESCE(SUM(fire_incidents.houses_destroyed), 0) as total')
+            ->selectRaw("COALESCE(SUM(CASE WHEN fire_incidents.record_status = 'Finalized' THEN fire_incidents.houses_destroyed END), 0) as total")
             ->groupBy('barangays.id')->groupByRaw("COALESCE(barangays.name, fire_incidents.source_barangay, 'Unspecified')")
             ->orderByDesc('total')
             ->limit($limit)
@@ -296,7 +298,7 @@ class FireAnalyticsService
                 'duration_minutes',
                 'individuals_affected',
                 'houses_destroyed',
-                'alarm_level', 'source_barangay', 'record_classification', 'cause', 'coordinate_accuracy',
+                'alarm_level', 'source_barangay', 'record_classification', 'record_status', 'cause', 'coordinate_accuracy',
             ]);
     }
 

@@ -106,6 +106,7 @@ class GisMapController extends Controller
                     'longitude' => (float) $incident->longitude,
                     'severity' => $incident->severity,
                     'status' => $incident->status,
+                    'record_status' => $incident->record_status,
                     'reported_at' => $this->formatDateTime(
                         $incident->reported_at
                     ),

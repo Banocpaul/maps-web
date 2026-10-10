@@ -56,48 +56,25 @@
 
         <section class="bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white">
 
-            <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+            <div class="mx-auto max-w-7xl px-4 pb-12 pt-6 sm:px-6 lg:px-8">
 
                 <div class="max-w-3xl">
 
 
 
-                    <span class="inline-flex rounded-full border border-blue-300/20 bg-blue-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">
-
-                        Public Disaster Information Portal
-
-                    </span>
-
-
-
-                    <h1 class="mt-6 text-4xl font-black leading-tight sm:text-5xl">
-
-                        Disaster awareness and safety information for
-
-                        <span class="text-blue-400">
-
-                            Mandaluyong residents
-
-                        </span>
-
+                    <h1 class="text-2xl font-black leading-tight sm:text-3xl">
+                        Mandaluyong <span class="text-blue-400">Flood &amp; Fire Updates</span>
                     </h1>
 
 
 
-                    <p class="mt-5 max-w-2xl text-base leading-8 text-slate-300">
-
-                        Access public flood information, weather updates, safety
-
-                        reminders, emergency contacts, and official disaster
-
-                        advisories without signing in.
-
+                    <p class="mt-2 text-sm leading-6 text-slate-300">
+                        View updates freely. Sign in to report incidents or get barangay SMS alerts.
                     </p>
 
-                    <a href="{{ route('public.incident-reports.create') }}" class="mt-6 inline-flex rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700">
-                        Report a Fire or Flood Incident
+                    <a href="{{ route('public.incident-reports.create') }}" class="mt-3 inline-flex rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700">
+                        Report Incident
                     </a>
-                    <p class="mt-3 text-sm leading-6 text-slate-300">Sign in to report an incident, place a pin, and optionally attach a photo. Create an account to receive flood and fire SMS alerts for your barangay.</p>
 
                 </div>
 

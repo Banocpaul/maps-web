@@ -164,7 +164,8 @@
                             @if ($datasetKey === 'flood-records')
                                 <td class="whitespace-nowrap px-4 py-3">
                                     @if (auth()->user()?->hasPermission('flood.edit'))
-                                        <a class="font-semibold text-sky-700" href="{{ route('operational-records.flood.edit', $record->id) }}">Edit</a>
+                                        <a class="mr-3 font-semibold text-sky-700" href="{{ route('operational-records.flood.edit', $record->id) }}">View{{ $record->status === 'Active' ? ' / edit' : '' }}</a>
+                                        @include('operational-records.partials.flood-actions')
                                     @endif
                                     @if (auth()->user()?->hasPermission('flood.delete'))
                                         <form class="ml-3 inline" method="POST" action="{{ route('operational-records.flood.destroy', $record->id) }}" onsubmit="return confirm('Remove this flood record? This action is logged.');">

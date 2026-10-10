@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barangay;
+use App\Models\FloodIncidentRecord;
+use App\Services\OperationalFloodEnrichmentService;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -11,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -475,84 +478,143 @@ class OperationalRecordController extends Controller
         ]);
     }
 
-    public function storeFlood(Request $request): RedirectResponse
+    public function storeFlood(Request $request, OperationalFloodEnrichmentService $enrichment): RedirectResponse
     {
         $data = $this->validatedFloodRecord($request);
-        $data['created_at'] = now();
-        DB::table(self::FLOOD_TABLE)->insert($data);
-
-        return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])
-            ->with('success', 'Flood incident record created successfully.');
+        $date = now('Asia/Manila');
+        $record = FloodIncidentRecord::create(array_merge($data, [
+            'event_id' => 'MAPS-'.Str::uuid(),
+            'observation_datetime' => $date->format('Y-m-d H:i:s'),
+            'flood_start_datetime' => $date->format('Y-m-d H:i:s'),
+            'event_date' => $date->toDateString(), 'year' => $date->year,
+            'month' => $date->month, 'day_of_week' => $date->format('l'),
+            'status' => 'Active', 'duration_hours' => null, 'created_by' => $request->user()->id,
+        ]));
+        $enrichment->enrich($record);
+        return $this->floodRedirect('Flood recorded and plotted.', $record);
     }
 
     public function editFlood(int $id): View
     {
-        $record = DB::table(self::FLOOD_TABLE)->where('id', $id)->whereNull('deleted_at')->first();
-        abort_if($record === null, 404);
-
+        $record = FloodIncidentRecord::findOrFail($id);
         return view('operational-records.flood-form', [
             'record' => $record,
-            'barangays' => Barangay::query()->where('is_active', true)->orderBy('name')->get(),
+            'barangays' => Barangay::active()->orderBy('name')->get(),
         ]);
     }
 
-    public function updateFlood(Request $request, int $id): RedirectResponse
+    public function updateFlood(Request $request, int $id, OperationalFloodEnrichmentService $enrichment): RedirectResponse
     {
-        abort_unless(DB::table(self::FLOOD_TABLE)->where('id', $id)->whereNull('deleted_at')->exists(), 404);
-        DB::table(self::FLOOD_TABLE)->where('id', $id)->update($this->validatedFloodRecord($request, $id));
+        $record = FloodIncidentRecord::findOrFail($id);
+        $data = $this->validatedFloodRecord($request, $record);
+        DB::transaction(function () use ($record, $data): void {
+            $locked = FloodIncidentRecord::lockForUpdate()->findOrFail($record->id);
+            if ($locked->status !== 'Active') {
+                throw ValidationException::withMessages(['status' => 'Subsided floods are closed.']);
+            }
+            $locked->update($data);
+        });
+        $enrichment->enrich($record->fresh());
+        return $this->floodRedirect('Flood location updated.');
+    }
 
-        return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])
-            ->with('success', 'Flood incident record updated successfully.');
+    public function raiseFlood(Request $request, int $id): RedirectResponse
+    {
+        $validated = $request->validate(['flood_code' => ['required', Rule::in(['A', 'B', 'C', 'D'])]]);
+        DB::transaction(function () use ($request, $id, $validated): void {
+            $record = FloodIncidentRecord::lockForUpdate()->findOrFail($id);
+            if ($record->status !== 'Active' || strcmp($validated['flood_code'], $record->flood_code) <= 0) {
+                throw ValidationException::withMessages(['flood_code' => 'Choose a higher code for an active flood.']);
+            }
+            $this->logFloodUpdate($record, $request, 'Raised', $validated['flood_code']);
+            $record->update(['flood_code' => $validated['flood_code']]);
+        });
+        return $this->floodRedirect('Flood code raised.');
+    }
+
+    public function subsideFlood(Request $request, int $id): RedirectResponse
+    {
+        DB::transaction(function () use ($request, $id): void {
+            $record = FloodIncidentRecord::lockForUpdate()->findOrFail($id);
+            if ($record->status !== 'Active') {
+                throw ValidationException::withMessages(['status' => 'This flood has already subsided.']);
+            }
+            $end = now('Asia/Manila');
+            $start = Carbon::parse($record->flood_start_datetime, 'Asia/Manila');
+            $this->logFloodUpdate($record, $request, 'Subsided', $record->flood_code);
+            $record->update(['status' => 'Subsided', 'flood_subsided_datetime' => $end->format('Y-m-d H:i:s'),
+                'duration_hours' => round(max(0, $start->diffInSeconds($end, false)) / 3600, 4)]);
+        });
+        return $this->floodRedirect('Flood marked subsided and removed from active maps.');
+    }
+
+    public function enrichFlood(int $id, OperationalFloodEnrichmentService $enrichment): RedirectResponse
+    {
+        $record = $enrichment->enrich(FloodIncidentRecord::findOrFail($id));
+        return $this->floodRedirect($record->enrichment_status === 'Complete'
+            ? 'Automatic data filled.' : 'Available data saved. Some attributes are still unavailable.');
     }
 
     public function destroyFlood(int $id): RedirectResponse
     {
-        $updated = DB::table(self::FLOOD_TABLE)->where('id', $id)->whereNull('deleted_at')
-            ->update(['deleted_at' => now()]);
-        abort_if($updated === 0, 404);
-
-        return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])
-            ->with('success', 'Flood incident record removed.');
+        FloodIncidentRecord::findOrFail($id)->delete();
+        return $this->floodRedirect('Flood incident record removed.');
     }
 
-    private function validatedFloodRecord(Request $request, ?int $id = null): array
+    private function floodRedirect(string $message, ?FloodIncidentRecord $record = null): RedirectResponse
     {
-        $validated = $request->validate([
-            'event_id' => ['required', 'string', 'max:50'],
-            'observation_datetime' => ['required', 'date'],
-            'flood_start_datetime' => ['required', 'date'],
-            'flood_subsided_datetime' => ['nullable', 'required_if:status,Subsided', 'prohibited_if:status,Active', 'date', 'after_or_equal:flood_start_datetime'],
-            'barangay' => ['required', 'string', 'max:100'],
-            'status' => ['required', Rule::in(['Active', 'Subsided'])],
-            'flood_code' => ['required', Rule::in(['A', 'B', 'C', 'D'])],
-            'nearest_waterway' => ['nullable', 'string', 'max:150'],
-            'storm_signal' => ['nullable', 'integer', 'min:0', 'max:5'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'elevation_m' => ['nullable', 'numeric', 'between:-20,500'],
-            'distance_to_waterway_m' => ['nullable', 'numeric', 'min:0'],
-            'rainfall_24h_mm' => ['nullable', 'numeric', 'min:0'],
-            'rainfall_3d_mm' => ['nullable', 'numeric', 'min:0'],
-            'rainfall_7d_mm' => ['nullable', 'numeric', 'min:0'],
-            'temperature_c' => ['nullable', 'numeric', 'between:-10,60'],
-            'temp_max_c' => ['nullable', 'numeric', 'between:-10,60'],
-            'temp_min_c' => ['nullable', 'numeric', 'between:-10,60'],
-            'wind_speed_kph' => ['nullable', 'numeric', 'min:0'],
-            'wind_direction_deg' => ['nullable', 'numeric', 'between:0,360'],
-            'duration_hours' => ['nullable', 'numeric', 'min:0'],
-        ]);
-        foreach (['observation_datetime', 'flood_start_datetime', 'flood_subsided_datetime'] as $column) {
-            $validated[$column] = ! empty($validated[$column])
-                ? Carbon::parse($validated[$column], 'Asia/Manila')->setTimezone('Asia/Manila')->format('Y-m-d H:i:s')
-                : null;
+        $user = request()->user();
+        if ($user->hasPermission('records.view')) {
+            return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])->with('success', $message);
         }
-        $date = Carbon::parse($validated['observation_datetime'], 'Asia/Manila');
-        $validated['event_date'] = $date->toDateString();
-        $validated['year'] = $date->year;
-        $validated['month'] = $date->month;
-        $validated['day_of_week'] = $date->format('l');
-        $validated['updated_at'] = now();
+        if ($user->hasPermission('gis.view')) {
+            return redirect()->route('gis.index', ['hazard' => 'flood'])->with('success', $message);
+        }
+        $id = $record?->id ?? request()->route('id');
+        if ($id && $user->hasPermission('flood.edit')) {
+            return redirect()->route('operational-records.flood.edit', $id)->with('success', $message);
+        }
+        return redirect()->back()->with('success', $message);
+    }
 
+    private function logFloodUpdate(FloodIncidentRecord $record, Request $request, string $action, string $code): void
+    {
+        DB::table('flood_incident_updates')->insert(['flood_incident_record_id' => $record->id,
+            'user_id' => $request->user()->id, 'action' => $action,
+            'previous_code' => $record->flood_code, 'flood_code' => $code, 'created_at' => now()]);
+    }
+
+    private function validatedFloodRecord(Request $request, ?FloodIncidentRecord $record = null): array
+    {
+        if (is_string($request->input('geometry_geojson'))) {
+            $request->merge(['geometry_geojson' => json_decode($request->input('geometry_geojson'), true)]);
+        }
+        $validated = $request->validate([
+            'event_id' => ['prohibited'], 'observation_datetime' => ['prohibited'],
+            'flood_start_datetime' => ['prohibited'], 'flood_subsided_datetime' => ['prohibited'],
+            'status' => ['prohibited'],
+            'barangay' => ['required', Rule::exists('barangays', 'name')->where('is_active', true)],
+            'flood_code' => $record ? ['prohibited'] : ['required', Rule::in(['A', 'B', 'C', 'D'])],
+            'geometry_geojson' => ['required', 'array:type,coordinates'],
+            'geometry_geojson.type' => ['required', Rule::in(['LineString'])],
+            'geometry_geojson.coordinates' => ['required', 'array', 'list', 'min:2', 'max:500'],
+            'geometry_geojson.coordinates.*' => ['required', 'array', 'list', 'size:2'],
+            'geometry_geojson.coordinates.*.0' => ['required', 'numeric', 'between:-180,180'],
+            'geometry_geojson.coordinates.*.1' => ['required', 'numeric', 'between:-90,90'],
+        ]);
+        $points = array_map(fn (array $point): array => [(float) $point[0], (float) $point[1]], $validated['geometry_geojson']['coordinates']);
+        $length = 0;
+        for ($i = 1; $i < count($points); $i++) {
+            [$lon1, $lat1] = $points[$i - 1]; [$lon2, $lat2] = $points[$i];
+            $a = sin(deg2rad($lat2 - $lat1) / 2) ** 2
+                + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin(deg2rad($lon2 - $lon1) / 2) ** 2;
+            $length += 6371000 * 2 * atan2(sqrt(min(1, $a)), sqrt(max(0, 1 - $a)));
+        }
+        if ($length <= 0) throw ValidationException::withMessages(['geometry_geojson' => 'Draw a line along the flooded stretch.']);
+        $validated['geometry_geojson']['coordinates'] = $points;
+        $validated['extent_length_m'] = round($length, 2);
+        $validated['latitude'] = (min(array_column($points, 1)) + max(array_column($points, 1))) / 2;
+        $validated['longitude'] = (min(array_column($points, 0)) + max(array_column($points, 0))) / 2;
         return $validated;
     }
 
@@ -770,7 +832,7 @@ class OperationalRecordController extends Controller
                 'barangay_text_column' => 'barangay', 'order_column' => 'flood_start_datetime',
                 'search_columns' => ['event_id', 'barangay', 'nearest_waterway', 'flood_code', 'status'],
                 'statuses' => ['Active', 'Subsided'], 'crud_route' => null,
-                'columns' => ['id' => 'Record ID', 'event_id' => 'Event ID', 'observation_datetime' => 'Observation (PHT)', 'flood_start_datetime' => 'Flood Start (PHT)', 'flood_subsided_datetime' => 'Flood Subsided (PHT)', 'duration_hours' => 'Duration (hours)', 'status' => 'Status', 'barangay' => 'Barangay', 'flood_code' => 'Flood Code', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'nearest_waterway' => 'Nearest Waterway', 'elevation_m' => 'Elevation (m)', 'distance_to_waterway_m' => 'Distance to Waterway (m)', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'rainfall_3d_mm' => 'Rainfall 3d (mm)', 'rainfall_7d_mm' => 'Rainfall 7d (mm)', 'temperature_c' => 'Temperature (°C)', 'temp_max_c' => 'Maximum Temp (°C)', 'temp_min_c' => 'Minimum Temp (°C)', 'wind_speed_kph' => 'Wind Speed (km/h)', 'wind_direction_deg' => 'Wind Direction (°)', 'storm_signal' => 'Storm Signal', 'year' => 'Year'],
+                'columns' => ['id' => 'Record ID', 'event_id' => 'Event ID', 'observation_datetime' => 'Observation (PHT)', 'flood_start_datetime' => 'Flood Start (PHT)', 'flood_subsided_datetime' => 'Flood Subsided (PHT)', 'duration_hours' => 'Duration (hours)', 'status' => 'Status', 'barangay' => 'Barangay', 'flood_code' => 'Flood Code', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'nearest_waterway' => 'Nearest Waterway', 'elevation_m' => 'Elevation (m)', 'distance_to_waterway_m' => 'Distance to Waterway (m)', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'rainfall_3d_mm' => 'Rainfall 3d (mm)', 'rainfall_7d_mm' => 'Rainfall 7d (mm)', 'temperature_c' => 'Temperature (°C)', 'temp_max_c' => 'Maximum Temp (°C)', 'temp_min_c' => 'Minimum Temp (°C)', 'wind_speed_kph' => 'Wind Speed (km/h)', 'wind_direction_deg' => 'Wind Direction (°)', 'storm_signal' => 'Storm Signal', 'year' => 'Year', 'enrichment_status' => 'Automatic Data'],
             ],
             'fire-incidents' => [
                 'label' => 'Fire Incidents', 'table' => 'fire_incidents',

@@ -7,10 +7,8 @@ use App\Models\FireIncident;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class OperationsManagerAuthorizationTest extends TestCase
@@ -28,7 +26,7 @@ class OperationsManagerAuthorizationTest extends TestCase
                 'dataset' => 'fire-incidents',
             ]))
             ->assertOk()
-            ->assertSee('Operational Database Records');
+            ->assertSee('Operational Records');
     }
 
     public function test_user_without_records_permission_is_forbidden(): void
@@ -44,18 +42,8 @@ class OperationsManagerAuthorizationTest extends TestCase
 
     public function test_operations_manager_can_build_flood_pivot_report(): void
     {
-        Schema::create('flood_analytics_dataset', function (Blueprint $table): void {
-            $table->id();
-            $table->string('barangay');
-            $table->unsignedSmallInteger('year');
-            $table->string('risk_level');
-            $table->softDeletes();
-        });
-
-        DB::table('flood_analytics_dataset')->insert([
-            ['barangay' => 'Addition Hills', 'year' => 2025, 'risk_level' => 'High'],
-            ['barangay' => 'Addition Hills', 'year' => 2025, 'risk_level' => 'High'],
-            ['barangay' => 'Hulo', 'year' => 2025, 'risk_level' => 'Low'],
+        DB::table('flood_incident_records')->insert([
+            ['event_id' => 'PIVOT-1', 'observation_datetime' => '2025-08-01 00:00:00', 'flood_start_datetime' => '2025-08-01 10:00:00', 'event_date' => '2025-08-01', 'barangay' => 'Addition Hills', 'year' => 2025, 'month' => 8, 'day_of_week' => 'Friday', 'status' => 'Active', 'flood_code' => 'D'],
         ]);
 
         $user = $this->userWithPermissions(

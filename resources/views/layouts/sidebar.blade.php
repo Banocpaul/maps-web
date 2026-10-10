@@ -61,7 +61,7 @@
             'icon' => 'analytics',
         ],
         [
-            'label' => 'Database Records',
+            'label' => 'Operational Records',
             'route' => Route::has('operational-records.index')
                 ? 'operational-records.index'
                 : null,
@@ -239,7 +239,7 @@
         'operations-manager', 'operations-officer' => [
             'Dashboard',
             'Incident Analytics',
-            'Database Records',
+            'Operational Records',
             'Flood Prediction',
             'Prediction History',
             'Flood Operations',

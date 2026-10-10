@@ -9,22 +9,23 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OperationalRecordController extends Controller
 {
-    private const FLOOD_TABLE = 'flood_analytics_dataset';
+    private const FLOOD_TABLE = 'flood_incident_records';
 
     private const REPORT_DIMENSIONS = [
         'barangay' => 'Barangay',
         'year' => 'Year',
         'month' => 'Month',
-        'risk_level' => 'Risk Level',
+        'flood_code' => 'Flood Code',
+        'status' => 'Status',
         'storm_signal' => 'Storm Signal',
         'nearest_waterway' => 'Nearest Waterway',
-        'wet_season' => 'Wet Season',
         'day_of_week' => 'Day of Week',
     ];
 
@@ -33,7 +34,6 @@ class OperationalRecordController extends Controller
         'rainfall_24h_mm' => 'Rainfall 24h (mm)',
         'rainfall_3d_mm' => 'Rainfall 3d (mm)',
         'rainfall_7d_mm' => 'Rainfall 7d (mm)',
-        'flood_depth_mm' => 'Flood Depth (mm)',
         'duration_hours' => 'Flood Duration (hours)',
         'elevation_m' => 'Elevation (m)',
         'distance_to_waterway_m' => 'Distance to Waterway (m)',
@@ -44,11 +44,12 @@ class OperationalRecordController extends Controller
         $datasets = $this->datasets();
         $datasetKey = $request->string('dataset', 'flood-records')->toString();
         $dataset = $this->resolveDataset($datasets, $datasetKey);
-        $filters = $this->validatedFilters($request);
+        $filters = $this->validatedFilters($request, $dataset);
 
         $records = $this->filteredQuery($dataset, $filters)
             ->paginate(25)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn (object $record): object => $this->formatRecordDates($record, $dataset));
 
         $barangays = Schema::hasTable('barangays')
             ? Barangay::query()->where('is_active', true)->orderBy('name')->get()
@@ -57,7 +58,7 @@ class OperationalRecordController extends Controller
         $datasetCounts = collect($datasets)->mapWithKeys(
             fn (array $definition, string $key): array => [
                 $key => Schema::hasTable($definition['table'])
-                    ? $this->baseTableCount($definition['table'])
+                    ? $this->baseQuery($definition)->count()
                     : null,
             ]
         );
@@ -78,7 +79,7 @@ class OperationalRecordController extends Controller
         $datasets = $this->datasets();
         $datasetKey = $request->string('dataset', 'flood-records')->toString();
         $dataset = $this->resolveDataset($datasets, $datasetKey);
-        $filters = $this->validatedFilters($request);
+        $filters = $this->validatedFilters($request, $dataset);
         $fileName = $datasetKey . '-' . now()->format('Y-m-d-His') . '.csv';
 
         return response()->streamDownload(function () use ($dataset, $filters): void {
@@ -92,6 +93,7 @@ class OperationalRecordController extends Controller
             fputcsv($handle, array_values($dataset['columns']));
 
             foreach ($this->filteredQuery($dataset, $filters)->limit(100000)->cursor() as $record) {
+                $record = $this->formatRecordDates($record, $dataset);
                 $row = [];
 
                 foreach (array_keys($dataset['columns']) as $column) {
@@ -129,7 +131,7 @@ class OperationalRecordController extends Controller
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'barangay' => ['nullable', 'string', 'max:100'],
-            'risk_level' => ['nullable', Rule::in(['Low', 'Medium', 'High'])],
+            'flood_code' => ['nullable', Rule::in(['A', 'B', 'C', 'D'])],
         ]);
 
         $configuration = [
@@ -139,13 +141,13 @@ class OperationalRecordController extends Controller
                 : 'year',
             'column' => $request->has('column')
                 ? (string) ($validated['column'] ?? '')
-                : 'risk_level',
+                : 'flood_code',
             'measure' => $validated['measure'] ?? 'records',
             'aggregation' => $validated['aggregation'] ?? 'count',
             'date_from' => $validated['date_from'] ?? '',
             'date_to' => $validated['date_to'] ?? '',
             'barangay' => trim((string) ($validated['barangay'] ?? '')),
-            'risk_level' => $validated['risk_level'] ?? '',
+            'flood_code' => $validated['flood_code'] ?? '',
         ];
 
         if ($configuration['measure'] === 'records') {
@@ -181,8 +183,8 @@ class OperationalRecordController extends Controller
             $query->where('barangay', $configuration['barangay']);
         }
 
-        if ($configuration['risk_level'] !== '') {
-            $query->where('risk_level', $configuration['risk_level']);
+        if ($configuration['flood_code'] !== '') {
+            $query->where('flood_code', $configuration['flood_code']);
         }
 
         $groupDimensions = array_values(array_unique(array_filter([
@@ -291,7 +293,7 @@ class OperationalRecordController extends Controller
             echo '<tr><th colspan="' . $columnCount . '" class="title">M.A.P.S. Flood Report</th></tr>';
             echo '<tr><td class="label">Generated</td><td>' . $escape(now()->format('Y-m-d H:i:s')) . '</td></tr>';
             echo '<tr><td class="label">Measure</td><td>' . $escape($availableMeasures[$configuration['measure']]) . '</td><td class="label">Calculation</td><td>' . $escape(ucfirst($configuration['aggregation'])) . '</td></tr>';
-            echo '<tr><td class="label">Barangay filter</td><td>' . $escape($configuration['barangay'] ?: 'All barangays') . '</td><td class="label">Risk filter</td><td>' . $escape($configuration['risk_level'] ?: 'All risk levels') . '</td></tr>';
+            echo '<tr><td class="label">Barangay filter</td><td>' . $escape($configuration['barangay'] ?: 'All barangays') . '</td><td class="label">Flood code filter</td><td>' . $escape($configuration['flood_code'] ?: 'All flood codes') . '</td></tr>';
             echo '<tr><td class="label">Date range</td><td>' . $escape(($configuration['date_from'] ?: 'Beginning') . ' to ' . ($configuration['date_to'] ?: 'Latest')) . '</td></tr>';
             echo '<tr><td colspan="' . $columnCount . '"></td></tr>';
             echo '<tr>';
@@ -480,7 +482,7 @@ class OperationalRecordController extends Controller
         DB::table(self::FLOOD_TABLE)->insert($data);
 
         return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])
-            ->with('success', 'Flood analytics record created successfully.');
+            ->with('success', 'Flood incident record created successfully.');
     }
 
     public function editFlood(int $id): View
@@ -500,7 +502,7 @@ class OperationalRecordController extends Controller
         DB::table(self::FLOOD_TABLE)->where('id', $id)->update($this->validatedFloodRecord($request, $id));
 
         return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])
-            ->with('success', 'Flood analytics record updated successfully.');
+            ->with('success', 'Flood incident record updated successfully.');
     }
 
     public function destroyFlood(int $id): RedirectResponse
@@ -510,53 +512,67 @@ class OperationalRecordController extends Controller
         abort_if($updated === 0, 404);
 
         return redirect()->route('operational-records.index', ['dataset' => 'flood-records'])
-            ->with('success', 'Flood analytics record removed.');
+            ->with('success', 'Flood incident record removed.');
     }
 
     private function validatedFloodRecord(Request $request, ?int $id = null): array
     {
         $validated = $request->validate([
-            'event_id' => ['required', 'string', 'max:50', 'unique:' . self::FLOOD_TABLE . ',event_id' . ($id ? ',' . $id : '')],
-            'event_date' => ['required', 'date'],
+            'event_id' => ['required', 'string', 'max:50'],
+            'observation_datetime' => ['required', 'date'],
+            'flood_start_datetime' => ['required', 'date'],
+            'flood_subsided_datetime' => ['nullable', 'required_if:status,Subsided', 'prohibited_if:status,Active', 'date', 'after_or_equal:flood_start_datetime'],
             'barangay' => ['required', 'string', 'max:100'],
-            'nearest_waterway' => ['required', 'string', 'max:150'],
-            'storm_signal' => ['required', 'integer', 'min:0', 'max:5'],
-            'elevation_m' => ['required', 'numeric', 'min:-20', 'max:500'],
-            'distance_to_waterway_m' => ['required', 'numeric', 'min:0'],
-            'drainage_index' => ['required', 'numeric', 'min:0', 'max:1'],
-            'impervious_surface_ratio' => ['required', 'numeric', 'min:0', 'max:1'],
-            'population_density_per_km2' => ['required', 'numeric', 'min:0'],
-            'historical_flood_count_5y' => ['required', 'integer', 'min:0'],
-            'rainfall_24h_mm' => ['required', 'numeric', 'min:0'],
-            'rainfall_3d_mm' => ['required', 'numeric', 'min:0'],
-            'rainfall_7d_mm' => ['required', 'numeric', 'min:0'],
-            'temperature_c' => ['required', 'numeric', 'min:-10', 'max:60'],
-            'humidity_pct' => ['required', 'numeric', 'min:0', 'max:100'],
-            'wind_speed_kph' => ['required', 'numeric', 'min:0'],
-            'tide_level_m' => ['required', 'numeric', 'min:-5', 'max:10'],
-            'flood_depth_mm' => ['required', 'numeric', 'min:0'],
-            'duration_hours' => ['required', 'numeric', 'min:0'],
-            'risk_level' => ['required', 'in:Low,Medium,High'],
+            'status' => ['required', Rule::in(['Active', 'Subsided'])],
+            'flood_code' => ['required', Rule::in(['A', 'B', 'C', 'D'])],
+            'nearest_waterway' => ['nullable', 'string', 'max:150'],
+            'storm_signal' => ['nullable', 'integer', 'min:0', 'max:5'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'elevation_m' => ['nullable', 'numeric', 'between:-20,500'],
+            'distance_to_waterway_m' => ['nullable', 'numeric', 'min:0'],
+            'rainfall_24h_mm' => ['nullable', 'numeric', 'min:0'],
+            'rainfall_3d_mm' => ['nullable', 'numeric', 'min:0'],
+            'rainfall_7d_mm' => ['nullable', 'numeric', 'min:0'],
+            'temperature_c' => ['nullable', 'numeric', 'between:-10,60'],
+            'temp_max_c' => ['nullable', 'numeric', 'between:-10,60'],
+            'temp_min_c' => ['nullable', 'numeric', 'between:-10,60'],
+            'wind_speed_kph' => ['nullable', 'numeric', 'min:0'],
+            'wind_direction_deg' => ['nullable', 'numeric', 'between:0,360'],
+            'duration_hours' => ['nullable', 'numeric', 'min:0'],
         ]);
-
-        $date = Carbon::parse($validated['event_date']);
+        foreach (['observation_datetime', 'flood_start_datetime', 'flood_subsided_datetime'] as $column) {
+            $validated[$column] = ! empty($validated[$column])
+                ? Carbon::parse($validated[$column], 'Asia/Manila')->setTimezone('Asia/Manila')->format('Y-m-d H:i:s')
+                : null;
+        }
+        $date = Carbon::parse($validated['observation_datetime'], 'Asia/Manila');
+        $validated['event_date'] = $date->toDateString();
         $validated['year'] = $date->year;
         $validated['month'] = $date->month;
         $validated['day_of_week'] = $date->format('l');
-        $validated['is_weekend'] = $date->isWeekend();
-        $validated['wet_season'] = $date->month >= 5 && $date->month <= 11;
+        $validated['updated_at'] = now();
 
         return $validated;
+    }
+
+    private function baseQuery(array $dataset): Builder
+    {
+        $table = $dataset['table'];
+        $query = DB::table($table);
+        if (Schema::hasColumn($table, 'deleted_at')) {
+            $query->whereNull("{$table}.deleted_at");
+        }
+        if ($dataset['public_only'] ?? false) {
+            $query->whereNotNull("{$table}.user_id");
+        }
+        return $query;
     }
 
     private function filteredQuery(array $dataset, array $filters): Builder
     {
         $table = $dataset['table'];
-        $query = DB::table($table);
-
-        if (Schema::hasColumn($table, 'deleted_at')) {
-            $query->whereNull("{$table}.deleted_at");
-        }
+        $query = $this->baseQuery($dataset);
 
         if (($dataset['joins_barangays'] ?? false) && Schema::hasTable('barangays')) {
             $query->leftJoin('barangays', "{$table}.barangay_id", '=', 'barangays.id');
@@ -565,9 +581,14 @@ class OperationalRecordController extends Controller
         $selects = [];
 
         foreach (array_keys($dataset['columns']) as $column) {
-            $selects[] = $column === 'barangay_name'
-                ? 'barangays.name as barangay_name'
-                : "{$table}.{$column}";
+            if ($column === 'remarks_count') {
+                $selects[$column] = DB::table('prediction_remarks')->selectRaw('COUNT(*)')
+                    ->whereColumn('prediction_execution_id', 'prediction_executions.id');
+            } else {
+                $selects[] = $column === 'barangay_name'
+                    ? 'barangays.name as barangay_name'
+                    : "{$table}.{$column}";
+            }
         }
 
         $query->select($selects);
@@ -588,15 +609,26 @@ class OperationalRecordController extends Controller
         }
 
         if ($filters['date_from'] !== '' && $dataset['date_column'] !== null) {
-            $query->whereDate("{$table}.{$dataset['date_column']}", '>=', $filters['date_from']);
+            $date = Carbon::parse($filters['date_from'], 'Asia/Manila')->startOfDay();
+            $query->where("{$table}.{$dataset['date_column']}", '>=',
+                ($dataset['local_dates'] ?? false) ? $date->format('Y-m-d H:i:s') : $date->utc()->format('Y-m-d H:i:s'));
         }
 
         if ($filters['date_to'] !== '' && $dataset['date_column'] !== null) {
-            $query->whereDate("{$table}.{$dataset['date_column']}", '<=', $filters['date_to']);
+            $date = Carbon::parse($filters['date_to'], 'Asia/Manila')->addDay()->startOfDay();
+            $query->where("{$table}.{$dataset['date_column']}", '<',
+                ($dataset['local_dates'] ?? false) ? $date->format('Y-m-d H:i:s') : $date->utc()->format('Y-m-d H:i:s'));
         }
 
         if ($filters['status'] !== '' && $dataset['status_column'] !== null) {
             $query->where("{$table}.{$dataset['status_column']}", $filters['status']);
+        }
+
+        if ($table === self::FLOOD_TABLE && $filters['flood_code'] !== '') {
+            $query->where('flood_code', $filters['flood_code']);
+        }
+        if ($table === 'prediction_executions' && $filters['forecast_hours'] !== '') {
+            $query->where('forecast_hours', $filters['forecast_hours']);
         }
 
         if ($filters['barangay_id'] !== null) {
@@ -606,21 +638,37 @@ class OperationalRecordController extends Controller
                 $barangayName = Barangay::query()->whereKey($filters['barangay_id'])->value('name');
 
                 if ($barangayName !== null) {
-                    $query->where("{$table}.{$dataset['barangay_text_column']}", $barangayName);
+                    $column = $dataset['barangay_text_column'];
+                    $names = DB::table($table)->distinct()->pluck($column)
+                        ->filter(fn ($name): bool => $this->barangayKey((string) $name) === $this->barangayKey($barangayName))->all();
+                    $query->whereIn("{$table}.{$column}", $names);
                 }
             }
         }
 
-        return $query->orderByDesc("{$table}.{$dataset['order_column']}");
+        return $query->orderByDesc("{$table}.{$dataset['order_column']}")->orderByDesc("{$table}.id");
     }
 
-    private function validatedFilters(Request $request): array
+    private function barangayKey(string $name): string
+    {
+        $key = preg_replace('/[^a-z0-9]/', '', strtolower(Str::ascii($name)));
+        return match ($key) {
+            'hagdangbatoitaas' => 'hagdanbatoitaas',
+            'hagdangbatolibis' => 'hagdanbatolibis',
+            'wackwackgreenhillseast' => 'wackwackgreenhills',
+            default => $key,
+        };
+    }
+
+    private function validatedFilters(Request $request, array $dataset): array
     {
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
-            'status' => ['nullable', 'string', 'max:50'],
+            'status' => ['nullable', Rule::in($dataset['statuses'])],
+            'flood_code' => ['nullable', Rule::in(['A', 'B', 'C', 'D'])],
+            'forecast_hours' => ['nullable', Rule::in([24, 48, 72])],
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
         ]);
 
@@ -629,6 +677,8 @@ class OperationalRecordController extends Controller
             'date_from' => (string) ($validated['date_from'] ?? ''),
             'date_to' => (string) ($validated['date_to'] ?? ''),
             'status' => (string) ($validated['status'] ?? ''),
+            'flood_code' => (string) ($validated['flood_code'] ?? ''),
+            'forecast_hours' => (string) ($validated['forecast_hours'] ?? ''),
             'barangay_id' => isset($validated['barangay_id'])
                 ? (int) $validated['barangay_id']
                 : null,
@@ -651,14 +701,19 @@ class OperationalRecordController extends Controller
             ->filter(fn (string $heading, string $column): bool =>
                 $column === 'barangay_name'
                     ? $canJoinBarangays
-                    : Schema::hasColumn($table, $column)
+                    : ($column === 'remarks_count' || Schema::hasColumn($table, $column))
             )
             ->all();
+        foreach (['requested_at', 'completed_at', 'reported_at', 'sent_at', 'observed_at', 'created_at'] as $column) {
+            if (isset($dataset['columns'][$column])) {
+                $dataset['columns'][$column] .= ' (PHT)';
+            }
+        }
         $dataset['search_columns'] = collect($dataset['search_columns'])
             ->filter(fn (string $column): bool =>
                 $column === 'barangay_name'
                     ? $canJoinBarangays
-                    : Schema::hasColumn($table, $column)
+                    : ($column === 'remarks_count' || Schema::hasColumn($table, $column))
             )
             ->values()
             ->all();
@@ -675,6 +730,18 @@ class OperationalRecordController extends Controller
             : 'id';
 
         return $dataset;
+    }
+
+    private function formatRecordDates(object $record, array $dataset): object
+    {
+        if (! ($dataset['local_dates'] ?? false)) {
+            foreach (['requested_at', 'completed_at', 'reported_at', 'sent_at', 'observed_at', 'created_at'] as $column) {
+                if (! empty($record->{$column})) {
+                    $record->{$column} = Carbon::parse($record->{$column}, 'UTC')->setTimezone('Asia/Manila')->format('Y-m-d H:i:s');
+                }
+            }
+        }
+        return $record;
     }
 
     private function csvValue(mixed $value): string|int|float|null
@@ -694,34 +761,23 @@ class OperationalRecordController extends Controller
         return $value;
     }
 
-    private function baseTableCount(string $table): int
-    {
-        $query = DB::table($table);
-
-        if (Schema::hasColumn($table, 'deleted_at')) {
-            $query->whereNull('deleted_at');
-        }
-
-        return $query->count();
-    }
-
     private function datasets(): array
     {
         return [
             'flood-records' => [
-                'label' => 'Flood Analytics Dataset', 'table' => self::FLOOD_TABLE,
-                'date_column' => 'event_date', 'status_column' => 'risk_level',
-                'barangay_text_column' => 'barangay', 'order_column' => 'event_date',
-                'search_columns' => ['event_id', 'barangay', 'nearest_waterway'],
-                'statuses' => ['Low', 'Medium', 'High'], 'crud_route' => null,
-                'columns' => ['id' => 'ID', 'event_id' => 'Event ID', 'event_date' => 'Event Date', 'barangay' => 'Barangay', 'risk_level' => 'Risk Level', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'rainfall_3d_mm' => 'Rainfall 3d (mm)', 'rainfall_7d_mm' => 'Rainfall 7d (mm)', 'flood_depth_mm' => 'Flood Depth (mm)', 'duration_hours' => 'Duration (hours)', 'nearest_waterway' => 'Nearest Waterway', 'storm_signal' => 'Storm Signal'],
+                'label' => 'Flood Incident Records', 'table' => self::FLOOD_TABLE,
+                'date_column' => 'observation_datetime', 'status_column' => 'status', 'local_dates' => true,
+                'barangay_text_column' => 'barangay', 'order_column' => 'flood_start_datetime',
+                'search_columns' => ['event_id', 'barangay', 'nearest_waterway', 'flood_code', 'status'],
+                'statuses' => ['Active', 'Subsided'], 'crud_route' => null,
+                'columns' => ['id' => 'Record ID', 'event_id' => 'Event ID', 'observation_datetime' => 'Observation (PHT)', 'flood_start_datetime' => 'Flood Start (PHT)', 'flood_subsided_datetime' => 'Flood Subsided (PHT)', 'duration_hours' => 'Duration (hours)', 'status' => 'Status', 'barangay' => 'Barangay', 'flood_code' => 'Flood Code', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'nearest_waterway' => 'Nearest Waterway', 'elevation_m' => 'Elevation (m)', 'distance_to_waterway_m' => 'Distance to Waterway (m)', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'rainfall_3d_mm' => 'Rainfall 3d (mm)', 'rainfall_7d_mm' => 'Rainfall 7d (mm)', 'temperature_c' => 'Temperature (°C)', 'temp_max_c' => 'Maximum Temp (°C)', 'temp_min_c' => 'Minimum Temp (°C)', 'wind_speed_kph' => 'Wind Speed (km/h)', 'wind_direction_deg' => 'Wind Direction (°)', 'storm_signal' => 'Storm Signal', 'year' => 'Year'],
             ],
             'fire-incidents' => [
                 'label' => 'Fire Incidents', 'table' => 'fire_incidents',
                 'date_column' => 'reported_at', 'status_column' => 'status',
                 'joins_barangays' => true, 'order_column' => 'reported_at',
                 'search_columns' => ['incident_number', 'incident_type', 'location', 'barangay_name'],
-                'statuses' => ['Reported', 'Responding', 'Controlled', 'Resolved'], 'crud_route' => 'fire-incidents.index',
+                'statuses' => ['Reported', 'Responding', 'Controlled', 'Resolved'], 'crud_route' => 'fire-incidents.index', 'crud_permission' => 'fire.view',
                 'columns' => ['id' => 'ID', 'incident_number' => 'Incident Number', 'reported_at' => 'Reported At', 'barangay_name' => 'Barangay', 'incident_type' => 'Type', 'location' => 'Location', 'severity' => 'Severity', 'status' => 'Status'],
             ],
             'fire-hydrants' => [
@@ -729,52 +785,37 @@ class OperationalRecordController extends Controller
                 'date_column' => 'created_at', 'status_column' => 'status',
                 'joins_barangays' => true, 'order_column' => 'id',
                 'search_columns' => ['hydrant_code', 'location', 'barangay_name'],
-                'statuses' => ['Active', 'Inactive', 'Maintenance'], 'crud_route' => 'fire-hydrants.index',
+                'statuses' => ['Active', 'Inactive', 'Maintenance'], 'crud_route' => 'fire-hydrants.index', 'crud_permission' => 'hydrant.view',
                 'columns' => ['id' => 'ID', 'hydrant_code' => 'Hydrant Code', 'barangay_name' => 'Barangay', 'location' => 'Location', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'status' => 'Status', 'last_inspection_date' => 'Last Inspection'],
             ],
-            'prediction-runs' => [
-                'label' => 'Prediction Runs', 'table' => 'prediction_runs',
+            'prediction-results' => [
+                'label' => 'Prediction Results', 'table' => 'prediction_executions',
                 'date_column' => 'requested_at', 'status_column' => 'status',
-                'joins_barangays' => true, 'order_column' => 'requested_at',
-                'search_columns' => ['source', 'status', 'barangay_name'],
-                'statuses' => ['pending', 'completed', 'failed'], 'crud_route' => 'prediction.index',
-                'columns' => ['id' => 'ID', 'requested_at' => 'Requested At', 'barangay_name' => 'Barangay', 'source' => 'Source', 'status' => 'Status', 'requested_by_user_id' => 'Requested By User ID', 'error_message' => 'Error'],
+                'order_column' => 'requested_at', 'search_columns' => ['requested_by_name', 'kind', 'status', 'error_message'],
+                'statuses' => ['Running', 'Completed', 'Failed'], 'crud_route' => 'prediction.history.index', 'crud_permission' => 'prediction.view',
+                'columns' => ['id' => 'Run ID', 'requested_at' => 'Run At', 'completed_at' => 'Completed At', 'requested_by_name' => 'Run By', 'kind' => 'Type', 'forecast_hours' => 'Forecast (hours)', 'status' => 'Status', 'result_snapshot' => 'Saved Results', 'remarks_count' => 'Remarks', 'error_message' => 'Error'],
             ],
-            'flood-predictions' => [
-                'label' => 'Prediction Results', 'table' => 'flood_predictions',
-                'date_column' => 'predicted_at', 'status_column' => 'predicted_risk_level',
-                'order_column' => 'predicted_at', 'search_columns' => ['predicted_risk_level'],
-                'statuses' => ['Low', 'Medium', 'High'], 'crud_route' => 'prediction.index',
-                'columns' => ['id' => 'ID', 'prediction_run_id' => 'Run ID', 'predicted_at' => 'Predicted At', 'predicted_risk_level' => 'Risk Level', 'high_probability' => 'High Probability', 'predicted_depth_mm' => 'Depth (mm)', 'predicted_duration_hours' => 'Duration (hours)', 'is_alert_triggered' => 'Alert Triggered'],
+            'sms-logs' => [
+                'label' => 'SMS Delivery Logs', 'table' => 'sms_logs',
+                'date_column' => 'created_at', 'status_column' => 'status',
+                'order_column' => 'id', 'search_columns' => ['recipient_name', 'phone_number', 'source', 'failure_reason', 'message'],
+                'statuses' => ['pending', 'sent', 'failed'], 'crud_route' => 'sms.index', 'crud_permission' => 'sms.view',
+                'columns' => ['id' => 'ID', 'created_at' => 'Logged At', 'sent_at' => 'Sent At', 'recipient_name' => 'Recipient', 'phone_number' => 'Phone Number', 'source' => 'Source', 'message' => 'Message', 'status' => 'Status', 'http_status' => 'HTTP Status', 'failure_reason' => 'Failure Reason'],
+            ],
+            'public-recipients' => [
+                'label' => 'Total Public Recipients', 'table' => 'sms_recipients', 'public_only' => true,
+                'date_column' => 'created_at', 'status_column' => 'is_active',
+                'joins_barangays' => true, 'order_column' => 'id', 'search_columns' => ['full_name', 'phone_number', 'office_or_barangay', 'barangay_name'],
+                'statuses' => ['1', '0'], 'status_labels' => ['1' => 'Active', '0' => 'Inactive'], 'crud_route' => 'sms.index', 'crud_permission' => 'sms.view',
+                'columns' => ['id' => 'ID', 'created_at' => 'Registered At', 'full_name' => 'Name', 'phone_number' => 'Phone Number', 'barangay_name' => 'Barangay', 'office_or_barangay' => 'Office/Barangay', 'receive_flood_alerts' => 'Flood Alerts', 'receive_fire_alerts' => 'Fire Alerts', 'is_active' => 'Active'],
             ],
             'weather-observations' => [
                 'label' => 'Weather Observations', 'table' => 'weather_observations',
                 'date_column' => 'observed_at', 'status_column' => null,
                 'joins_barangays' => true, 'order_column' => 'observed_at',
                 'search_columns' => ['station_name', 'source', 'weather_condition', 'barangay_name'],
-                'statuses' => [], 'crud_route' => 'prediction.index',
-                'columns' => ['id' => 'ID', 'observed_at' => 'Observed At', 'barangay_name' => 'Barangay', 'station_name' => 'Station', 'source' => 'Source', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'temperature_c' => 'Temperature (C)', 'relative_humidity_pct' => 'Humidity (%)', 'weather_condition' => 'Condition'],
-            ],
-            'sms-logs' => [
-                'label' => 'SMS Delivery Logs', 'table' => 'sms_logs',
-                'date_column' => 'sent_at', 'status_column' => 'status',
-                'order_column' => 'id', 'search_columns' => ['recipient_name', 'phone_number', 'source', 'failure_reason'],
-                'statuses' => ['pending', 'sent', 'failed'], 'crud_route' => 'sms.index',
-                'columns' => ['id' => 'ID', 'sent_at' => 'Sent At', 'recipient_name' => 'Recipient', 'phone_number' => 'Phone Number', 'source' => 'Source', 'status' => 'Status', 'http_status' => 'HTTP Status', 'failure_reason' => 'Failure Reason'],
-            ],
-            'sms-recipients' => [
-                'label' => 'SMS Recipients', 'table' => 'sms_recipients',
-                'date_column' => 'created_at', 'status_column' => null,
-                'order_column' => 'id', 'search_columns' => ['full_name', 'phone_number', 'position', 'office_or_barangay'],
-                'statuses' => [], 'crud_route' => 'sms.index',
-                'columns' => ['id' => 'ID', 'full_name' => 'Name', 'phone_number' => 'Phone Number', 'position' => 'Position', 'office_or_barangay' => 'Office/Barangay', 'receive_flood_alerts' => 'Flood Alerts', 'receive_fire_alerts' => 'Fire Alerts', 'is_active' => 'Active'],
-            ],
-            'barangays' => [
-                'label' => 'Barangay Profiles', 'table' => 'barangays',
-                'date_column' => 'created_at', 'status_column' => null,
-                'order_column' => 'name', 'search_columns' => ['name'],
-                'statuses' => [], 'crud_route' => 'gis.index',
-                'columns' => ['id' => 'ID', 'name' => 'Barangay', 'district' => 'District', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'historical_flood_count_5y' => 'Historical Flood Count (5y)', 'is_active' => 'Active'],
+                'statuses' => [], 'crud_route' => null,
+                'columns' => ['id' => 'ID', 'observed_at' => 'Observed At', 'barangay_name' => 'Barangay', 'station_name' => 'Station / Location', 'source' => 'Source', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'rainfall_3d_mm' => 'Rainfall 3d (mm)', 'rainfall_7d_mm' => 'Rainfall 7d (mm)', 'temperature_c' => 'Temperature (°C)', 'relative_humidity_pct' => 'Humidity (%)', 'wind_speed_kph' => 'Wind Speed (km/h)', 'wind_direction_deg' => 'Wind Direction (°)', 'weather_condition' => 'Condition'],
             ],
         ];
     }

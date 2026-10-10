@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\DatabaseBackup;
 use App\Models\FireIncident;
 use App\Models\FloodTrainingRecord;
+use App\Models\FloodIncidentRecord;
 use App\Models\PredictionExecution;
 use App\Models\PublicIncidentReport;
 use App\Models\Role;
@@ -65,7 +66,22 @@ class ProcessDashboardService
 
         if (in_array('flood', $hazards, true) && $can('prediction.view')) {
             $query = FloodTrainingRecord::where('flood_status', 'Active');
-            $this->card($cards, 'flood', 'Active Flood Follow-up', $query->count(), route('flood-operation.index', ['flood_status' => 'Active']).'#dataset-management', 'Open Flood Records');
+            $operational = FloodIncidentRecord::where('status', 'Active')->whereNotNull('geometry_geojson');
+            $operationalCount = ($can('records.view') || $can('flood.edit')) ? $operational->count() : 0;
+            $floodUrl = $operationalCount && $can('gis.view') ? route('gis.index', ['hazard' => 'flood'])
+                : route('flood-operation.index', ['flood_status' => 'Active']).'#dataset-management';
+            $this->card($cards, 'flood', 'Active Flood Follow-up', $query->count() + $operationalCount, $floodUrl, 'Open Flood Records');
+            if ($operationalCount) {
+                foreach ($operational->orderByRaw("CASE WHEN flood_code IN ('C', 'D') THEN 0 ELSE 1 END")
+                    ->orderBy('updated_at')->limit(10)->get() as $record) {
+                    $this->task($tasks, 'flood-record-'.$record->id, 'Flood · '.$record->event_id, $record->barangay,
+                        'Active · Level '.$record->flood_code, $record->updated_at,
+                        $can('flood.edit') ? 'Update Flood Status' : 'View Flood Records',
+                        $can('flood.edit') ? route('operational-records.flood.edit', $record)
+                            : route('operational-records.index', ['dataset' => 'flood-records', 'search' => $record->event_id]),
+                        in_array($record->flood_code, ['C', 'D'], true) ? 0 : 2);
+                }
+            }
             foreach ($query->orderByRaw("CASE WHEN flood_level_code IN ('C', 'D') THEN 0 ELSE 1 END")
                 ->orderBy('updated_at')->orderBy('id')->limit(10)->get() as $record) {
                 $edit = $can('flood.edit');

@@ -21,9 +21,14 @@
         <section class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-slate-950">Flood GIS Map</h1>
-                <p class="mt-2 text-sm text-slate-600">View active flood observations recorded in Flood Operations. Select an extent to inspect its location and observation time.</p>
+                <p class="mt-2 text-sm text-slate-600">Active flooded stretches. Select a line to view its code and recorded time.</p>
             </div>
-            <button id="refresh-flood-map" type="button" class="rounded-xl bg-blue-700 px-4 py-2.5 font-semibold text-white hover:bg-blue-800">Refresh Map</button>
+            <div class="flex gap-3">
+                @if (auth()->user()->hasPermission('flood.create'))
+                    <a href="{{ route('operational-records.flood.create') }}" class="rounded-xl bg-sky-700 px-4 py-2.5 font-semibold text-white">Plot flood</a>
+                @endif
+                <button id="refresh-flood-map" type="button" class="rounded-xl border border-blue-700 px-4 py-2.5 font-semibold text-blue-700">Refresh Map</button>
+            </div>
         </section>
 
         <section class="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Flood summary">
@@ -112,7 +117,8 @@
                         <p>Level code: ${escapeHtml(record.level_code)}</p>
                         <p>Status: ${escapeHtml(record.status)}</p>
                         <p>Observed: ${escapeHtml(observationTime(record.observed_at))}</p>
-                        <p>Extent length: ${escapeHtml(record.length_m)} m</p></div>`).addTo(extents);
+                        <p>Extent length: ${escapeHtml(record.length_m)} m</p>
+                        ${record.manage_url ? `<a href="${escapeHtml(record.manage_url)}">Manage flood</a>` : ''}</div>`).addTo(extents);
                     line.eachLayer(layer => {
                         const path = layer.getElement();
                         if (!path) return;
@@ -151,7 +157,7 @@
                 refresh.disabled = true;
                 status.textContent = 'Loading flood observations…';
                 try {
-                    const response = await fetch('{{ route('gis.data') }}', {
+                    const response = await fetch('{{ route('gis.data', request('hazard') === 'flood' ? ['hazard' => 'flood'] : []) }}', {
                         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store',
                     });
                     if (!response.ok) throw new Error('Request failed');

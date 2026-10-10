@@ -331,6 +331,12 @@ Route::resource('fire-incidents', FireIncidentController::class)
         ->whereNumber('id')->middleware(['permission:flood.edit', 'throttle:30,1'])->name('operational-records.flood.update');
     Route::delete('/operational-records/flood/{id}', [OperationalRecordController::class, 'destroyFlood'])
         ->whereNumber('id')->middleware(['permission:flood.delete', 'throttle:20,1'])->name('operational-records.flood.destroy');
+    Route::post('/operational-records/flood/{id}/raise', [OperationalRecordController::class, 'raiseFlood'])
+        ->whereNumber('id')->middleware(['permission:flood.edit', 'throttle:30,1'])->name('operational-records.flood.raise');
+    Route::post('/operational-records/flood/{id}/subside', [OperationalRecordController::class, 'subsideFlood'])
+        ->whereNumber('id')->middleware(['permission:flood.edit', 'throttle:30,1'])->name('operational-records.flood.subside');
+    Route::post('/operational-records/flood/{id}/enrich', [OperationalRecordController::class, 'enrichFlood'])
+        ->whereNumber('id')->middleware(['permission:flood.edit', 'throttle:10,1'])->name('operational-records.flood.enrich');
     /*
     |--------------------------------------------------------------------------
     | GIS Mapping

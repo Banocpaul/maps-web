@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\FireHydrant;
 use App\Models\FireIncident;
 use App\Models\FloodTrainingRecord;
+use App\Services\OperationalFloodMapService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,7 +17,7 @@ class GisMapController extends Controller
      */
     public function index(Request $request): View
     {
-        if ($request->user()->hasRole('flood-analyst')) {
+        if ($this->wantsFloodMap($request)) {
             return view('gis.flood');
         }
 
@@ -47,7 +48,7 @@ class GisMapController extends Controller
      */
     public function data(Request $request): JsonResponse
     {
-        if ($request->user()->hasRole('flood-analyst')) {
+        if ($this->wantsFloodMap($request)) {
             return $this->floodData();
         }
 
@@ -264,16 +265,35 @@ class GisMapController extends Controller
             ],
         ])->values();
 
+        $operational = app(OperationalFloodMapService::class)->active()->map(function (array $row): array {
+            if (auth()->user()->hasPermission('flood.edit')) {
+                $row['manage_url'] = route('operational-records.flood.edit', $row['record_id']);
+            }
+            return $row;
+        });
+        $floods = $floods->concat($operational)->values();
+        $activeCount = $records->count() + $operational->count();
+
         return response()->json([
             'floods' => $floods,
             'statistics' => [
-                'active_floods' => $records->count(),
+                'active_floods' => $activeCount,
                 'mapped_floods' => $floods->count(),
-                'unmapped_floods' => $records->count() - $floods->count(),
-                'barangays' => $records->pluck('barangay')->filter()->unique()->count(),
+                'unmapped_floods' => $activeCount - $floods->count(),
+                'barangays' => $records->pluck('barangay')->concat($operational->pluck('barangay'))->filter()->unique()->count(),
                 'extent_length_m' => round($floods->sum('length_m'), 1),
             ],
         ])->header('Cache-Control', 'no-store, private');
+    }
+
+    private function wantsFloodMap(Request $request): bool
+    {
+        if ($request->user()->hasRole('flood-analyst')) return true;
+        if ($request->query('hazard') !== 'flood') return false;
+        abort_unless($request->user()->hasPermission('flood.view')
+            || $request->user()->hasPermission('flood.create')
+            || $request->user()->hasPermission('flood.edit'), 403);
+        return true;
     }
 
     /**

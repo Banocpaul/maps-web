@@ -1,4 +1,5 @@
 import { initializeProfileDialog } from "./profile-dialog.js";
+import { initializeFloodRecordMap } from "./flood-record-map.js";
 import { initializeRecipientSearch } from "./sms-recipient-search.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -6,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initializeDismissibleAlerts();
     initializeRecipientSearch();
     initializeProfileDialog();
+    initializeFloodRecordMap();
 });
 
 /**

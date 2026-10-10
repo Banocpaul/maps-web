@@ -113,20 +113,25 @@ class OperationalRecordsTest extends TestCase
     public function test_flood_crud_uses_incident_fields_and_soft_deletes(): void
     {
         $user = $this->staff(['flood.create', 'flood.edit', 'flood.delete']);
-        $payload = ['event_id' => 'MANUAL-NEW', 'observation_datetime' => '2026-10-10T14:00:00', 'flood_start_datetime' => '2026-10-10T14:00:00', 'status' => 'Active', 'barangay' => 'New Zañiga', 'flood_code' => 'B', 'rainfall_24h_mm' => 21];
+        $this->travelTo(Carbon::parse('2026-10-10T06:00:00Z'));
+        Barangay::create(['name' => 'New Zañiga', 'district' => 1, 'is_active' => true]);
+        $this->mock(LiveWeatherService::class)->shouldReceive('getCurrentWeather')->andReturn([]);
+        $payload = ['barangay' => 'New Zañiga', 'flood_code' => 'B',
+            'geometry_geojson' => ['type' => 'LineString', 'coordinates' => [[121.03, 14.58], [121.031, 14.581]]]];
         $this->actingAs($user)->get(route('operational-records.flood.create'))->assertOk()->assertDontSee('Risk Level');
         $this->actingAs($user)->post(route('operational-records.flood.store'), $payload)->assertSessionHasNoErrors()->assertRedirect();
-        $id = DB::table('flood_incident_records')->where('event_id', 'MANUAL-NEW')->value('id');
+        $id = DB::table('flood_incident_records')->where('created_by', $user->id)->value('id');
+        $event = DB::table('flood_incident_records')->where('id', $id)->value('event_id');
         $this->assertDatabaseHas('flood_incident_records', ['id' => $id, 'year' => 2026, 'month' => 10, 'status' => 'Active', 'flood_code' => 'B']);
         $this->actingAs($user)->get(route('operational-records.flood.edit', $id))->assertOk()->assertSee('New Zañiga');
-        $payload['status'] = 'Subsided';
-        $this->actingAs($user)->put(route('operational-records.flood.update', $id), $payload)->assertSessionHasErrors('flood_subsided_datetime');
-        $payload['flood_subsided_datetime'] = '2026-10-10T15:00:00';
+        unset($payload['flood_code']);
         $this->actingAs($user)->put(route('operational-records.flood.update', $id), $payload)->assertSessionHasNoErrors()->assertRedirect();
+        $this->actingAs($user)->post(route('operational-records.flood.subside', $id))->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertDatabaseHas('flood_incident_records', ['id' => $id, 'status' => 'Subsided']);
         $this->actingAs($user)->delete(route('operational-records.flood.destroy', $id))->assertRedirect();
         $this->assertSoftDeleted('flood_incident_records', ['id' => $id]);
         $this->actingAs($user)->get(route('operational-records.flood.edit', $id))->assertNotFound();
-        $response = $this->actingAs($user)->get(route('operational-records.index', ['search' => 'MANUAL-NEW']))->assertOk();
+        $response = $this->actingAs($user)->get(route('operational-records.index', ['search' => $event]))->assertOk();
         $this->assertSame(0, $response->viewData('records')->total());
     }
 
@@ -200,7 +205,9 @@ class OperationalRecordsTest extends TestCase
                 'hourly' => ['time' => ['2026-10-10T07:00', '2026-10-10T09:00'], 'temperature_2m' => [28, 30], 'precipitation' => [3, 4], 'wind_speed_10m' => [4, 5], 'relative_humidity_2m' => [82, 81]],
                 'daily' => ['time' => $days, 'temperature_2m_max' => array_fill(0, 7, 31), 'temperature_2m_min' => array_fill(0, 7, 25), 'precipitation_sum' => array_fill(0, 7, 7), 'rain_sum' => array_fill(0, 7, 7)],
             ])]);
-            app(LiveWeatherService::class)->getCurrentWeather();
+            $weather = app(LiveWeatherService::class)->getCurrentWeather();
+            $this->assertEquals(29.5, $weather['observed_temp_max_c']);
+            $this->assertEquals(28, $weather['observed_temp_min_c']);
             app(LiveWeatherService::class)->getCurrentWeather();
             Http::assertSentCount(1);
             $this->assertDatabaseCount('weather_observations', 1);

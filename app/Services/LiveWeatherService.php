@@ -457,6 +457,13 @@ class LiveWeatherService
 
         $hourlyRecords = $this->buildHourlyRecords($hourly);
 
+        // Incident records use only elapsed hourly temperatures, never forecast extremes.
+        $elapsedTemperatures = array_column(array_filter($hourlyRecords,
+            fn (array $row): bool => $row['time']->toDateString() === $currentDateTime->toDateString()
+                && $row['time']->lessThanOrEqualTo($currentDateTime)
+                && $row['temperature_c'] !== null
+        ), 'temperature_c');
+
         $pastRainfall24Hours = $this->sumRainfallBetween(
             records: $hourlyRecords,
             start: $currentDateTime->copy()->subHours(24),
@@ -501,6 +508,7 @@ class LiveWeatherService
         $currentTemperature = $this->nullableFloat(
             $current['temperature_2m'] ?? null
         );
+        if ($currentTemperature !== null) $elapsedTemperatures[] = $currentTemperature;
 
         $currentHumidity = $this->nullableFloat(
             $current['relative_humidity_2m'] ?? null
@@ -543,6 +551,8 @@ class LiveWeatherService
             'forecast_end_display' => $window24['end_display'],
 
             'current_temperature_c' => $currentTemperature,
+            'observed_temp_max_c' => $this->maximum($elapsedTemperatures),
+            'observed_temp_min_c' => $this->minimum($elapsedTemperatures),
             'avg_temp_mean_c' => $currentTemperature,
             'avg_rh_pct' => $currentHumidity,
             'avg_wind_speed' => $currentWind,

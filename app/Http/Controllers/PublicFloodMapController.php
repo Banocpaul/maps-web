@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FireIncident;
 use App\Models\FloodTrainingRecord;
+use App\Services\OperationalFloodMapService;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
@@ -31,6 +32,12 @@ class PublicFloodMapController extends Controller
             )
             ->filter()
             ->values();
+
+        $floods = $floods->concat(app(OperationalFloodMapService::class)->active()->map(function (array $row): array {
+            $level = self::LEVELS[$row['level_code']];
+            return array_merge($row, ['level_label' => $level['label'], 'depth_label' => $level['depth'],
+                'color' => $level['color'], 'observed_at' => \Carbon\Carbon::parse($row['observed_at'])->format('M d, Y g:i A')]);
+        }))->values();
 
         $fires = FireIncident::query()
             ->with('barangay:id,name')

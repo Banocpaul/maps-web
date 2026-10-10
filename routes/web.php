@@ -126,6 +126,10 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    Route::get('/incident-analytics', [DashboardController::class, 'incidentAnalytics'])
+        ->middleware('permission:dashboard.view')
+        ->name('incident-analytics.index');
     /*
     |--------------------------------------------------------------------------
     | Flood Prediction

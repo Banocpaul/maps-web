@@ -1,5 +1,5 @@
 <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <form method="GET" action="{{ route('dashboard') }}" class="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+    <form method="GET" action="{{ route($filterRoute ?? 'dashboard') }}" class="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
         @if (isset($selectedAnalytics))
             <input type="hidden" name="analytics" value="{{ $selectedAnalytics }}" data-analytics-filter-input>
         @endif
@@ -29,7 +29,7 @@
             <button type="submit" class="rounded-xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800">
                 Apply
             </button>
-            <a href="{{ route('dashboard', array_filter(['analytics' => $selectedAnalytics ?? null])) }}" class="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            <a href="{{ route($filterRoute ?? 'dashboard', array_filter(['analytics' => $selectedAnalytics ?? null])) }}" class="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                 Reset
             </a>
         </div>

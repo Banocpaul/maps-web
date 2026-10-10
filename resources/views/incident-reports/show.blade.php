@@ -14,6 +14,7 @@
 <div class="report-panel">
     <div class="flex flex-wrap items-center justify-between gap-3"><h1 class="text-2xl font-bold">{{ ucfirst($publicReport->incident_type) }} report</h1><strong>{{ $publicReport->status }}</strong></div>
     <p class="mt-2 font-semibold">{{ $publicReport->reference }}</p>
+    <p class="report-muted">Reporter: {{ $publicReport->submitter?->name ?? 'Legacy public report' }} · Reporter barangay: {{ $publicReport->reporterBarangay?->name ?? 'Not recorded' }}</p>
     <p class="report-muted">Submitted {{ $publicReport->created_at->timezone('Asia/Manila')->format('M d, Y g:i A') }} · Original pin: {{ number_format($publicReport->latitude, 7) }}, {{ number_format($publicReport->longitude, 7) }}</p>
     <div id="review-map" aria-label="Reported incident location"></div>
     @if($publicReport->status === 'Validated' && $canPublish)

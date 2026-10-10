@@ -2,7 +2,7 @@ name: Public incident report checks
 
 on:
   push:
-    branches: [main, codex/public-incident-reports]
+    branches: [main, codex/public-incident-reports, feature/public-resident-accounts]
   pull_request:
     branches: [main]
   workflow_dispatch:

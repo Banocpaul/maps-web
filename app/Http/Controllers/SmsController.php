@@ -161,6 +161,7 @@ class SmsController extends Controller
         Request $request,
         SmsRecipient $recipient
     ): RedirectResponse {
+        abort_if($recipient->user_id !== null, 403, 'Residents manage their own alert preferences.');
         $validated = $request->validate([
             'full_name' => [
                 'required',
@@ -242,6 +243,7 @@ class SmsController extends Controller
     public function toggleRecipient(
         SmsRecipient $recipient
     ): RedirectResponse {
+        abort_if($recipient->user_id !== null, 403, 'Manage the resident account status in User Management.');
         $recipient->update([
             'is_active' => ! $recipient->is_active,
             'updated_by' => auth()->id(),
@@ -258,6 +260,7 @@ class SmsController extends Controller
     public function destroyRecipient(
         SmsRecipient $recipient
     ): RedirectResponse {
+        abort_if($recipient->user_id !== null, 403, 'Residents manage their own alert preferences.');
         $recipient->delete();
 
         return back()->with(
@@ -370,6 +373,7 @@ class SmsController extends Controller
 
         $recipients = SmsRecipient::query()
             ->whereIn('id', $validated['recipient_ids'])
+            ->whereNull('user_id')
             ->where('is_active', true)
             ->get();
 

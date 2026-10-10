@@ -97,7 +97,7 @@
                     <a href="{{ route('public.incident-reports.create') }}" class="mt-6 inline-flex rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700">
                         Report a Fire or Flood Incident
                     </a>
-                    <p class="mt-3 text-sm leading-6 text-slate-300">Place a pin and optionally attach a photo. No account required.</p>
+                    <p class="mt-3 text-sm leading-6 text-slate-300">Sign in to report an incident, place a pin, and optionally attach a photo. Create an account to receive flood and fire SMS alerts for your barangay.</p>
 
                 </div>
 

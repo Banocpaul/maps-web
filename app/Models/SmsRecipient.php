@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +24,7 @@ class SmsRecipient extends Model
         'is_active',
         'created_by',
         'updated_by',
+        'user_id',
     ];
 
     protected $casts = [
@@ -36,6 +38,21 @@ class SmsRecipient extends Model
     public function barangay(): BelongsTo
     {
         return $this->belongsTo(Barangay::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function scopeEligibleForAlerts(Builder $query): Builder
+    {
+        return $query->where('is_active', true)->where(function (Builder $query): void {
+            $query->whereNull('user_id')->orWhereHas('user', function (Builder $user): void {
+                $user->where('is_active', true)->whereHas('role', fn (Builder $role) =>
+                    $role->where('slug', 'public-resident')->where('is_active', true));
+            });
+        });
     }
 
     public function creator(): BelongsTo

@@ -50,8 +50,12 @@ class PublicIncidentReportController extends Controller
                         'incident_type' => $validated['incident_type'],
                         'latitude' => $validated['latitude'], 'longitude' => $validated['longitude'],
                         'status' => 'Pending',
+                        'submitted_by' => $request->user()->id,
+                        'reporter_barangay_id' => $request->user()->barangay_id,
                     ]
                 );
+                abort_unless((int) $report->submitted_by === $request->user()->id, 409,
+                    'This submission token has already been used. Open a new report form.');
                 if ($report->wasRecentlyCreated) {
                     if ($request->hasFile('photo')) {
                         $storedPhoto = $request->file('photo')->store('incident-report-photos', ['disk' => $photoDisk, 'visibility' => 'private']);
@@ -62,7 +66,8 @@ class PublicIncidentReportController extends Controller
                         }
                         $report->forceFill(['photo_path' => $storedPhoto, 'photo_disk' => $photoDisk])->save();
                     }
-                    $report->events()->create(['to_status' => 'Pending', 'notes' => 'Submitted by the public.']);
+                    $report->events()->create(['actor_id' => $request->user()->id,
+                        'to_status' => 'Pending', 'notes' => 'Submitted by a public resident.']);
                 }
 
                 return $report;

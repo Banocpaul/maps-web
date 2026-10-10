@@ -26,7 +26,7 @@ class FireIncidentAlertService
         $recipients = SmsRecipient::query()
             ->where('barangay_id', $incident->barangay_id)
             ->where('receive_fire_alerts', true)
-            ->where('is_active', true)
+            ->eligibleForAlerts()
             ->orderBy('id')
             ->get();
 

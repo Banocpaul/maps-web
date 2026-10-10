@@ -594,6 +594,7 @@
                             </a>
                         </div>
 
+                        <p class="mt-5 text-center text-sm text-slate-600">For resident reports and SMS alerts, <a href="{{ route('public.login') }}" class="font-semibold text-blue-700 underline">use Public Login</a> or <a href="{{ route('public.register') }}" class="font-semibold text-blue-700 underline">create a public account</a>.</p>
                         {{-- System footer --}}
                         <footer class="mt-8 border-t border-slate-200 pt-5">
                             <div

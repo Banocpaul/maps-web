@@ -238,7 +238,8 @@ class LogUserActivity
 
     private function safeInput(Request $request): ?array
     {
-        $input = $request->except(self::SENSITIVE_FIELDS);
+        // Uploaded files contain streams, which cannot be JSON encoded.
+        $input = \Illuminate\Support\Arr::except($request->input(), self::SENSITIVE_FIELDS);
 
         foreach (array_keys($input) as $key) {
             if ($this->isSensitiveKey((string) $key)) {

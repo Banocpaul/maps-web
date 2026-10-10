@@ -4,7 +4,7 @@
 
             <p class="font-semibold text-slate-700">
 
-                Mandaluyong Flood & Fire — Mandaluyong Flood Prediction and Fire Response System
+                M.A.P.S — Flood Prediction & Fire Management System
 
             </p>
 

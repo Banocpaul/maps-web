@@ -4,11 +4,11 @@
         {{-- System identity --}}
         <div class="min-w-0">
             <p class="text-sm font-medium text-slate-700">
-                © {{ now()->year }} Mandaluyong Flood & Fire
+                © {{ now()->year }} M.A.P.S
             </p>
 
             <p class="mt-1 text-xs text-slate-500">
-                Mandaluyong Flood Prediction and Fire Response System
+                Flood Prediction & Fire Management System
             </p>
         </div>
 

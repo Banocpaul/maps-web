@@ -306,37 +306,20 @@
     aria-label="Primary navigation"
 >
     {{-- Brand --}}
-    <div class="flex h-20 flex-none items-center justify-between border-b border-white/10 px-5">
+    <div class="flex min-h-24 flex-none items-center justify-between gap-2 border-b border-white/10 px-5 py-4">
         <a
             href="{{ Route::has('dashboard') ? route('dashboard') : '#' }}"
-            class="flex min-w-0 items-center gap-3"
+            class="flex min-w-0 flex-1 items-center gap-3"
         >
-            <div class="flex h-10 w-10 flex-none items-center justify-center rounded-md bg-white text-[#16324f]">
-                <svg
-                    class="h-6 w-6"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    aria-hidden="true"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M9 6.75V15m6-6v8.25m.5-12.75-7 3-4-1.5v13.5l4 1.5 7-3 4 1.5V6l-4-1.5Z"
-                    />
-
-                    <circle cx="12" cy="12" r="2.25" />
-                </svg>
-            </div>
+            <img src="{{ asset('images/cdrrmo-logo.jpg') }}" alt="Mandaluyong City CDRRMO logo" width="1080" height="1075" class="h-10 w-10 flex-none rounded-full bg-white object-contain" />
 
             <div class="min-w-0">
                 <p class="truncate text-lg font-semibold tracking-[0.08em] text-white">
-                    Mandaluyong Flood & Fire
+                    M.A.P.S
                 </p>
 
-                <p class="truncate text-[11px] text-slate-300">
-                    Operations Portal
+                <p class="text-[11px] leading-4 text-slate-300">
+                    Flood Prediction & Fire Management System
                 </p>
             </div>
         </a>
@@ -344,7 +327,7 @@
         <button
             id="sidebar-close-button"
             type="button"
-            class="flex h-9 w-9 items-center justify-center rounded-md text-slate-300 transition hover:bg-white/10 hover:text-white lg:hidden"
+            class="flex h-9 w-9 flex-none items-center justify-center rounded-md text-slate-300 transition hover:bg-white/10 hover:text-white lg:hidden"
             aria-label="Close navigation"
         >
             <svg

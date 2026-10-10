@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Prediction History | Mandaluyong Flood & Fire')
+@section('title', 'Prediction History | M.A.P.S')
 @section('page-title', 'Prediction History')
 @section('page-description', 'Saved flood prediction runs and staff remarks')
 

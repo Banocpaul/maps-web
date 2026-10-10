@@ -29,13 +29,13 @@
             <div>
 
                 <h1 class="text-xl font-semibold text-slate-900">
-                    @yield('page-title', trim(str_replace(['| M.A.P.S.', '| MAPS'], '', $__env->yieldContent('title', 'Dashboard'))))
+                    @yield('page-title', trim(str_replace(['| M.A.P.S.', '| M.A.P.S', '| MAPS'], '', $__env->yieldContent('title', 'Dashboard'))))
                 </h1>
 
                 <p class="text-sm text-slate-500">
                     @yield(
                         'page-description',
-                        'Mandaluyong Flood Prediction and Fire Response System'
+                        'Flood Prediction & Fire Management System'
                     )
                 </p>
 

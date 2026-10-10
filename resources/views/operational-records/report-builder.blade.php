@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Flood Report Builder | Mandaluyong Flood & Fire')
+@section('title', 'Flood Report Builder | M.A.P.S')
 
 @section('content')
 <div class="space-y-6">

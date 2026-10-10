@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\PublicAccountController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,7 +15,7 @@ Route::prefix('public-portal')->name('public.')->group(function (): void {
     Route::middleware(['auth', 'resident'])->group(function (): void {
         Route::get('/account', [PublicAccountController::class, 'edit'])->name('account');
         Route::put('/account', [PublicAccountController::class, 'update'])->middleware('throttle:20,1')->name('account.update');
-        Route::put('/account/password', [PublicAccountController::class, 'password'])->middleware('throttle:5,1')->name('account.password');
+        Route::put('/account/password', [PasswordChangeController::class, 'store'])->middleware('throttle:5,1,password-request-')->name('account.password');
         Route::get('/my-reports', [PublicAccountController::class, 'reports'])->name('reports');
     });
 });

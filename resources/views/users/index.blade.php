@@ -17,6 +17,9 @@
         </div>
 
         <div class="page-header-actions">
+            @if(auth()->user()->isAdministrator())
+                <a href="{{ route('users.password-requests') }}" class="button button-secondary">Password Requests</a>
+            @endif
             <a href="{{ route('users.create') }}" class="button button-primary">
                 <span class="button-icon">+</span>
                 <span>Add User</span>
@@ -1899,7 +1902,7 @@
                 userName +
                 '".',
             note:
-                'The current password will stop working immediately after the reset.',
+                'The current password will stop working immediately. The user must set a new password on their next login.',
             confirmLabel: 'Reset Password',
             variant: 'is-purple',
             icon: '↻',

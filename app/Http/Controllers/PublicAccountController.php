@@ -77,18 +77,6 @@ class PublicAccountController extends Controller
         return back()->with('success', 'Your barangay and alert preferences have been updated.');
     }
 
-    public function password(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
-        ]);
-        $request->user()->update(['password' => $data['password']]);
-        $request->session()->regenerate();
-
-        return back()->with('success', 'Your password has been changed.');
-    }
-
     public function reports(Request $request): View
     {
         return view('public.account.reports', [

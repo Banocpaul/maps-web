@@ -78,7 +78,7 @@
                         </div>
 
                         <div class="text-xs text-slate-500">
-                            {{ auth()->user()?->role?->name ?? 'System User' }}
+                            {{ auth()->user()?->role()->value('name') ?? 'System User' }}
                         </div>
 
                     </div>

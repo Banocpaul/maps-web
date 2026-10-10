@@ -48,4 +48,4 @@ jobs:
       - name: Test public reporting, fire SMS, flood observations, and audit fixes
         run: |
           php vendor/phpunit/phpunit/phpunit -c phpunit-public-reports.xml
-          php vendor/phpunit/phpunit/phpunit --filter 'FloodAnalystGisTest|AuditTimeHandlingTest|DashboardRoleAnalyticsTest|UserManagementTest|PasswordChangeWorkflowTest|OperationsManagerAuthorizationTest|ActivityLogExportTest|DatabaseBackupAuthorizationTest|PredictionHistoryTest|ProcessDashboardTest|OperationalRecordsTest'
+          php vendor/phpunit/phpunit/phpunit --filter 'FloodAnalystGisTest|AuditTimeHandlingTest|DashboardRoleAnalyticsTest|UserManagementTest|PasswordChangeWorkflowTest|ProfileAccountChangesTest|OperationsManagerAuthorizationTest|ActivityLogExportTest|DatabaseBackupAuthorizationTest|PredictionHistoryTest|ProcessDashboardTest|OperationalRecordsTest'

@@ -1,9 +1,11 @@
+import { initializeProfileDialog } from "./profile-dialog.js";
 import { initializeRecipientSearch } from "./sms-recipient-search.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     initializeSidebar();
     initializeDismissibleAlerts();
     initializeRecipientSearch();
+    initializeProfileDialog();
 });
 
 /**

@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\PasswordChangeController;
+use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DatabaseBackupController;
@@ -55,6 +56,8 @@ Route::middleware('guest')->group(function (): void {
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function (): void {
+    Route::put('/account/profile', [ProfileController::class, 'update'])->middleware('throttle:10,1,profile-edit-')->name('profile.update');
+    Route::get('/account/profile/photo', [ProfileController::class, 'photo'])->name('profile.photo');
     Route::get('/account/password', [PasswordChangeController::class, 'show'])->name('profile');
     Route::post('/account/password', [PasswordChangeController::class, 'store'])->middleware('throttle:5,1,password-request-')->name('password.request');
     Route::get('/account/password/required', [PasswordChangeController::class, 'required'])->name('password.required');

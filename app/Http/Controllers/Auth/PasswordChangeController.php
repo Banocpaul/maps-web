@@ -8,23 +8,34 @@ use App\Services\PasswordChangeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Support\Str;
 
 class PasswordChangeController extends Controller
 {
     public function show(Request $request): View
     {
-        return view('auth.profile', ['change' => PasswordChangeRequest::where('user_id', $request->user()->id)->latest('id')->first()]);
+        return view($request->boolean('modal') ? 'auth.partials.profile-content' : 'auth.profile', [
+            'profileUser' => $request->user(),
+            'inModal' => $request->boolean('modal'),
+            'change' => PasswordChangeRequest::where('user_id', $request->user()->id)->latest('id')->first(),
+        ]);
     }
 
     public function store(Request $request, PasswordChangeService $passwords): RedirectResponse
     {
+        if ($request->filled('email') && is_string($request->input('email'))) {
+            $request->merge(['email' => Str::lower(trim((string) $request->input('email')))]);
+        }
         $data = $request->validate([
             'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+            'email' => ['nullable', 'string', 'email', 'max:255'],
+            'password' => ['nullable', 'string', 'min:8', 'max:255', 'confirmed'],
         ]);
-        $passwords->submit($request->user(), $data['current_password'], $data['password']);
+        $passwords->submit($request->user(), $data['current_password'], $data['password'] ?? null, $data['email'] ?? null);
 
-        return redirect()->route('profile')->with('success', 'Password change requested. Keep using your current password until an administrator approves it.');
+        $response = $request->boolean('_profile_modal') ? back()->with('open_profile', true) : redirect()->route('profile');
+
+        return $response->with('success', 'Account change requested. Keep using your current login until an administrator approves it.');
     }
 
     public function required(Request $request): View|RedirectResponse
@@ -53,6 +64,6 @@ class PasswordChangeController extends Controller
         $data = $request->validate(['decision' => ['required', 'in:Approved,Rejected']]);
         $passwords->review($change, $request->user(), $data['decision']);
 
-        return back()->with('success', 'Password request '.strtolower($data['decision']).'.');
+        return back()->with('success', 'Account change '.strtolower($data['decision']).'.');
     }
 }

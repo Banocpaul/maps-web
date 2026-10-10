@@ -64,11 +64,12 @@
 
                 <a
                     href="{{ route('profile') }}"
+                    data-profile-open aria-haspopup="dialog" aria-controls="user-profile-dialog" aria-label="Open my profile"
                     class="flex items-center gap-3 border-l border-slate-300 pl-5"
                 >
 
-                    <div class="flex h-10 w-10 items-center justify-center rounded-md bg-[#16324F] text-sm font-semibold text-white">
-                        {{ strtoupper(substr(auth()->user()?->full_name ?? 'U',0,1)) }}
+                    <div class="flex h-10 w-10 flex-none items-center justify-center overflow-hidden rounded-full bg-[#16324F] text-sm font-semibold text-white">
+                        @include('auth.partials.profile-avatar', ['profileUser' => auth()->user()])
                     </div>
 
                     <div class="hidden md:block">
@@ -91,3 +92,4 @@
 
     </div>
 </header>
+@include('auth.partials.profile-dialog')

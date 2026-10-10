@@ -68,6 +68,11 @@ class User extends Authenticatable
         return $this->belongsTo(Barangay::class);
     }
 
+    public function profilePhoto(): HasOne
+    {
+        return $this->hasOne(ProfilePhoto::class);
+    }
+
     public function smsRecipient(): HasOne
     {
         return $this->hasOne(SmsRecipient::class);

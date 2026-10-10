@@ -18,7 +18,7 @@
 
         <div class="page-header-actions">
             @if(auth()->user()->isAdministrator())
-                <a href="{{ route('users.password-requests') }}" class="button button-secondary">Password Requests</a>
+                <a href="{{ route('users.password-requests') }}" class="button button-secondary">Account Change Requests</a>
             @endif
             <a href="{{ route('users.create') }}" class="button button-primary">
                 <span class="button-icon">+</span>

@@ -18,7 +18,7 @@ class EnsurePasswordState
         if (Auth::viaRemember() && ! $request->session()->has('password_version')) {
             $request->session()->put('password_version', $user->password_version);
         }
-        if ($request->routeIs('profile', 'password.*', 'public.account.password')) {
+        if ($request->routeIs('profile', 'profile.*', 'password.*', 'public.account.password')) {
             abort_unless($user->is_active && $user->role()->where('is_active', true)->exists(), 403);
         }
         if ((int) $request->session()->get('password_version', 0) !== $user->password_version) {

@@ -1,6 +1,9 @@
+import { initializeRecipientSearch } from "./sms-recipient-search.js";
+
 document.addEventListener("DOMContentLoaded", () => {
     initializeSidebar();
     initializeDismissibleAlerts();
+    initializeRecipientSearch();
 });
 
 /**

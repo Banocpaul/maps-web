@@ -243,6 +243,50 @@ class PublicResidentAccountTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_sms_lists_show_internal_and_public_groups_before_search_and_preserve_selection_rules(): void
+    {
+        $resident = $this->resident();
+        $public = $resident->smsRecipient;
+        $officer = SmsRecipient::create(['full_name' => 'Bañoc "Officer"', 'phone_number' => '+639171234599',
+            'position' => 'Fire Responder', 'barangay_id' => $this->barangay('New Zañiga')->id, 'is_active' => true]);
+        $inactive = SmsRecipient::create(['full_name' => 'Inactive Officer', 'phone_number' => '+639171234598', 'is_active' => false]);
+        $role = Role::create(['name' => 'Administrator', 'slug' => 'administrator', 'is_active' => true]);
+        $admin = User::factory()->create(['role_id' => $role->id, 'is_active' => true]);
+        $response = $this->actingAs($admin)->withSession(['_old_input' => [
+            'recipient_ids' => [$officer->id, $inactive->id, [$public->id]],
+        ]])->get(route('sms.index'))->assertOk()
+            ->assertSee('Internal Officers')->assertSee('Public Residents')
+            ->assertSee('manual-recipient-search')->assertSee('directory-recipient-search');
+        $groups = collect($response->viewData('recipientGroups'))->keyBy('key');
+        $this->assertEqualsCanonicalizing([$officer->id, $inactive->id], $groups['internal']['recipients']->pluck('id')->all());
+        $this->assertSame([$public->id], $groups['public']['recipients']->pluck('id')->all());
+
+        $document = new \DOMDocument;
+        @$document->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($document);
+        $this->assertSame(2, $xpath->query('//*[@data-recipient-search-scope]')->length);
+        foreach (['internal' => [$officer->id, $inactive->id], 'public' => [$public->id]] as $key => $expectedIds) {
+            $panels = $xpath->query('//*[@data-recipient-group-key="'.$key.'"]');
+            $this->assertSame(2, $panels->length);
+            foreach ($panels as $panel) {
+                $rows = $xpath->query('.//*[@data-recipient-row]', $panel);
+                $ids = [];
+                foreach ($rows as $row) {
+                    $ids[] = (int) $row->getAttribute('data-recipient-id');
+                    $this->assertFalse($row->hasAttribute('hidden'));
+                }
+                $this->assertEqualsCanonicalizing($expectedIds, $ids);
+            }
+        }
+        foreach ([$officer->id => false, $inactive->id => true, $public->id => true] as $id => $disabled) {
+            $checkbox = $xpath->query('//input[@name="recipient_ids[]" and @value="'.$id.'"]')->item(0);
+            $this->assertNotNull($checkbox);
+            $this->assertSame($disabled, $checkbox->hasAttribute('disabled'));
+            $this->assertSame(! $disabled, $checkbox->hasAttribute('checked'));
+        }
+        Http::assertNothingSent();
+    }
+
     public function test_deleting_an_account_preserves_report_history_and_removes_its_subscription(): void
     {
         $resident = $this->resident();

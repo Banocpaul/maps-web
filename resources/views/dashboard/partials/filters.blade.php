@@ -1,5 +1,6 @@
-<section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <form method="GET" action="{{ route($filterRoute ?? 'dashboard') }}" class="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+<details class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <summary class="cursor-pointer text-sm font-semibold text-slate-700">Expand filters · {{ $selectedYear ?? 'All years' }} · {{ $selectedBarangay->name ?? 'All barangays' }}</summary>
+    <form method="GET" action="{{ route($filterRoute ?? 'dashboard') }}" class="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
         @if (isset($selectedAnalytics))
             <input type="hidden" name="analytics" value="{{ $selectedAnalytics }}" data-analytics-filter-input>
         @endif
@@ -34,4 +35,4 @@
             </a>
         </div>
     </form>
-</section>
+</details>

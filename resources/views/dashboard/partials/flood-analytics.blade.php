@@ -8,13 +8,13 @@
     <div class="mb-4">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Flood analytics</p>
         <h2 id="flood-analytics-heading" class="mt-1 text-xl font-bold text-slate-950">Flood Risk Intelligence</h2>
-        <p class="mt-1 text-sm text-slate-500">Calculated exclusively from recorded flood observations matching the selected filters.</p>
+        <p class="mt-1 text-sm text-slate-500">Incident records matching the selected filters. The priority matrix also includes field observations.</p>
     </div>
 
     <div class="grid gap-6 xl:grid-cols-2">
-        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="font-semibold text-slate-950">Month-over-Month Flood Records</h3><p class="mt-1 text-xs text-slate-500">Recorded flood observations per month</p><div class="mt-4 h-72"><canvas id="floodMonthlyChart"></canvas></div></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="font-semibold text-slate-950">Flood Incidents by Month</h3><p class="mt-1 text-xs text-slate-500">Dataset records per calendar month; all-years selection combines the same months across years</p><div class="mt-4 h-72"><canvas id="floodMonthlyChart"></canvas></div></article>
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="font-semibold text-slate-950">Flood Severity Distribution</h3><p class="mt-1 text-xs text-slate-500">Recorded A–D flood-code observations</p><div class="mt-4 h-72"><canvas id="floodRiskChart"></canvas></div></article>
-        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="font-semibold text-slate-950">Top Flood-Prone Barangays</h3><p class="mt-1 text-xs text-slate-500">Barangays ranked by recorded flood observations</p><div class="mt-4 h-72"><canvas id="floodBarangayChart"></canvas></div></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="font-semibold text-slate-950">Flood Incidents by Barangay</h3><p class="mt-1 text-xs text-slate-500">Barangays ranked by dataset record count</p><div class="mt-4 h-72"><canvas id="floodBarangayChart"></canvas></div></article>
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 class="font-semibold text-slate-950">Monthly Rainfall</h3><p class="mt-1 text-xs text-slate-500">Average 24-hour rainfall in millimeters</p><div class="mt-4 h-72"><canvas id="floodRainfallChart"></canvas></div></article>
     </div>
 </section>
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof Chart === 'undefined') return;
     const monthly = @json($floodMonthly), risk = @json($floodRisk), barangays = @json($floodBarangays);
     const options = {responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}};
-    new Chart(document.getElementById('floodMonthlyChart'), {type:'line',data:{labels:monthly.labels ?? [],datasets:[{label:'Flood Records',data:monthly.records ?? [],borderColor:'#0369a1',backgroundColor:'rgba(3,105,161,.12)',fill:true,tension:.3}]},options:{...options,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+    new Chart(document.getElementById('floodMonthlyChart'), {type:'bar',data:{labels:monthly.labels ?? [],datasets:[{label:'Flood Records',data:monthly.records ?? [],borderColor:'#0369a1',backgroundColor:'rgba(3,105,161,.12)',fill:true,tension:.3}]},options:{...options,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
     new Chart(document.getElementById('floodRiskChart'), {type:'doughnut',data:{labels:risk.labels ?? [],datasets:[{data:risk.values ?? [],backgroundColor:['#22c55e','#0ea5e9','#f59e0b','#dc2626']}]},options});
     new Chart(document.getElementById('floodBarangayChart'), {type:'bar',data:{labels:barangays.labels ?? [],datasets:[{label:'Flood Records',data:barangays.records ?? barangays.values ?? [],backgroundColor:'#0284c7'}]},options:{...options,indexAxis:'y',scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
     new Chart(document.getElementById('floodRainfallChart'), {type:'line',data:{labels:monthly.labels ?? [],datasets:[{label:'Average Rainfall 24h (mm)',data:monthly.average_rainfall_24h_mm ?? [],borderColor:'#06b6d4',backgroundColor:'rgba(6,182,212,.1)',tension:.3}]},options:{...options,scales:{y:{beginAtZero:true}}}});

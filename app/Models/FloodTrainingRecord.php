@@ -101,8 +101,18 @@ class FloodTrainingRecord extends Model
             'include_in_training' => 'boolean',
             'enriched_at' => 'datetime',
             'subsided_at' => 'datetime',
+            'handling_completed_at' => 'datetime',
             'reviewed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (FloodTrainingRecord $record): void {
+            if ($record->exists && $record->isDirty('flood_status')) {
+                $record->handling_completed_at = $record->flood_status === 'Subsided' ? now() : null;
+            }
+        });
     }
 
     public function creator(): BelongsTo

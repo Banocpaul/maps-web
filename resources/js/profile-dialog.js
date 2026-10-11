@@ -35,10 +35,8 @@ export function initializeProfileDialog() {
         });
     });
     dialog.querySelector('[data-profile-close]').addEventListener('click', () => dialog.close());
-    dialog.addEventListener('click', (event) => {
-        const bounds = dialog.getBoundingClientRect();
-        if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
-    });
+    // Keep profile edits open until the user explicitly clicks the close button.
+    dialog.addEventListener('cancel', (event) => event.preventDefault());
     dialog.addEventListener('close', () => {
         controller?.abort();
         document.body.style.overflow = previousOverflow;

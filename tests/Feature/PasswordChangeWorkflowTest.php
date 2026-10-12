@@ -161,12 +161,13 @@ class PasswordChangeWorkflowTest extends TestCase
     {
         foreach (['public-resident', 'administrator'] as $slug) {
             $user = $this->account($slug);
+            $loginRoute = $slug === 'public-resident' ? 'public.login.attempt' : 'login.attempt';
             app(PasswordChangeService::class)->reset($user, 'Temporary123!');
             Auth::logout();
-            $this->withSession(['password_version' => 0])->post(route('login.attempt'), ['email' => $user->email, 'password' => 'Temporary123!'])->assertRedirect(route('password.required'));
+            $this->withSession(['password_version' => 0])->post(route($loginRoute), ['email' => $user->email, 'password' => 'Temporary123!'])->assertRedirect(route('password.required'));
             $this->post(route('logout'))->assertRedirect();
             $this->assertTrue($user->fresh()->must_change_password);
-            $this->post(route('login.attempt'), ['email' => $user->email, 'password' => 'Temporary123!'])->assertRedirect(route('password.required'));
+            $this->post(route($loginRoute), ['email' => $user->email, 'password' => 'Temporary123!'])->assertRedirect(route('password.required'));
             $this->put(route('password.complete'), ['password' => 'PermanentPassword789!', 'password_confirmation' => 'PermanentPassword789!'])->assertRedirect(route($slug === 'public-resident' ? 'public.account' : 'dashboard'));
             $this->assertFalse($user->fresh()->must_change_password);
             $this->assertDatabaseCount('password_change_requests', 0);

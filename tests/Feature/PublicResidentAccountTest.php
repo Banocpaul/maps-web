@@ -204,6 +204,42 @@ class PublicResidentAccountTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_staff_cannot_use_public_login_even_with_remember_me_or_forged_account_type(): void
+    {
+        $role = Role::create(['name' => 'Flood Staff', 'slug' => 'flood-staff', 'is_active' => true]);
+        $staff = User::factory()->create(['role_id' => $role->id, 'is_active' => true,
+            'password' => 'Staff123!', 'remember_token' => null]);
+
+        $this->from(route('public.login'))->post(route('public.login.attempt'), [
+            'email' => $staff->email, 'password' => 'Staff123!', 'remember' => true,
+            'account_type' => 'internal',
+        ])->assertRedirect(route('public.login'))->assertSessionHasErrors('email');
+        $this->assertGuest();
+        $this->assertNull($staff->fresh()->last_login_at);
+        $this->assertNull($staff->fresh()->remember_token);
+
+        $this->post(route('login.attempt'), ['email' => $staff->email, 'password' => 'Staff123!'])
+            ->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($staff);
+    }
+
+    public function test_resident_cannot_use_internal_login_even_with_remember_me_or_forged_account_type(): void
+    {
+        $resident = $this->resident(overrides: ['password' => 'Resident123!', 'remember_token' => null]);
+
+        $this->from(route('login'))->post(route('login.attempt'), [
+            'email' => $resident->email, 'password' => 'Resident123!', 'remember' => true,
+            'account_type' => 'public',
+        ])->assertRedirect(route('login'))->assertSessionHasErrors('email');
+        $this->assertGuest();
+        $this->assertNull($resident->fresh()->last_login_at);
+        $this->assertNull($resident->fresh()->remember_token);
+
+        $this->post(route('public.login.attempt'), ['email' => $resident->email, 'password' => 'Resident123!'])
+            ->assertRedirect(route('public.account'));
+        $this->assertAuthenticatedAs($resident);
+    }
+
     public function test_resident_cannot_gain_staff_access_even_if_permissions_are_assigned_to_role(): void
     {
         $resident = $this->resident();

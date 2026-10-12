@@ -110,7 +110,8 @@ class User extends Authenticatable
         }
 
         if ($role->slug === 'administrator') {
-            return true;
+            // Prediction belongs to operational roles, including history and runs.
+            return ! str_starts_with($permissionSlug, 'prediction.');
         }
 
         return $role->permissions()

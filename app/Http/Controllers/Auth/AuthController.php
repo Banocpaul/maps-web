@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -64,16 +65,23 @@ class AuthController extends Controller
             ]);
         }
 
+        // Use the server-side route, never a client-supplied account type.
+        $publicLogin = $request->routeIs('public.login.attempt');
         $remember = $request->boolean('remember');
 
         if (!Auth::attempt([
             'email' => $credentials['email'],
             'password' => $credentials['password'],
+            fn (Builder $query) => $query->whereHas('role', fn (Builder $role) =>
+                $role->where('slug', $publicLogin ? '=' : '!=', 'public-resident')
+            ),
         ], $remember)) {
             RateLimiter::hit($throttleKey, 60);
 
             throw ValidationException::withMessages([
-                'email' => 'The provided email address or password is incorrect.',
+                'email' => $publicLogin
+                    ? 'Unable to sign in. Check your credentials. Public login is for public accounts only; personnel must use the Internal Personnel login.'
+                    : 'Unable to sign in. Check your credentials. Internal Personnel login is for personnel accounts only; public users must use the Public Login.',
             ]);
         }
 

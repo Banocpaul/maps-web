@@ -5,6 +5,7 @@
 
 @section('content')
 <div class="space-y-6">
+    @include('prediction.partials.navigation-tabs', ['activeTab' => 'history'])
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div><h1 class="text-2xl font-bold text-slate-950">Prediction History</h1><p class="mt-1 text-sm text-slate-600">Review saved runs and add staff remarks.</p></div>
         @if (auth()->user()->hasPermission('prediction.run'))

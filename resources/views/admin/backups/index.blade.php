@@ -215,7 +215,7 @@
     </div>
 
     <dialog id="create-backup-dialog" class="maps-backup-dialog w-full max-w-md rounded-2xl p-0 shadow-2xl">
-        <form method="POST" action="{{ route('admin.backups.store') }}" class="p-6">
+        <form method="POST" action="{{ route('admin.backups.store') }}" data-backup-loading="create" class="p-6">
             @csrf
             <h2 class="text-lg font-bold text-slate-950">Create encrypted backup</h2>
             <p class="mt-2 text-sm leading-6 text-slate-600">Confirm your administrator password. Keep this page open until the backup finishes.</p>
@@ -242,7 +242,7 @@
         @if ($backup->isCompleted())
             @foreach (['verify' => 'Verify backup integrity', 'download' => 'Download encrypted backup'] as $action => $title)
                 <dialog id="{{ $action }}-{{ $backup->uuid }}" class="maps-backup-dialog w-full max-w-md rounded-2xl p-0 shadow-2xl">
-                    <form method="POST" action="{{ route('admin.backups.'.$action, $backup) }}" class="p-6">
+                    <form method="POST" action="{{ route('admin.backups.'.$action, $backup) }}" @if($action === 'verify') data-backup-loading="verify" @endif class="p-6">
                         @csrf
                         <h2 class="text-lg font-bold text-slate-950">{{ $title }}</h2>
                         <p class="mt-2 break-all text-xs text-slate-500">{{ $backup->filename }}</p>
@@ -321,7 +321,7 @@
                 @endif
 
                 <dialog id="restore-{{ $backup->uuid }}" class="maps-backup-dialog w-full max-w-md rounded-2xl p-0 shadow-2xl">
-                    <form method="POST" action="{{ route('admin.backups.restore', $backup) }}" class="p-6">
+                    <form method="POST" action="{{ route('admin.backups.restore', $backup) }}" data-backup-loading="restore" class="p-6">
                         @csrf
 
                         @if ($hasNewerCompletedBackup)
@@ -424,23 +424,17 @@
                 max-height: calc(100dvh - 1.5rem);
             }
         }
+        .maps-backup-loading { display:flex;align-items:flex-start;gap:14px;margin-top:20px;padding:16px;border:1px solid #bae6fd;border-radius:12px;background:#f0f9ff;color:#075985; }
+        .maps-backup-loading-restore { border-color:#fde68a;background:#fffbeb;color:#92400e; }
+        .maps-backup-loading p { margin:6px 0 0;font-size:13px;line-height:1.6; }
+        .maps-backup-spinner { flex:none;width:28px;height:28px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:maps-backup-spin .85s linear infinite; }
+        @keyframes maps-backup-spin { to { transform:rotate(360deg); } }
+        @media (prefers-reduced-motion:reduce) { .maps-backup-spinner { animation:none; } }
     </style>
 @endpush
 
 @push('scripts')
     <script>
-        // Prevent duplicate destructive submissions while the first request is running.
-        document.querySelectorAll('dialog form').forEach(form => {
-            if (!form.action.endsWith('/restore')) return;
-            form.addEventListener('submit', event => {
-                if (form.dataset.submitting === 'true') { event.preventDefault(); return; }
-                form.dataset.submitting = 'true';
-                form.querySelectorAll('button[type="submit"]').forEach(button => {
-                    button.disabled = true;
-                    button.textContent = 'Creating safety backup and restoring…';
-                });
-            });
-        });
         const cooldown = document.querySelector('[data-backup-cooldown]');
         if (cooldown) {
             const suffix = {store: '/admin/backups', verify: '/verify', download: '/download', restore: '/restore', destroy: null}[cooldown.dataset.action.split('.').pop()];

@@ -158,6 +158,12 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/prediction', [PredictionController::class, 'index'])
         ->middleware('permission:prediction.view')
         ->name('prediction.index');
+    Route::get('/prediction/api-status', [PredictionController::class, 'apiStatus'])
+        ->middleware(['permission:prediction.view', 'throttle:30,1'])
+        ->name('prediction.api-status');
+    Route::get('/prediction/weather-panel', [PredictionController::class, 'weatherPanel'])
+        ->middleware(['permission:prediction.view', 'throttle:30,1'])
+        ->name('prediction.weather-panel');
     Route::get('/prediction/history', [PredictionHistoryController::class, 'index'])
         ->middleware('permission:prediction.view')->name('prediction.history.index');
     Route::get('/prediction/history/{execution}', [PredictionHistoryController::class, 'show'])

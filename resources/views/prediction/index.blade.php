@@ -23,15 +23,15 @@
 
 
 
-        <div class="inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold
-            {{ $apiAvailable
+        <div id="prediction-api-status" role="status" class="inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold
+            {{ $apiAvailable === null ? 'border-slate-200 bg-slate-50 text-slate-600' : ($apiAvailable
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-rose-200 bg-rose-50 text-rose-700' }}">
+                : 'border-rose-200 bg-rose-50 text-rose-700') }}">
             <span class="h-2.5 w-2.5 rounded-full
-                {{ $apiAvailable ? 'bg-emerald-500' : 'bg-rose-500' }}">
+                {{ $apiAvailable === null ? 'bg-slate-400' : ($apiAvailable ? 'bg-emerald-500' : 'bg-rose-500') }}">
             </span>
 
-            ML API {{ $apiAvailable ? 'Online' : 'Offline' }}
+            ML API {{ $apiAvailable === null ? 'Checking…' : ($apiAvailable ? 'Online' : 'Offline') }}
         </div>
     </div>
 
@@ -41,7 +41,7 @@
         </div>
     @endif
 
-    @unless ($apiAvailable)
+    @if ($apiAvailable === false)
         <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             The ML API is offline. Start it using:
 
@@ -49,232 +49,18 @@
                 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
             </code>
         </div>
-    @endunless
-
-    @if ($weatherAvailable)
-        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="border-b border-slate-200 px-5 py-4 sm:px-6">
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h2 class="text-lg font-semibold text-slate-900">
-                            Current Weather — Mandaluyong City
-                        </h2>
-
-                        <p class="mt-1 text-sm text-slate-500">
-                            Source: {{ $liveWeather['source'] ?? 'Open-Meteo' }}
-                        </p>
-                    </div>
-
-                    <p class="text-xs text-slate-500">
-                        Observed:
-                        {{ isset($liveWeather['observed_at'])
-                            ? \Carbon\Carbon::parse($liveWeather['observed_at'])
-                                ->timezone('Asia/Manila')
-                                ->format('M d, Y h:i A')
-                            : 'Unavailable' }}
-                    </p>
-                </div>
-            </div>
-
-            <div class="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-5 sm:p-6">
-                <div class="rounded-xl bg-sky-50 p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-sky-700">
-                        Condition
-                    </p>
-
-                    <p class="mt-2 text-lg font-bold text-slate-900">
-                        {{ $liveWeather['weather_description'] ?? 'Unavailable' }}
-                    </p>
-                </div>
-
-                <div class="rounded-xl bg-slate-50 p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Temperature
-                    </p>
-
-                    <p class="mt-2 text-2xl font-bold text-slate-900">
-                        {{ number_format(
-                            (float) ($liveWeather['current_temperature_c'] ?? 0),
-                            1
-                        ) }}°C
-                    </p>
-                </div>
-
-                <div class="rounded-xl bg-slate-50 p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Humidity
-                    </p>
-
-                    <p class="mt-2 text-2xl font-bold text-slate-900">
-                        {{ number_format(
-                            (float) ($liveWeather['avg_rh_pct'] ?? 0),
-                            1
-                        ) }}%
-                    </p>
-                </div>
-
-                <div class="rounded-xl bg-slate-50 p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Current Rain
-                    </p>
-
-                    <p class="mt-2 text-2xl font-bold text-slate-900">
-                        {{ number_format(
-                            (float) ($liveWeather['current_rain_mm'] ?? 0),
-                            2
-                        ) }}
-                        <span class="text-sm text-slate-500">mm</span>
-                    </p>
-                </div>
-
-                <div class="rounded-xl bg-slate-50 p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Wind Speed
-                    </p>
-
-                    <p class="mt-2 text-2xl font-bold text-slate-900">
-                        {{ number_format(
-                            (float) ($liveWeather['avg_wind_speed'] ?? 0),
-                            1
-                        ) }}
-                        <span class="text-sm text-slate-500">m/s</span>
-                    </p>
-                </div>
-            </div>
-        </section>
-
-        @php
-            $forecastWindows = $liveWeather['forecast_windows'] ?? [];
-            $selectedHours = (int) ($selectedForecastHours ?? old('forecast_hours', 24));
-
-            if (! in_array($selectedHours, [24, 48, 72], true)) {
-                $selectedHours = 24;
-            }
-
-            $selectedWindow = $forecastWindows[(string) $selectedHours]
-                ?? $forecastWindows['24']
-                ?? [
-                    'start_display' => $liveWeather['forecast_start_display'] ?? 'Unavailable',
-                    'end_display' => $liveWeather['forecast_end_display'] ?? 'Unavailable',
-                    'rainfall_mm' => $liveWeather['forecast_rainfall_24h_mm'] ?? 0,
-                ];
-        @endphp
-
-        <section class="rounded-2xl border border-sky-200 bg-sky-50 p-5 sm:p-6">
-            <form
-                method="POST"
-                action="{{ route('prediction.citywide') }}"
-                class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center"
-            >
-                @csrf
-
-                <div>
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                            <label
-                                for="forecast_hours"
-                                class="text-sm font-semibold uppercase tracking-wide text-sky-700"
-                            >
-                                Forecast Window
-                            </label>
-
-                            <div class="mt-2 flex items-center gap-3">
-                                <select
-                                    id="forecast_hours"
-                                    name="forecast_hours"
-                                    class="rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-bold text-sky-950 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200"
-                                >
-                                    @foreach ([24, 48, 72] as $hours)
-                                        <option
-                                            value="{{ $hours }}"
-                                            @selected($selectedHours === $hours)
-                                        >
-                                            {{ $hours }} Hours
-                                        </option>
-                                    @endforeach
-                                </select>
-
-                                <h2
-                                    id="forecast-window-title"
-                                    class="text-2xl font-bold text-sky-950"
-                                >
-                                    Next {{ $selectedHours }} Hours
-                                </h2>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 grid gap-4 sm:grid-cols-3">
-                        <div>
-                            <p class="text-xs font-semibold uppercase text-sky-700">
-                                Valid From
-                            </p>
-
-                            <p
-                                id="forecast-valid-from"
-                                class="mt-1 text-sm font-semibold text-sky-950"
-                            >
-                                {{ $selectedWindow['start_display'] ?? 'Unavailable' }}
-                            </p>
-                        </div>
-
-                        <div>
-                            <p class="text-xs font-semibold uppercase text-sky-700">
-                                Valid Until
-                            </p>
-
-                            <p
-                                id="forecast-valid-until"
-                                class="mt-1 text-sm font-semibold text-sky-950"
-                            >
-                                {{ $selectedWindow['end_display'] ?? 'Unavailable' }}
-                            </p>
-                        </div>
-
-                        <div>
-                            <p class="text-xs font-semibold uppercase text-sky-700">
-                                Forecast Rainfall
-                            </p>
-
-                            <p
-                                id="forecast-rainfall"
-                                class="mt-1 text-sm font-semibold text-sky-950"
-                            >
-                                {{ number_format(
-                                    (float) ($selectedWindow['rainfall_mm'] ?? 0),
-                                    2
-                                ) }} mm
-                            </p>
-                        </div>
-                    </div>
-
-                    <p class="mt-4 max-w-3xl text-sm leading-6 text-sky-800">
-                        The selected window is evaluated in consecutive 24-hour model periods.
-                        For 48 or 72 hours, M.A.P.S. reports the highest flood severity expected
-                        within the selected period.
-                    </p>
-                </div>
-
-                <button
-                    type="submit"
-                    @disabled(! $apiAvailable || ! $weatherAvailable)
-                    class="inline-flex w-full items-center justify-center rounded-xl bg-sky-700 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
-                >
-                    Run Citywide Prediction
-                </button>
-            </form>
-        </section>
-    @else
-        <section class="rounded-2xl border border-rose-200 bg-rose-50 p-5">
-            <h2 class="font-semibold text-rose-800">
-                Weather Data Unavailable
-            </h2>
-
-            <p class="mt-2 text-sm text-rose-700">
-                {{ $weatherError ?? 'Current weather could not be retrieved.' }}
-            </p>
-        </section>
     @endif
+
+    <div id="prediction-weather-panel" class="space-y-6" aria-live="polite">
+        @if ($loadInBackground ?? false)
+            <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" aria-busy="true">
+                <h2 class="text-lg font-semibold text-slate-900">Current Weather — Mandaluyong City</h2>
+                <p class="mt-2 text-sm text-slate-500">Loading current weather and forecast…</p>
+            </section>
+        @else
+            @include('prediction.partials.weather-panel')
+        @endif
+    </div>
 
     @if (is_array($citywideResult))
         @php
@@ -412,40 +198,76 @@
     @endif
 </div>
 
-@if ($weatherAvailable)
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const select = document.getElementById('forecast_hours');
-
-            if (!select) {
-                return;
-            }
-
-            const windows = @json($liveWeather['forecast_windows'] ?? []);
-            const title = document.getElementById('forecast-window-title');
-            const validFrom = document.getElementById('forecast-valid-from');
-            const validUntil = document.getElementById('forecast-valid-until');
-            const rainfall = document.getElementById('forecast-rainfall');
-
-            const renderWindow = () => {
-                const hours = String(select.value);
-                const windowData = windows[hours];
-
-                if (!windowData) {
-                    return;
-                }
-
-                title.textContent = `Next ${hours} Hours`;
-                validFrom.textContent = windowData.start_display ?? 'Unavailable';
-                validUntil.textContent = windowData.end_display ?? 'Unavailable';
-
-                const rainValue = Number(windowData.rainfall_mm ?? 0);
-                rainfall.textContent = `${rainValue.toFixed(2)} mm`;
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const panel = document.getElementById('prediction-weather-panel');
+        let apiAvailable = @json($apiAvailable);
+        const initialiseForecast = () => {
+            const select = panel.querySelector('#forecast_hours');
+            if (!select) return;
+            const windows = JSON.parse(select.dataset.forecastWindows || '{}');
+            const render = () => {
+                const data = windows[String(select.value)];
+                if (!data) return;
+                panel.querySelector('#forecast-window-title').textContent = `Next ${select.value} Hours`;
+                panel.querySelector('#forecast-valid-from').textContent = data.start_display ?? 'Unavailable';
+                panel.querySelector('#forecast-valid-until').textContent = data.end_display ?? 'Unavailable';
+                panel.querySelector('#forecast-rainfall').textContent = `${Number(data.rainfall_mm ?? 0).toFixed(2)} mm`;
             };
-
-            select.addEventListener('change', renderWindow);
-            renderWindow();
-        });
-    </script>
-@endif
+            select.addEventListener('change', render);
+            render();
+        };
+        const updateButton = () => {
+            const button = panel.querySelector('#run-citywide-prediction');
+            if (button) button.disabled = apiAvailable !== true;
+        };
+        initialiseForecast();
+        @if ($loadInBackground ?? false)
+            const request = async (url, type) => {
+                const response = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': type === 'json' ? 'application/json' : 'text/html', 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: AbortSignal.timeout(60000),
+                });
+                if (!response.ok || response.redirected) throw new Error('Request failed');
+                return type === 'json' ? response.json() : response.text();
+            };
+            request(@json(route('prediction.api-status')), 'json')
+                .then(data => { apiAvailable = data.available === true; })
+                .catch(() => { apiAvailable = false; })
+                .finally(() => {
+                    const badge = document.getElementById('prediction-api-status');
+                    badge.textContent = apiAvailable ? 'ML API Online' : 'ML API Unavailable';
+                    badge.className = 'inline-flex w-fit items-center rounded-full border px-4 py-2 text-sm font-semibold ' +
+                        (apiAvailable ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700');
+                    updateButton();
+                });
+            const loadWeather = () => {
+                request(@json(route('prediction.weather-panel')), 'html')
+                    .then(html => {
+                        panel.innerHTML = html;
+                        initialiseForecast();
+                        updateButton();
+                        if (!panel.querySelector('#forecast_hours')) addRetry();
+                    })
+                    .catch(() => {
+                        panel.textContent = 'Current weather could not be loaded. Please try again.';
+                        addRetry();
+                    });
+            };
+            const addRetry = () => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = 'Retry weather';
+                button.className = 'mt-3 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white';
+                button.addEventListener('click', () => {
+                    panel.textContent = 'Loading current weather and forecast…';
+                    loadWeather();
+                });
+                panel.append(button);
+            };
+            loadWeather();
+        @endif
+    });
+</script>
 @endsection

@@ -26,6 +26,34 @@ class PredictionHistoryTest extends TestCase
         Barangay::create(['name' => 'Hulo', 'district' => 1, 'is_active' => true]);
     }
 
+    public function test_prediction_page_does_not_wait_for_external_services(): void
+    {
+        $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldNotReceive('getCurrentWeather'));
+        $this->mock(FloodPredictionService::class, fn ($mock) => $mock->shouldNotReceive('isAvailable'));
+
+        $this->actingAs($this->staff())->get(route('prediction.index'))
+            ->assertOk()->assertSee('Loading current weather and forecast')
+            ->assertSee('Checking');
+    }
+
+    public function test_background_weather_panel_loads_without_checking_ml_api(): void
+    {
+        $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldReceive('getCurrentWeather')->once()->andReturn($this->weather()));
+        $this->mock(FloodPredictionService::class, fn ($mock) => $mock->shouldNotReceive('isAvailable'));
+
+        $this->actingAs($this->staff())->get(route('prediction.weather-panel'))
+            ->assertOk()->assertSee('forecast_hours')->assertSee('Run Citywide Prediction');
+    }
+
+    public function test_background_api_status_does_not_fetch_weather(): void
+    {
+        $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldNotReceive('getCurrentWeather'));
+        $this->mock(FloodPredictionService::class, fn ($mock) => $mock->shouldReceive('isAvailable')->once()->andReturn(true));
+
+        $this->actingAs($this->staff())->getJson(route('prediction.api-status'))
+            ->assertOk()->assertJson(['available' => true]);
+    }
+
     public function test_each_forecast_window_saves_a_distinct_complete_run_without_changing_ml_inputs(): void
     {
         $user = $this->staff();

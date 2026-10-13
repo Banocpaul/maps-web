@@ -12,6 +12,7 @@ export function initializeRecipientSearch(root = document) {
 
         const clear = scope.querySelector("[data-recipient-search-clear]");
         const selectedCount = scope.querySelector("[data-recipient-selected-count]");
+        const clearSelection = scope.querySelector("[data-recipient-selection-clear]");
         const checkboxes = [...scope.querySelectorAll('input[name="recipient_ids[]"]')];
 
         const updateSelection = () => {
@@ -55,6 +56,10 @@ export function initializeRecipientSearch(root = document) {
             input.focus();
         });
         checkboxes.forEach((checkbox) => checkbox.addEventListener("change", updateSelection));
+        clearSelection?.addEventListener("click", () => {
+            checkboxes.forEach((checkbox) => { checkbox.checked = false; });
+            updateSelection();
+        });
         filter();
         updateSelection();
     });

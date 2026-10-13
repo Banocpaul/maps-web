@@ -1,10 +1,10 @@
-<section data-recipient-group data-recipient-group-key="{{ $group['key'] }}" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-labelledby="directory-{{ $group['key'] }}-heading">
-    <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+<section data-recipient-group data-recipient-group-key="{{ $group['key'] }}" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="directory-{{ $group['key'] }}-heading">
+    <div class="flex items-center justify-between border-b border-slate-100 bg-sky-50/40 px-5 py-4 sm:px-6">
         <h3 id="directory-{{ $group['key'] }}-heading" class="font-semibold text-slate-900">{{ $group['label'] }}</h3>
-        <span data-recipient-group-count class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ $group['recipients']->count() }}</span>
+        <span data-recipient-group-count class="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-blue-700">{{ $group['recipients']->count() }}</span>
     </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200">
+            <table class="min-w-full divide-y divide-slate-100">
                 <thead class="bg-slate-50">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-slate-500">
@@ -33,7 +33,7 @@
                     </tr>
                 </thead>
 
-                <tbody class="divide-y divide-slate-200 bg-white">
+                <tbody class="divide-y divide-slate-100 bg-white">
                     @foreach ($group['recipients'] as $recipient)
                         <tr data-recipient-row data-recipient-id="{{ $recipient->id }}" data-recipient-search-text="{{ implode(' ', [$recipient->full_name, $recipient->phone_number, $recipient->position, $recipient->barangay?->name, $recipient->office_or_barangay]) }}" data-recipient-phone="{{ $recipient->phone_number }}">
                             <td class="px-6 py-4">

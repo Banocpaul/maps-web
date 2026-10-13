@@ -2,10 +2,10 @@
 namespace Tests\Feature;
 use App\Models\{Barangay, FloodTrainingRecord, FloodObservationChange, Role, Permission, User, SmsRecipient, SmsLog};
 use App\Services\SmsGatewayService;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Tests\TestCase;
 class FloodLifecycleTest extends TestCase {
-    use DatabaseMigrations;
+    use DatabaseTruncation;
     private function staff(bool $edit = true): User {
         $role = Role::create(['name'=>'Flood Analyst','slug'=>'flood-analyst','is_active'=>true]);
         foreach ($edit ? ['prediction.view','flood.edit'] : ['prediction.view'] as $slug) {

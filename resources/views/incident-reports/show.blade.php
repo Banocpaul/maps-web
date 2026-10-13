@@ -62,7 +62,7 @@
 @forelse($matchingFires as $fire)
 <div class="mt-4 rounded-xl border border-slate-200 p-4">
 <strong>{{ $fire->incident_number }}</strong><p>{{ $fire->location }} · {{ $fire->barangay?->name }} · {{ $fire->status }}</p>
-<p class="report-muted">Reported {{ $fire->reported_at?->copy()->timezone('Asia/Manila')->format('M d, Y g:i A') }}@if(isset($fire->match_distance_m)) · {{ $fire->match_distance_m }} metres from public pin@endif</p>
+<p class="report-muted">Reported {{ $fire->reported_at?->copy()->timezone('Asia/Manila')->format('M d, Y g:i A') }}@if(isset($fire->match_distance_m)) · {{ $fire->match_distance_m }} metres from public pin @endif</p>
 @if(auth()->user()->hasPermission('fire.view'))<a class="font-semibold text-blue-700" href="{{ route('fire-incidents.show', $fire) }}" target="_blank" rel="noopener">Review official incident</a>@endif
 @if($publicReport->status === 'Validated')
 <form method="POST" action="{{ route('public-submissions.link-fire', $publicReport) }}">@csrf

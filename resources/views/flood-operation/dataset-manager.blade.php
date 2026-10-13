@@ -102,7 +102,7 @@
             <h3 class="text-xl font-bold">Review verified flood updates</h3>
             <p class="text-sm">Apply only changes confirmed by field observations. Each incident receives a history entry and an SMS update to its eligible barangay recipients.</p>
             <pre id="flood-change-preview" class="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm"></pre>
-            <label class="block">Observed time (Philippine time)<input id="flood-change-time" type="datetime-local" required class="block w-full rounded border p-2"></label>
+            <label class="block">Observed time (Philippine time)<input id="flood-change-time" type="datetime-local" step="1" required class="block w-full rounded border p-2"></label>
             <label class="block">Verification source / note<textarea id="flood-change-note" required maxlength="2000" class="block w-full rounded border p-2"></textarea></label>
             <p id="flood-change-error" role="alert" class="text-red-700"></p>
             <div class="flex gap-3"><button type="button" id="flood-change-cancel" class="rounded border px-4 py-2">Cancel</button><button id="flood-change-submit" class="rounded bg-sky-700 px-4 py-2 text-white">Confirm updates and send alerts</button></div>
@@ -111,6 +111,7 @@
     <dialog id="flood-history-dialog" class="rounded-2xl p-6 shadow-xl w-full max-w-2xl">
         <h3 class="text-xl font-bold">Flood change history</h3>
         <pre id="flood-history-content" class="my-4 whitespace-pre-wrap text-sm"></pre>
+        <div id="flood-history-retry" class="my-3"></div>
         <button id="flood-history-close" type="button" class="rounded border px-4 py-2">Close</button>
     </dialog>
     <div class="overflow-x-auto">
@@ -498,7 +499,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return '#' + record.id + ' ' + record.barangay + ' — ' + (record.location_name || '') + ': ' + record.flood_level_code + ' → ' + (next || 'INVALID: already at limit');
         });
         document.getElementById('flood-change-preview').textContent = preview.join('\n');
-        const now = new Date(Date.now() + 8 * 3600000).toISOString().slice(0,16);
+        const now = new Date(Date.now() + 8 * 3600000).toISOString().slice(0,19);
         document.getElementById('flood-change-time').value = now;
         document.getElementById('flood-change-time').max = now;
         document.getElementById('flood-change-note').value = '';
@@ -529,8 +530,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     async function showFloodHistory(id) {
         const output = document.getElementById('flood-history-content');
+        document.getElementById('flood-history-retry').replaceChildren();
         output.textContent = 'Loading…';
-        document.getElementById('flood-history-dialog').showModal();
+        const historyDialog = document.getElementById('flood-history-dialog');
+        if (!historyDialog.open) historyDialog.showModal();
         try {
             const response = await fetch(endpoint + '/' + id + '/history', {headers:{Accept:'application/json'}});
             const data = await readJson(response);
@@ -542,6 +545,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     '\nObserved: ' + formatDate(change.observed_at) + '\nEntered: ' + formatDate(change.created_at) + ' by ' + change.changed_by_name +
                     '\nNote: ' + (change.note || '—') + '\n' + sms;
             }).join('\n\n') || 'No recorded changes. This incident predates change tracking.';
+            const latest = data.changes?.[0];
+            if (canEdit && latest?.notification_summary?.failed > 0) {
+                const retry = document.createElement('button');
+                retry.type = 'button'; retry.className = 'rounded bg-sky-700 px-4 py-2 text-white';
+                retry.textContent = 'Retry failed SMS for latest update';
+                retry.addEventListener('click', async () => {
+                    retry.disabled = true;
+                    try {
+                        const response = await fetch(endpoint + '/' + id + '/history/' + latest.id + '/retry', {
+                            method:'POST', headers:{Accept:'application/json','X-CSRF-TOKEN':csrfToken}
+                        });
+                        const result = await readJson(response);
+                        if (!response.ok) throw new Error(result.message || 'Retry failed.');
+                        await showFloodHistory(id);
+                    } catch (error) { output.textContent = error.message; retry.disabled = false; }
+                });
+                document.getElementById('flood-history-retry').appendChild(retry);
+            }
+
         } catch (error) { output.textContent = error.message; }
     }
 

@@ -14,12 +14,12 @@ class FloodIncidentAlertService
 {
     public function __construct(private readonly SmsGatewayService $gateway) {}
 
-    public function sendChangeAlert(FloodTrainingRecord $record, FloodObservationChange $change): array
+    public function sendChangeAlert(FloodTrainingRecord $record, FloodObservationChange $change, bool $retryFailed = false): array
     {
-        return $this->sendCreatedAlert($record, $change->changed_by, $change);
+        return $this->sendCreatedAlert($record, $retryFailed ? auth()->id() : $change->changed_by, $change, $retryFailed);
     }
 
-    public function sendCreatedAlert(FloodTrainingRecord $record, ?int $sentBy, ?FloodObservationChange $change = null): array
+    public function sendCreatedAlert(FloodTrainingRecord $record, ?int $sentBy, ?FloodObservationChange $change = null, bool $retryFailed = false): array
     {
         $summary = ['eligible' => 0, 'sent' => 0, 'failed' => 0, 'skipped' => 0];
         if (($change === null && $record->flood_status !== 'Active') || $record->trashed()) {
@@ -44,6 +44,14 @@ class FloodIncidentAlertService
         ]);
         foreach ($recipients as $recipient) {
             try {
+                if ($retryFailed) {
+                    $log = SmsLog::where('flood_training_record_id', $record->id)->where('sms_recipient_id', $recipient->id)
+                        ->where('alert_key', $alertKey)->where('status', 'failed')->first();
+                    if (! $log || SmsLog::whereKey($log->id)->where('status', 'failed')->update(['status' => 'pending', 'sent_by' => $sentBy, 'failure_reason' => null]) !== 1) {
+                        $summary['skipped']++;
+                        continue;
+                    }
+                } else {
                 $log = SmsLog::create([
                     'sms_recipient_id' => $recipient->id, 'flood_training_record_id' => $record->id,
                     'sent_by' => $sentBy, 'recipient_name' => $recipient->full_name,
@@ -51,6 +59,7 @@ class FloodIncidentAlertService
                     'source' => 'automatic', 'alert_key' => $alertKey, 'status' => 'pending',
                     'condition_data' => ['barangay_id' => $barangay->id, 'flood_level_code' => $change?->new_code ?? $record->flood_level_code, 'change_id' => $change?->id],
                 ]);
+                }
             } catch (QueryException $exception) {
                 if (SmsLog::where('flood_training_record_id', $record->id)->where('sms_recipient_id', $recipient->id)
                     ->where('alert_key', $alertKey)->exists()) {

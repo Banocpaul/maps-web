@@ -12,7 +12,26 @@ class FloodLifecycleController extends Controller {
     public function history(FloodTrainingRecord $floodTrainingRecord): JsonResponse {
         return response()->json(['changes' => FloodObservationChange::where('flood_training_record_id', $floodTrainingRecord->id)->orderByDesc('id')->get()]);
     }
+    public function retry(FloodTrainingRecord $floodTrainingRecord, FloodObservationChange $change): JsonResponse {
+        abort_unless($change->flood_training_record_id === $floodTrainingRecord->id, 404);
+        $latest = FloodObservationChange::where('flood_training_record_id', $floodTrainingRecord->id)->latest('id')->first();
+        if ($latest?->id !== $change->id) return response()->json(['message' => 'A newer update exists. Do not send superseded flood alerts.'], 409);
+        $summary = app(\App\Services\FloodIncidentAlertService::class)->sendChangeAlert($floodTrainingRecord, $change, true);
+        $logs = \App\Models\SmsLog::where('flood_training_record_id', $floodTrainingRecord->id)->where('alert_key', 'flood_change_'.$change->id);
+        $change->update(['notification_summary' => [
+            'eligible' => $summary['eligible'], 'sent' => (clone $logs)->where('status', 'sent')->count(),
+            'failed' => (clone $logs)->where('status', 'failed')->count(), 'skipped' => $summary['skipped'],
+            'last_retried_by' => auth()->id(), 'last_retried_at' => now()->toIso8601String(),
+        ]]);
+        return response()->json(['message' => 'Failed alerts retried. Previously sent messages were not resent.']);
+    }
     public function bulk(Request $request): JsonResponse {
+        try { return $this->applyBulk($request); }
+        catch (ValidationException $exception) {
+            return response()->json(['message' => 'Review the selected incidents and observation details.', 'errors' => $exception->errors()], 422);
+        }
+    }
+    private function applyBulk(Request $request): JsonResponse {
         $data = $request->validate([
             'ids' => ['required', 'array', 'min:1', 'max:100'],
             'ids.*' => ['required', 'integer', 'distinct'],

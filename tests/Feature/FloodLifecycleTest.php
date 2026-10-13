@@ -78,4 +78,25 @@ class FloodLifecycleTest extends TestCase {
         $this->assertSame('B',$r->fresh()->flood_level_code);
         $this->assertDatabaseHas('sms_logs',['status'=>'failed']);
     }
+    public function test_failed_alert_retry_does_not_resend_successful_messages(): void {
+        $barangay=Barangay::create(['name'=>'Hulo','district'=>1,'is_active'=>true]);
+        SmsRecipient::create(['full_name'=>'Recipient','phone_number'=>'09171234567','barangay_id'=>$barangay->id,'is_active'=>true,'receive_flood_alerts'=>true]);
+        $this->mock(SmsGatewayService::class, fn($mock)=>$mock->shouldReceive('send')->twice()->andReturn(
+            ['success'=>false,'error'=>'Gateway unavailable'], ['success'=>true,'status'=>200]));
+        $r=$this->record();
+        $this->actingAs($this->staff())->postJson(route('flood-lifecycle.bulk'),$this->payload([$r],'increase'))->assertOk();
+        $change=FloodObservationChange::latest('id')->first();
+        $this->postJson(route('flood-lifecycle.retry',[$r,$change]))->assertOk();
+        $this->postJson(route('flood-lifecycle.retry',[$r,$change]))->assertOk();
+        $this->assertDatabaseCount('sms_logs',1);
+        $this->assertDatabaseHas('sms_logs',['status'=>'sent']);
+    }
+    public function test_superseded_change_cannot_be_retried(): void {
+        $r=$this->record(); $user=$this->staff();
+        $this->actingAs($user)->postJson(route('flood-lifecycle.bulk'),$this->payload([$r],'increase'))->assertOk();
+        $old=FloodObservationChange::latest('id')->first();
+        $this->postJson(route('flood-lifecycle.bulk'),$this->payload([$r->fresh()],'subside'))->assertOk();
+        $this->postJson(route('flood-lifecycle.retry',[$r,$old]))->assertStatus(409);
+    }
+
 }

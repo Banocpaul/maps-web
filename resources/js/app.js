@@ -1,3 +1,4 @@
+import { initializeBackupLoading } from "./backup-loading.js";
 import { initializeBarangayLocation } from "./barangay-location.js";
 import { initializeAddressSearch } from "./address-search.js";
 import { initializeProfileDialog } from "./profile-dialog.js";
@@ -7,6 +8,7 @@ import { initializeRecipientSearch } from "./sms-recipient-search.js";
 document.addEventListener("DOMContentLoaded", () => {
     initializeBarangayLocation();
     initializeAddressSearch();
+    initializeBackupLoading();
     initializeSidebar();
     initializeSidebarGroups();
     initializeDismissibleAlerts();

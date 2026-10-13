@@ -52,6 +52,29 @@
     <div class="report-panel"><h2>Validation notes</h2><p class="whitespace-pre-wrap">{{ $publicReport->validation_notes }}</p></div>
 @endif
 
+@if($publicReport->incident_type === 'fire' && in_array($publicReport->status, ['Pending', 'Validated']) && $canPublish)
+<div class="report-panel"><h2>Check for an existing fire</h2>
+<p class="report-muted">Suggestions show ongoing fires within 500 metres and 24 hours of this report. Nearby fires may be separate incidents. Verify the location and evidence before linking.</p>
+<form method="GET" action="{{ route('public-submissions.show', $publicReport) }}" class="mt-4">
+<label class="block font-semibold">Search exact official incident number<input class="review-notes" name="fire_search" maxlength="100" value="{{ $fireSearch }}" placeholder="Official incident number"></label>
+<button class="report-button">Search</button><a class="ml-3 text-blue-700" href="{{ route('public-submissions.show', $publicReport) }}">Show nearby suggestions</a>
+</form>
+@forelse($matchingFires as $fire)
+<div class="mt-4 rounded-xl border border-slate-200 p-4">
+<strong>{{ $fire->incident_number }}</strong><p>{{ $fire->location }} · {{ $fire->barangay?->name }} · {{ $fire->status }}</p>
+<p class="report-muted">Reported {{ $fire->reported_at?->copy()->timezone('Asia/Manila')->format('M d, Y g:i A') }}@if(isset($fire->match_distance_m)) · {{ $fire->match_distance_m }} metres from public pin @endif</p>
+@if(auth()->user()->hasPermission('fire.view'))<a class="font-semibold text-blue-700" href="{{ route('fire-incidents.show', $fire) }}" target="_blank" rel="noopener">Review official incident</a>@endif
+@if($publicReport->status === 'Validated')
+<form method="POST" action="{{ route('public-submissions.link-fire', $publicReport) }}">@csrf
+<input type="hidden" name="fire_incident_id" value="{{ $fire->id }}">
+<label class="mt-3 block font-semibold">Why is this the same fire?<textarea class="review-notes" name="link_reason" required minlength="5" maxlength="2000" rows="2"></textarea></label>
+<label class="mt-3 block"><input type="checkbox" required> I verified this report concerns {{ $fire->incident_number }}.</label>
+<button class="report-button">Link to existing incident</button></form>
+@else<p class="report-muted mt-3">Validate the report before linking.</p>@endif
+</div>
+@empty<p class="report-muted mt-4">No matching incidents found. Check the official incident number or create a new incident after verification.</p>@endforelse
+</div>
+@endif
 @if($publicReport->status === 'Validated' && $canPublish)
 <form method="POST" action="{{ route('public-submissions.publish', $publicReport) }}" class="report-panel" id="publish-report-form">
     @csrf<h2>Add official {{ $publicReport->incident_type }} details</h2><p class="report-muted mb-4">All date and time fields use Philippine time (Asia/Manila).</p>
@@ -95,10 +118,17 @@
 @endif
 @if(in_array($publicReport->status, ['Pending', 'Validated'], true) && $canReject)
 <form method="POST" action="{{ route('public-submissions.reject', $publicReport) }}" class="report-panel">
-    @csrf<h2>Reject report</h2><p class="report-muted">Use for a false report, duplicate, or an incident that could not be confirmed.</p>
+    @csrf<h2>Reject report</h2><p class="report-muted">Use for a false report or an incident that could not be confirmed. Link verified duplicate fire reports to the existing incident above.</p>
     <label for="rejection-reason" class="mt-4 block font-semibold">Reason</label><textarea name="rejection_reason" id="rejection-reason" class="review-notes" rows="2" required minlength="5" maxlength="2000">{{ old('rejection_reason') }}</textarea>
     <button class="report-button report-reject">Reject report</button>
 </form>
+@endif
+@if($publicReport->incident_type === 'fire' && $publicReport->status === 'Published' && $publicReport->fire_incident_id && $canPublish && auth()->user()->hasPermission('fire.edit'))
+<form class="report-panel" method="POST" action="{{ route('public-submissions.unlink-fire', $publicReport) }}">@csrf
+<h2>Correct an incorrect link</h2><p class="report-muted">The official fire remains saved. This report returns to validated so you can link it correctly.</p>
+<input type="hidden" name="expected_fire_incident_id" value="{{ $publicReport->fire_incident_id }}">
+<label class="mt-3 block font-semibold">Correction reason<textarea class="review-notes" name="link_reason" required minlength="5" maxlength="2000" rows="2"></textarea></label>
+<button class="report-button report-reject">Remove incorrect link</button></form>
 @endif
 <div class="report-panel"><h2>Report history</h2><ol class="space-y-4">
     @foreach($publicReport->events as $event)

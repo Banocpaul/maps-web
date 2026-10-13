@@ -80,7 +80,7 @@ class PublicAccountController extends Controller
     public function reports(Request $request): View
     {
         return view('public.account.reports', [
-            'reports' => PublicIncidentReport::where('submitted_by', $request->user()->id)
+            'reports' => PublicIncidentReport::with('fireIncident')->where('submitted_by', $request->user()->id)
                 ->latest('id')->paginate(15),
         ]);
     }

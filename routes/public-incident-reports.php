@@ -20,6 +20,10 @@ Route::middleware(['auth', 'permission:public-submissions.view'])
             ->middleware('throttle:30,1,incident-report-review')->name('validate');
         Route::post('/{publicReport}/reject', [IncidentReportReviewController::class, 'reject'])
             ->middleware('throttle:30,1,incident-report-review')->name('reject');
+        Route::post('/{publicReport}/link-fire', [IncidentReportReviewController::class, 'linkFire'])
+            ->middleware('throttle:30,1,incident-report-review')->name('link-fire');
+        Route::post('/{publicReport}/unlink-fire', [IncidentReportReviewController::class, 'unlinkFire'])
+            ->middleware('throttle:30,1,incident-report-review')->name('unlink-fire');
         Route::post('/{publicReport}/publish', [IncidentReportReviewController::class, 'publish'])
             ->middleware('throttle:30,1,incident-report-review')->name('publish');
     });

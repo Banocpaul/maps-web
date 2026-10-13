@@ -378,4 +378,118 @@ class PublicIncidentReportingTest extends TestCase
         $this->assertDatabaseCount('fire_incidents', 0);
         $this->post(route('public-submissions.validate', $report), ['validation_notes' => 'Attempting to reopen.'])->assertStatus(409);
     }
+
+    private function linkableFire(array $overrides = []): FireIncident
+    {
+        return FireIncident::create(array_replace($this->fireDetails(), [
+            'incident_number' => 'FIRE-'.Str::ulid(), 'record_classification' => 'Reported',
+            'reported_at' => now(),
+        ], $overrides));
+    }
+
+    public function test_multiple_validated_reports_link_to_one_fire_without_new_incidents_or_sms(): void
+    {
+        $fire = $this->linkableFire();
+        $user = $this->operator('fire-responder');
+        $this->mock(FireIncidentAlertService::class, fn ($mock) => $mock->shouldNotReceive('sendCreatedAlert'));
+        foreach (range(1, 3) as $i) {
+            $report = $this->report('fire', 'Validated');
+            $this->actingAs($user)->post(route('public-submissions.link-fire', $report), [
+                'fire_incident_id' => $fire->id, 'link_reason' => 'Confirmed same building by response team.',
+            ])->assertRedirect();
+            $this->assertSame($fire->id, $report->fresh()->fire_incident_id);
+            $this->assertSame('Published', $report->fresh()->status);
+            $this->assertDatabaseHas('public_incident_report_events', [
+                'public_incident_report_id' => $report->id, 'actor_id' => $user->id, 'to_status' => 'Published',
+            ]);
+            $this->post(route('public-submissions.link-fire', $report), [
+                'fire_incident_id' => $fire->id, 'link_reason' => 'Repeated duplicate request.',
+            ])->assertStatus(409);
+        }
+        $this->assertDatabaseCount('fire_incidents', 1);
+        $this->assertDatabaseCount('sms_logs', 0);
+        $this->assertCount(3, $fire->publicReports);
+        $this->get(route('fire-incidents.show', $fire))->assertOk()->assertSee('3 public reports linked');
+    }
+
+    public function test_fire_link_requires_validation_reason_and_real_operational_incident(): void
+    {
+        $fire = $this->linkableFire();
+        $this->actingAs($this->operator());
+        foreach (['Pending', 'Rejected'] as $status) {
+            $this->post(route('public-submissions.link-fire', $this->report('fire', $status)), [
+                'fire_incident_id' => $fire->id, 'link_reason' => 'Verified same fire.',
+            ])->assertStatus(409);
+        }
+        $report = $this->report('fire', 'Validated');
+        $this->post(route('public-submissions.link-fire', $report), ['fire_incident_id' => $fire->id])
+            ->assertSessionHasErrors('link_reason');
+        $dataset = $this->linkableFire(['record_classification' => 'Dataset']);
+        $this->post(route('public-submissions.link-fire', $report), [
+            'fire_incident_id' => $dataset->id, 'link_reason' => 'Should not link dataset.',
+        ])->assertNotFound();
+        $this->assertNull($report->fresh()->fire_incident_id);
+    }
+
+    public function test_fire_link_denies_public_and_wrong_hazard_roles(): void
+    {
+        $report = $this->report('fire', 'Validated');
+        $payload = ['fire_incident_id' => $this->linkableFire()->id, 'link_reason' => 'Verified same fire.'];
+        $this->post(route('public-submissions.link-fire', $report), $payload)->assertForbidden();
+        $this->actingAs($this->operator('flood-analyst'))->post(route('public-submissions.link-fire', $report), $payload)
+            ->assertForbidden();
+        $this->actingAs($this->operator('operations-manager'))->post(
+            route('public-submissions.link-fire', $this->report('flood', 'Validated')), $payload)->assertStatus(422);
+    }
+
+    public function test_nearby_suggestions_exclude_far_old_resolved_and_dataset_fires(): void
+    {
+        $report = $this->report();
+        $near = $this->linkableFire();
+        $far = $this->linkableFire(['latitude' => 14.60]);
+        $old = $this->linkableFire(['reported_at' => now()->subDays(3)]);
+        $closed = $this->linkableFire(['status' => 'Resolved']);
+        $dataset = $this->linkableFire(['record_classification' => 'Dataset']);
+        $this->actingAs($this->operator())->get(route('public-submissions.show', $report))->assertOk()
+            ->assertViewHas('matchingFires', fn ($items) => $items->pluck('id')->all() === [$near->id]);
+        // A late report can still be linked after a deliberate exact-number lookup.
+        $this->get(route('public-submissions.show', $report).'?fire_search='.$closed->incident_number)
+            ->assertOk()->assertViewHas('matchingFires', fn ($items) => $items->pluck('id')->all() === [$closed->id]);
+    }
+
+    public function test_incorrect_link_can_be_removed_and_relinked_with_audit_and_stale_guard(): void
+    {
+        $first = $this->linkableFire(); $second = $this->linkableFire();
+        $report = $this->report('fire', 'Validated'); $user = $this->operator();
+        $permission = Permission::firstOrCreate(['slug' => 'fire.edit'], ['name' => 'Edit fire', 'module' => 'fire', 'is_active' => true]);
+        $user->role->permissions()->syncWithoutDetaching([$permission->id]);
+        $this->actingAs($user)->post(route('public-submissions.link-fire', $report), [
+            'fire_incident_id' => $first->id, 'link_reason' => 'Confirmed same incident.',
+        ])->assertRedirect();
+        $this->post(route('public-submissions.unlink-fire', $report), [
+            'expected_fire_incident_id' => $second->id, 'link_reason' => 'Wrong building was selected.',
+        ])->assertStatus(409);
+        $this->post(route('public-submissions.unlink-fire', $report), [
+            'expected_fire_incident_id' => $first->id, 'link_reason' => 'Wrong building was selected.',
+        ])->assertRedirect();
+        $this->assertSame('Validated', $report->fresh()->status);
+        $this->assertNull($report->fresh()->fire_incident_id);
+        $this->assertDatabaseHas('public_incident_report_events', ['public_incident_report_id' => $report->id,
+            'actor_id' => $user->id, 'from_status' => 'Published', 'to_status' => 'Validated']);
+        $this->post(route('public-submissions.link-fire', $report), [
+            'fire_incident_id' => $second->id, 'link_reason' => 'Confirmed correct building.',
+        ])->assertRedirect();
+        $this->assertSame($second->id, $report->fresh()->fire_incident_id);
+        $this->assertDatabaseCount('fire_incidents', 2);
+    }
+
+    public function test_public_report_owner_sees_linked_fire_status_without_other_reporters(): void
+    {
+        $owner = Auth::user(); $report = $this->report('fire', 'Published');
+        $fire = $this->linkableFire(['status' => 'Responding']);
+        $report->update(['submitted_by' => $owner->id, 'fire_incident_id' => $fire->id]);
+        $other = $this->report('fire', 'Published');
+        $this->get(route('public.reports'))->assertOk()->assertSee($fire->incident_number)
+            ->assertSee('Responding')->assertDontSee($other->reference);
+    }
 }

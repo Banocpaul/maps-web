@@ -134,6 +134,10 @@ class FloodDatasetController extends Controller
         FloodTrainingRecord $floodTrainingRecord,
         FloodObservationEnrichmentService $enrichmentService
     ): JsonResponse {
+        $request->validate([
+            'change_observed_at' => ['nullable', 'date', 'before_or_equal:now'],
+            'change_note' => ['nullable', 'string', 'max:2000'],
+        ]);
         $validator = Validator::make(
             $request->all(),
             $this->validationRules()
@@ -175,9 +179,8 @@ class FloodDatasetController extends Controller
             $validated,
             $floodTrainingRecord
         ): void {
-            $floodTrainingRecord->update(
-                $validated
-            );
+            $locked = FloodTrainingRecord::lockForUpdate()->findOrFail($floodTrainingRecord->id);
+            $locked->update($validated);
         });
 
         $floodTrainingRecord = $enrichmentService->enrich(

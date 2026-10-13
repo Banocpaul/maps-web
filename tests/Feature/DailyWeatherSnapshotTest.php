@@ -60,10 +60,11 @@ class DailyWeatherSnapshotTest extends TestCase
     public function test_failed_manual_refresh_preserves_today_successful_snapshot(): void
     {
         $this->freezeManilaTime();
-        Http::fake(['https://api.open-meteo.com/v1/forecast*' => Http::response($this->openMeteoResponse(), 200)]);
+        Http::fake(['https://api.open-meteo.com/v1/forecast*' => Http::sequence()
+            ->push($this->openMeteoResponse(), 200)
+            ->push(['error' => 'offline'], 503)]);
         $service = app(LiveWeatherService::class);
         $original = $service->getCurrentWeather();
-        Http::fake(['https://api.open-meteo.com/v1/forecast*' => Http::response(['error' => 'offline'], 503)]);
         try {
             $service->refreshCurrentWeather();
             $this->fail('Failed refresh must not report success.');

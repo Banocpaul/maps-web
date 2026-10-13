@@ -108,9 +108,50 @@ class FloodTrainingRecord extends Model
 
     protected static function booted(): void
     {
+        static::created(function (FloodTrainingRecord $record): void {
+            $record->recordLifecycleChange('Published', null, null);
+        });
+        static::updated(function (FloodTrainingRecord $record): void {
+            if (! $record->wasChanged(['flood_level_code', 'flood_status'])) return;
+            $oldCode = $record->getRawOriginal('flood_level_code');
+            $oldStatus = $record->getRawOriginal('flood_status');
+            $action = $record->flood_status !== $oldStatus
+                ? ($record->flood_status === 'Subsided' ? 'Subsided' : 'Reactivated')
+                : (strcmp($record->flood_level_code, $oldCode ?? '') > 0 ? 'Increased' : 'Decreased');
+            $record->recordLifecycleChange($action, $oldCode, $oldStatus);
+        });
         static::saving(function (FloodTrainingRecord $record): void {
             if ($record->exists && $record->isDirty('flood_status')) {
                 $record->handling_completed_at = $record->flood_status === 'Subsided' ? now() : null;
+            }
+        });
+    }
+
+    private function recordLifecycleChange(string $action, ?string $oldCode, ?string $oldStatus): void
+    {
+        if (! in_array($this->flood_level_code, ['A', 'B', 'C', 'D'], true) || ! in_array($this->flood_status, ['Active', 'Subsided'], true)) return;
+        $user = auth()->user();
+        $observed = request()->input('change_observed_at');
+        $change = FloodObservationChange::create([
+            'flood_training_record_id' => $this->id, 'changed_by' => $user?->id,
+            'changed_by_name' => $user?->full_name ?? $user?->name ?? 'System',
+            'action' => $action, 'previous_code' => $oldCode, 'new_code' => $this->flood_level_code,
+            'previous_status' => $oldStatus, 'new_status' => $this->flood_status,
+            'observed_at' => $observed
+                ? \Carbon\Carbon::parse($observed, 'Asia/Manila')->utc()
+                : ($action === 'Published' ? $this->observed_at : ($this->subsided_at ?? now())),
+            'note' => request()->input('change_note'),
+        ]);
+        if ($action === 'Published') return; // Existing publication alert handles the initial event.
+        $id = $this->id;
+        \Illuminate\Support\Facades\DB::afterCommit(function () use ($id, $change): void {
+            try {
+                $record = self::find($id);
+                if ($record) $change->update(['notification_summary' => app(\App\Services\FloodIncidentAlertService::class)
+                    ->sendChangeAlert($record, $change)]);
+            } catch (\Throwable $exception) {
+                $change->update(['notification_summary' => ['error' => 'Notification processing failed. Check SMS logs.']]);
+                report($exception);
             }
         });
     }

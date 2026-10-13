@@ -221,6 +221,12 @@ Route::middleware('auth')->group(function (): void {
             'throttle:30,1',
         ])
         ->name('flood-dataset.store');
+    Route::post('/flood-operation/dataset/{floodTrainingRecord}/history/{change}/retry', [\App\Http\Controllers\FloodLifecycleController::class, 'retry'])
+        ->middleware(['permission:flood.edit', 'throttle:3,1'])->name('flood-lifecycle.retry');
+    Route::post('/flood-operation/dataset/lifecycle/bulk', [\App\Http\Controllers\FloodLifecycleController::class, 'bulk'])
+        ->middleware(['permission:flood.edit', 'throttle:10,1'])->name('flood-lifecycle.bulk');
+    Route::get('/flood-operation/dataset/{floodTrainingRecord}/history', [\App\Http\Controllers\FloodLifecycleController::class, 'history'])
+        ->middleware('permission:prediction.view')->name('flood-lifecycle.history');
     Route::get(
         '/flood-operation/dataset/{floodTrainingRecord}',
         [FloodDatasetController::class, 'show']

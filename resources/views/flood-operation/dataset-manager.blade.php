@@ -88,10 +88,37 @@
         </p>
     </div>
 
+    @if (auth()->user()?->hasPermission('flood.edit'))
+    <div class="flex flex-wrap items-center gap-3 border-b p-4 bg-sky-50">
+        <label><input id="flood-select-all" type="checkbox"> Select active incidents on this page</label>
+        <span id="flood-selected-count" class="text-sm">0 selected</span>
+        <button type="button" data-bulk-action="increase" class="rounded-lg bg-amber-100 px-3 py-2 font-semibold">Increase one level</button>
+        <button type="button" data-bulk-action="decrease" class="rounded-lg bg-sky-100 px-3 py-2 font-semibold">Decrease one level</button>
+        <button type="button" data-bulk-action="subside" class="rounded-lg bg-emerald-100 px-3 py-2 font-semibold">Mark Subsided</button>
+    </div>
+    @endif
+    <dialog id="flood-change-dialog" class="rounded-2xl p-6 shadow-xl w-full max-w-xl">
+        <form id="flood-change-form" class="space-y-4">
+            <h3 class="text-xl font-bold">Review verified flood updates</h3>
+            <p class="text-sm">Apply only changes confirmed by field observations. Each incident receives a history entry and an SMS update to its eligible barangay recipients.</p>
+            <pre id="flood-change-preview" class="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm"></pre>
+            <label class="block">Observed time (Philippine time)<input id="flood-change-time" type="datetime-local" step="1" required class="block w-full rounded border p-2"></label>
+            <label class="block">Verification source / note<textarea id="flood-change-note" required maxlength="2000" class="block w-full rounded border p-2"></textarea></label>
+            <p id="flood-change-error" role="alert" class="text-red-700"></p>
+            <div class="flex gap-3"><button type="button" id="flood-change-cancel" class="rounded border px-4 py-2">Cancel</button><button id="flood-change-submit" class="rounded bg-sky-700 px-4 py-2 text-white">Confirm updates and send alerts</button></div>
+        </form>
+    </dialog>
+    <dialog id="flood-history-dialog" class="rounded-2xl p-6 shadow-xl w-full max-w-2xl">
+        <h3 class="text-xl font-bold">Flood change history</h3>
+        <pre id="flood-history-content" class="my-4 whitespace-pre-wrap text-sm"></pre>
+        <div id="flood-history-retry" class="my-3"></div>
+        <button id="flood-history-close" type="button" class="rounded border px-4 py-2">Close</button>
+    </dialog>
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-200">
             <thead class="bg-slate-50">
                 <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Select</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Date</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Barangay</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Flood Level</th>
@@ -295,6 +322,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const riskFilter = document.getElementById('dataset-risk-filter');
     const statusFilter = document.getElementById('dataset-status-filter');
 
+    const selectedFloods = new Map();
+    let pageFloods = [];
+    let pendingAction = null;
     let currentPage = 1;
     let lastPage = 1;
     let searchTimer = null;
@@ -397,6 +427,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderRecords(records) {
+        pageFloods = records;
+        selectedFloods.clear();
+        updateSelectionCount();
+        if (document.getElementById('flood-select-all')) document.getElementById('flood-select-all').checked = false;
         tableBody.innerHTML = '';
         document.getElementById('dataset-empty').classList.toggle('hidden', records.length > 0);
 
@@ -405,12 +439,14 @@ document.addEventListener('DOMContentLoaded', function () {
             row.className = 'hover:bg-slate-50';
 
             row.innerHTML = `
+                <td class="px-4 py-4">${canEdit && record.flood_status === 'Active' ? `<input type="checkbox" data-flood-select="${record.id}" aria-label="Select ${escapeHtml(record.barangay)} incident ${record.id}">` : '—'}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${escapeHtml(formatDate(record.observed_at))}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm font-medium text-slate-950">${escapeHtml(record.barangay)}</td>
                 <td class="whitespace-nowrap px-4 py-4">${levelBadge(record.flood_level_code)}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm">${statusBadge(record.flood_status)}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-sm text-slate-600">${extentLabel(record)}</td>
                 <td class="whitespace-nowrap px-4 py-4 text-right text-sm">
+                    <button type="button" data-history="${record.id}" class="mr-3 font-semibold text-sky-700">History</button>
                     ${canEdit ? `<button type="button" data-edit="${record.id}" class="font-semibold text-sky-700 hover:text-sky-900">Edit</button>` : ''}
                     ${canManageTraining && record.review_status === 'Ready for Review' ? `<button type="button" data-approve="${record.id}" class="ml-3 font-semibold text-emerald-700 hover:text-emerald-900">Approve</button><button type="button" data-reject="${record.id}" class="ml-3 font-semibold text-amber-700 hover:text-amber-900">Reject</button>` : ''}
                     ${canDelete ? `<button type="button" data-delete="${record.id}" class="ml-3 font-semibold text-red-600 hover:text-red-800">Delete</button>` : ''}
@@ -419,6 +455,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             tableBody.appendChild(row);
         });
+
+        tableBody.querySelectorAll('[data-history]').forEach(button => button.addEventListener('click', () => showFloodHistory(button.dataset.history)));
+        tableBody.querySelectorAll('[data-flood-select]').forEach(input => input.addEventListener('change', () => {
+            const record = pageFloods.find(item => String(item.id) === input.dataset.floodSelect);
+            if (input.checked) selectedFloods.set(record.id, record); else selectedFloods.delete(record.id);
+            updateSelectionCount();
+        }));
 
         tableBody.querySelectorAll('[data-edit]').forEach(button => {
             button.addEventListener('click', () => editRecord(button.dataset.edit));
@@ -435,6 +478,93 @@ document.addEventListener('DOMContentLoaded', function () {
         tableBody.querySelectorAll('[data-reject]').forEach(button => {
             button.addEventListener('click', () => reviewRecord(button.dataset.reject, 'reject'));
         });
+    }
+
+    function updateSelectionCount() {
+        const count = document.getElementById('flood-selected-count');
+        if (count) count.textContent = selectedFloods.size + ' selected';
+    }
+    document.getElementById('flood-select-all')?.addEventListener('change', event => {
+        tableBody.querySelectorAll('[data-flood-select]').forEach(input => {
+            input.checked = event.target.checked;
+            input.dispatchEvent(new Event('change'));
+        });
+    });
+    document.querySelectorAll('[data-bulk-action]').forEach(button => button.addEventListener('click', () => {
+        if (!selectedFloods.size) { setStatus('Select at least one active flood incident.'); return; }
+        pendingAction = button.dataset.bulkAction;
+        const codes = ['A', 'B', 'C', 'D'];
+        const preview = [...selectedFloods.values()].map(record => {
+            const next = pendingAction === 'subside' ? 'Subsided' : codes[codes.indexOf(record.flood_level_code) + (pendingAction === 'increase' ? 1 : -1)];
+            return '#' + record.id + ' ' + record.barangay + ' — ' + (record.location_name || '') + ': ' + record.flood_level_code + ' → ' + (next || 'INVALID: already at limit');
+        });
+        document.getElementById('flood-change-preview').textContent = preview.join('\n');
+        const now = new Date(Date.now() + 8 * 3600000).toISOString().slice(0,19);
+        document.getElementById('flood-change-time').value = now;
+        document.getElementById('flood-change-time').max = now;
+        document.getElementById('flood-change-note').value = '';
+        document.getElementById('flood-change-error').textContent = '';
+        document.getElementById('flood-change-dialog').showModal();
+    }));
+    document.getElementById('flood-change-cancel').addEventListener('click', () => document.getElementById('flood-change-dialog').close());
+    document.getElementById('flood-history-close').addEventListener('click', () => document.getElementById('flood-history-dialog').close());
+    document.getElementById('flood-change-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = document.getElementById('flood-change-submit');
+        button.disabled = true;
+        button.textContent = 'Saving updates…';
+        try {
+            const expected = Object.fromEntries([...selectedFloods.values()].map(record => [record.id, {code: record.flood_level_code, status: record.flood_status}]));
+            const response = await fetch(@json(route('flood-lifecycle.bulk')), {
+                method: 'POST', headers: {'Content-Type':'application/json', 'Accept':'application/json', 'X-CSRF-TOKEN':csrfToken},
+                body: JSON.stringify({ids: [...selectedFloods.keys()], expected, action:pendingAction,
+                    change_observed_at: document.getElementById('flood-change-time').value + '+08:00', change_note:document.getElementById('flood-change-note').value})
+            });
+            const data = await readJson(response);
+            if (!response.ok) throw new Error(Object.values(data.errors || {}).flat().join(' ') || data.message || 'Update failed.');
+            document.getElementById('flood-change-dialog').close();
+            await loadDataset(currentPage);
+            setStatus(data.message);
+        } catch (error) { document.getElementById('flood-change-error').textContent = error.message; }
+        finally { button.disabled = false; button.textContent = 'Confirm updates and send alerts'; }
+    });
+    async function showFloodHistory(id) {
+        const output = document.getElementById('flood-history-content');
+        document.getElementById('flood-history-retry').replaceChildren();
+        output.textContent = 'Loading…';
+        const historyDialog = document.getElementById('flood-history-dialog');
+        if (!historyDialog.open) historyDialog.showModal();
+        try {
+            const response = await fetch(endpoint + '/' + id + '/history', {headers:{Accept:'application/json'}});
+            const data = await readJson(response);
+            if (!response.ok) throw new Error(data.message || 'History unavailable.');
+            output.textContent = (data.changes || []).map(change => {
+                const summary = change.notification_summary;
+                const sms = summary ? (summary.error || 'SMS: ' + summary.sent + ' sent, ' + summary.failed + ' failed, ' + summary.skipped + ' skipped, ' + summary.eligible + ' eligible') : 'Initial alert: see SMS logs / no change alert recorded';
+                return change.action + ': ' + (change.previous_code || '—') + ' → ' + change.new_code + ' | ' + change.new_status +
+                    '\nObserved: ' + formatDate(change.observed_at) + '\nEntered: ' + formatDate(change.created_at) + ' by ' + change.changed_by_name +
+                    '\nNote: ' + (change.note || '—') + '\n' + sms;
+            }).join('\n\n') || 'No recorded changes. This incident predates change tracking.';
+            const latest = data.changes?.[0];
+            if (canEdit && latest?.notification_summary?.failed > 0) {
+                const retry = document.createElement('button');
+                retry.type = 'button'; retry.className = 'rounded bg-sky-700 px-4 py-2 text-white';
+                retry.textContent = 'Retry failed SMS for latest update';
+                retry.addEventListener('click', async () => {
+                    retry.disabled = true;
+                    try {
+                        const response = await fetch(endpoint + '/' + id + '/history/' + latest.id + '/retry', {
+                            method:'POST', headers:{Accept:'application/json','X-CSRF-TOKEN':csrfToken}
+                        });
+                        const result = await readJson(response);
+                        if (!response.ok) throw new Error(result.message || 'Retry failed.');
+                        await showFloodHistory(id);
+                    } catch (error) { output.textContent = error.message; retry.disabled = false; }
+                });
+                document.getElementById('flood-history-retry').appendChild(retry);
+            }
+
+        } catch (error) { output.textContent = error.message; }
     }
 
     async function reviewRecord(id, action) {

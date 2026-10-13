@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="space-y-6">
+    @include('prediction.partials.navigation-tabs', ['activeTab' => 'current'])
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
             <p class="text-sm font-semibold uppercase tracking-wide text-sky-700">
@@ -20,7 +21,7 @@
             </p>
         </div>
 
-        <a href="{{ route('prediction.history.index') }}" class="inline-flex w-fit rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Prediction History</a>
+
 
         <div class="inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold
             {{ $apiAvailable

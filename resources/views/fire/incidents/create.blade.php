@@ -882,6 +882,7 @@
             function updateCoordinateFields(latitude, longitude) {
                 latitudeInput.value = Number(latitude).toFixed(7);
                 longitudeInput.value = Number(longitude).toFixed(7);
+                document.dispatchEvent(new CustomEvent('incident-coordinates-changed', {detail: {latitude: Number(latitude), longitude: Number(longitude)}}));
 
                 mapStatus.classList.remove(
                     'incident-map-status-error'

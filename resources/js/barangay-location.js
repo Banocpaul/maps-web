@@ -28,6 +28,8 @@ export function initializeBarangayLocation() {
     const status = root.querySelector('[data-barangay-location-status]');
     let boundaries;
     let version = 0;
+    let selectedAddress;
+    document.addEventListener('incident-address-context', event => { selectedAddress = event.detail; });
     const load = () => {
         if (!boundaries) boundaries = fetch(root.dataset.boundaryUrl, {signal: AbortSignal.timeout(10000)})
             .then(response => { if (!response.ok) throw new Error('Boundaries unavailable'); return response.json(); })
@@ -37,6 +39,9 @@ export function initializeBarangayLocation() {
     document.addEventListener('incident-coordinates-changed', async event => {
         const current = ++version;
         const {latitude, longitude} = event.detail;
+        const fallback = selectedAddress && Math.abs(latitude - Number(selectedAddress.latitude)) < 0.000001 && Math.abs(longitude - Number(selectedAddress.longitude)) < 0.000001
+            ? selectedAddress.barangayFallback : '';
+        selectedAddress = undefined;
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) { status.textContent = ''; return; }
         status.textContent = 'Finding barangay from map location…';
         try {
@@ -49,6 +54,10 @@ export function initializeBarangayLocation() {
                 select.value = options[0].value;
                 select.dispatchEvent(new Event('change', {bubbles: true}));
                 status.textContent = `Barangay automatically selected: ${options[0].textContent.trim()}. Verify the incident location.`;
+            } else if (names.length === 0 && fallback) {
+                select.value = fallback;
+                select.dispatchEvent(new Event('change', {bubbles: true}));
+                status.textContent = `Barangay selected from address details: ${select.selectedOptions[0].textContent.trim()}. Verify the map pin.`;
             } else {
                 select.value = '';
                 select.dispatchEvent(new Event('change', {bubbles: true}));

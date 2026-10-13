@@ -27,7 +27,7 @@ class AddressSearchTest extends TestCase
         Cache::flush();
         Http::fake(['*' => Http::response(['features' => [
             ['geometry' => ['type' => 'Point', 'coordinates' => [121.035, 14.58]],
-                'properties' => ['name' => 'Shaw Boulevard', 'city' => 'Mandaluyong', 'street' => 'Shaw Boulevard']],
+                'properties' => ['name' => 'Shaw Boulevard', 'city' => 'Mandaluyong', 'type' => 'street', 'locality' => 'Addition Hills']],
             ['geometry' => ['type' => 'Point', 'coordinates' => [120.98, 14.60]],
                 'properties' => ['name' => 'Outside the city']],
             ['geometry' => ['type' => 'Point', 'coordinates' => [121.035, 14.58]],
@@ -36,6 +36,9 @@ class AddressSearchTest extends TestCase
         $response = $this->search();
         $this->assertCount(1, $response->getData(true)['results']);
         $this->assertSame(14.58, $response->getData(true)['results'][0]['latitude']);
+        $this->assertSame('Shaw Boulevard', $response->getData(true)['results'][0]['street']);
+        $this->assertSame(['Addition Hills'], $response->getData(true)['results'][0]['barangay_candidates']);
+        $this->assertSame('', $response->getData(true)['results'][0]['corner']);
         $this->search();
         Http::assertSentCount(1);
         Http::assertSent(fn ($request) => $request['bbox'] === '121.010,14.558,121.065,14.610');

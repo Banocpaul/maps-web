@@ -191,17 +191,25 @@ class PublicResidentAccountTest extends TestCase
         $this->assertNull(SmsRecipient::sole()->user_id);
     }
 
-    public function test_resident_login_returns_to_report_form_and_keeps_staff_routes_forbidden(): void
+    public function test_resident_login_lands_on_portal_and_keeps_staff_routes_forbidden(): void
     {
         $resident = $this->resident(overrides: ['email' => 'paul@example.test', 'password' => 'Resident123!']);
         $this->get(route('public.incident-reports.create'))->assertRedirect(route('public.login'));
         $this->post(route('public.login.attempt'), ['email' => $resident->email, 'password' => 'Resident123!'])
-            ->assertRedirect(route('public.incident-reports.create'));
+            ->assertRedirect(route('public.portal'));
         foreach (['dashboard', 'users.index', 'sms.index', 'public-submissions.index', 'prediction.index'] as $route) {
             $this->get(route($route))->assertForbidden();
         }
         $this->post(route('logout'))->assertRedirect(route('public.portal'));
         $this->assertGuest();
+    }
+
+    public function test_normal_resident_login_lands_on_public_portal(): void
+    {
+        $resident = $this->resident(overrides: ['email' => 'landing@example.test', 'password' => 'Resident123!']);
+        $this->post(route('public.login.attempt'), ['email' => $resident->email, 'password' => 'Resident123!'])
+            ->assertRedirect(route('public.portal'));
+        $this->get(route('public.login'))->assertRedirect(route('public.portal'));
     }
 
     public function test_resident_cannot_gain_staff_access_even_if_permissions_are_assigned_to_role(): void

@@ -16,7 +16,7 @@ class FloodLifecycleTest extends TestCase {
     private function record(string $code = 'A'): FloodTrainingRecord {
         return FloodTrainingRecord::create(['barangay'=>'Hulo','location_name'=>'Test road','observed_at'=>now()->subHours(2),
             'flood_level_code'=>$code,'flood_status'=>'Active','risk_level'=>'Low','flood_depth_mm'=>152.4,'duration_hours'=>0,
-            'include_in_training'=>false,'data_source'=>'Verified staff observation']);
+            'month'=>now()->month,'include_in_training'=>false,'data_source'=>'Verified staff observation']);
     }
     private function payload(array $records, string $action): array {
         $expected = [];

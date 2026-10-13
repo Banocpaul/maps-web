@@ -52,6 +52,8 @@
         </button>
     </section>
 
+    @include('flood-operation.history')
+
     <dialog id="rainfall-scenario-dialog" aria-labelledby="rainfall-scenario-title" class="m-auto max-h-[90vh] overflow-y-auto rounded-2xl border-0 bg-white p-0 shadow-xl backdrop:bg-slate-900/50" style="width: min(64rem, calc(100% - 2rem));">
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="flex justify-end px-5 pt-4">

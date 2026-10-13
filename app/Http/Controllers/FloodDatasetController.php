@@ -42,17 +42,20 @@ class FloodDatasetController extends Controller
                 )
             );
 
-        $statistics = [
-            'total' => FloodTrainingRecord::count(),
+        $statisticsQuery = FloodTrainingRecord::query();
+        if ($request->input('scope') === 'active') $statisticsQuery->where('flood_status', 'Active');
 
-            'included' => FloodTrainingRecord::query()
+        $statistics = [
+            'total' => (clone $statisticsQuery)->count(),
+
+            'included' => (clone $statisticsQuery)
                 ->includedInTraining()
                 ->count(),
 
-            'level_a' => FloodTrainingRecord::where('flood_level_code', 'A')->count(),
-            'level_b' => FloodTrainingRecord::where('flood_level_code', 'B')->count(),
-            'level_c' => FloodTrainingRecord::where('flood_level_code', 'C')->count(),
-            'level_d' => FloodTrainingRecord::where('flood_level_code', 'D')->count(),
+            'level_a' => (clone $statisticsQuery)->where('flood_level_code', 'A')->count(),
+            'level_b' => (clone $statisticsQuery)->where('flood_level_code', 'B')->count(),
+            'level_c' => (clone $statisticsQuery)->where('flood_level_code', 'C')->count(),
+            'level_d' => (clone $statisticsQuery)->where('flood_level_code', 'D')->count(),
         ];
 
         return response()->json([

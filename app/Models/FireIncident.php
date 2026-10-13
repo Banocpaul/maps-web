@@ -150,6 +150,11 @@ class FireIncident extends Model
             && ! in_array($this->record_classification, ['Example', 'Superseded'], true));
     }
 
+    public function publicReports(): HasMany
+    {
+        return $this->hasMany(PublicIncidentReport::class);
+    }
+
     public function smsLogs(): HasMany
     {
         return $this->hasMany(SmsLog::class, 'fire_incident_id');

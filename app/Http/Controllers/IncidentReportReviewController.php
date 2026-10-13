@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barangay;
+use App\Models\FireIncident;
 use App\Models\FloodTrainingRecord;
 use App\Models\PublicIncidentReport;
 use App\Services\FireIncidentAlertService;
@@ -62,9 +63,74 @@ class IncidentReportReviewController extends Controller
             }
         }
 
+        $matchingFires = collect();
+        $fireSearch = $request->validate(['fire_search' => ['nullable', 'string', 'max:100']])['fire_search'] ?? '';
+        if ($publicReport->incident_type === 'fire') {
+            $query = FireIncident::query()->where('record_classification', 'Reported')->with('barangay');
+            if ($fireSearch !== '') {
+                // Search by official number; linking always requires human confirmation.
+                $matchingFires = $query->where('incident_number', $fireSearch)->limit(10)->get();
+            } else {
+                $matchingFires = $query->whereIn('status', ['Reported', 'Responding', 'Controlled'])
+                    ->whereBetween('reported_at', [$publicReport->created_at->copy()->subDay(), $publicReport->created_at->copy()->addDay()])
+                    ->whereBetween('latitude', [$publicReport->latitude - .005, $publicReport->latitude + .005])
+                    ->whereBetween('longitude', [$publicReport->longitude - .0052, $publicReport->longitude + .0052])
+                    ->get()->map(function ($fire) use ($publicReport) {
+                        $lat1 = deg2rad($publicReport->latitude);
+                        $lat2 = deg2rad((float) $fire->latitude);
+                        $a = sin(($lat2 - $lat1) / 2) ** 2 + cos($lat1) * cos($lat2)
+                            * sin(deg2rad((float) $fire->longitude - $publicReport->longitude) / 2) ** 2;
+                        $fire->match_distance_m = round(6371000 * 2 * asin(sqrt(min(1, $a))));
+                        return $fire;
+                    })->filter(fn ($fire) => $fire->match_distance_m <= 500)
+                    ->sortBy('match_distance_m')->take(10)->values();
+            }
+        }
+
         return view('incident-reports.show', compact(
-            'publicReport', 'barangays', 'boundaries', 'canReview', 'canReject', 'canPublish', 'photoAvailable'
+            'publicReport', 'barangays', 'boundaries', 'canReview', 'canReject', 'canPublish', 'photoAvailable', 'matchingFires', 'fireSearch'
         ));
+    }
+
+    public function linkFire(Request $request, PublicIncidentReport $publicReport, IncidentReportWorkflow $workflow): RedirectResponse
+    {
+        $workflow->authorize($request->user(), $publicReport->incident_type, 'approve');
+        abort_unless($publicReport->incident_type === 'fire', 422);
+        $data = $request->validate([
+            'fire_incident_id' => ['required', 'integer'],
+            'link_reason' => ['required', 'string', 'min:5', 'max:2000'],
+        ]);
+        DB::transaction(function () use ($request, $publicReport, $workflow, $data): void {
+            $report = $workflow->lockForPublication($publicReport->id, 'fire', $request->user());
+            $fire = FireIncident::query()->where('record_classification', 'Reported')
+                ->lockForUpdate()->findOrFail($data['fire_incident_id']);
+            $report->update(['fire_incident_id' => $fire->id, 'status' => 'Published',
+                'published_by' => $request->user()->id, 'published_at' => now()]);
+            $report->events()->create(['actor_id' => $request->user()->id,
+                'from_status' => 'Validated', 'to_status' => 'Published',
+                'notes' => 'Linked to existing fire '.$fire->incident_number.' (#'.$fire->id.'). '.$data['link_reason']]);
+        });
+        return back()->with('success', 'Report linked to the existing fire. No new incident or duplicate SMS was created.');
+    }
+
+    public function unlinkFire(Request $request, PublicIncidentReport $publicReport, IncidentReportWorkflow $workflow): RedirectResponse
+    {
+        $workflow->authorize($request->user(), $publicReport->incident_type, 'approve');
+        abort_unless($publicReport->incident_type === 'fire' && $request->user()->hasPermission('fire.edit'), 403);
+        $data = $request->validate(['link_reason' => ['required', 'string', 'min:5', 'max:2000'],
+            'expected_fire_incident_id' => ['required', 'integer']]);
+        DB::transaction(function () use ($request, $publicReport, $data): void {
+            $report = PublicIncidentReport::query()->lockForUpdate()->findOrFail($publicReport->id);
+            abort_unless($report->status === 'Published' && $report->fire_incident_id
+                && (int) $report->fire_incident_id === (int) $data['expected_fire_incident_id'], 409,
+                'The link changed. Reload before correcting it.');
+            $oldId = $report->fire_incident_id;
+            $report->update(['fire_incident_id' => null, 'status' => 'Validated', 'published_by' => null, 'published_at' => null]);
+            $report->events()->create(['actor_id' => $request->user()->id,
+                'from_status' => 'Published', 'to_status' => 'Validated',
+                'notes' => 'Removed incorrect link to fire #'.$oldId.'. Official incident retained. '.$data['link_reason']]);
+        });
+        return back()->with('success', 'Incorrect link removed. Link the validated report to the correct fire or create its official incident.');
     }
 
     public function photo(Request $request, PublicIncidentReport $publicReport, IncidentReportWorkflow $workflow): StreamedResponse

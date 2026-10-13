@@ -217,7 +217,7 @@ class FireIncidentController extends Controller
     public function show(
         FireIncident $fireIncident
     ): View {
-        $fireIncident->load(['barangay', 'finalizedBy']);
+        $fireIncident->load(['barangay', 'finalizedBy', 'publicReports']);
 
         return view(
             'fire.incidents.show',

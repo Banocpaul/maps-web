@@ -238,6 +238,16 @@
     </style>
 
     <div class="incident-show-page">
+        @if($fireIncident->publicReports->isNotEmpty())
+        <section class="rounded-xl border border-slate-200 bg-white p-6">
+            <h2 class="text-lg font-bold">{{ $fireIncident->publicReports->count() }} public reports linked</h2>
+            <p class="mt-2 text-sm text-slate-600">These submissions refer to one official fire incident.</p>
+            @if(auth()->user()->hasPermission('public-submissions.view'))
+            <ul class="mt-3 space-y-2">@foreach($fireIncident->publicReports as $report)
+                <li><a class="font-semibold text-blue-700" href="{{ route('public-submissions.show', $report) }}">{{ $report->reference }}</a> · {{ $report->created_at->copy()->timezone('Asia/Manila')->format('M d, Y g:i A') }}</li>
+            @endforeach</ul>@endif
+        </section>
+        @endif
         <section class="incident-show-header">
             <div>
                 <h1>{{ $fireIncident->incident_number }}</h1>

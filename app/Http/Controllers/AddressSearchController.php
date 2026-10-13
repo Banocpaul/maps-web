@@ -13,6 +13,17 @@ class AddressSearchController extends Controller
     public function __invoke(Request $request): JsonResponse
     {
         abort_unless($request->user()->hasAnyPermission(['fire.create', 'fire.edit']), 403);
+        return $this->search($request);
+    }
+
+    public function residentSearch(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->isPublicResident(), 403);
+        return $this->search($request);
+    }
+
+    private function search(Request $request): JsonResponse
+    {
         $input = $request->validate(['q' => ['required', 'string', 'min:3', 'max:150']]);
         $query = trim(preg_replace('/\s+/u', ' ', $input['q']));
         if (mb_strlen($query) < 3) {

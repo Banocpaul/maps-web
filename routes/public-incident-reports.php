@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/public-portal/report-incident', [PublicIncidentReportController::class, 'create'])
     ->middleware(['auth', 'resident', 'throttle:60,1,public-report-form'])->name('public.incident-reports.create');
+Route::get('/public-portal/report-address/search', [\App\Http\Controllers\AddressSearchController::class, 'residentSearch'])
+    ->middleware(['auth', 'resident', 'throttle:12,1,public-report-address'])->name('public.incident-reports.address-search');
 Route::post('/public-portal/report-incident', [PublicIncidentReportController::class, 'store'])
     ->middleware(['auth', 'resident', 'throttle:5,1,public-report-submit'])->name('public.incident-reports.store');
 

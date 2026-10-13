@@ -53,6 +53,16 @@
 <dialog id="report-dialog" aria-labelledby="report-title">
     <div class="dialog-head"><h2 id="report-title">Report an incident</h2><button type="button" class="secondary" id="close-report" aria-label="Close map">✕</button></div>
     <p>Tap or click the incident location inside Mandaluyong. Drag the pin to adjust it.</p>
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <label for="report-address-query" class="block text-sm font-semibold">Search incident address or landmark</label>
+        <div class="mt-2 flex flex-wrap gap-2">
+            <input id="report-address-query" type="search" maxlength="150" placeholder="Example: Shaw Boulevard" class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2" autocomplete="off">
+            <button type="button" id="report-address-search" class="primary">Search address</button>
+        </div>
+        <p id="report-address-status" role="status" class="mt-2 text-sm text-slate-600">Choose a result, then adjust the pin to the exact incident spot.</p>
+        <div id="report-address-results" class="mt-2 overflow-hidden rounded-lg border border-slate-200" hidden></div>
+        <p class="mt-2 text-xs text-slate-500">Search by Photon · © OpenStreetMap contributors</p>
+    </div>
     <div id="report-map" aria-label="Select incident location on the map"></div>
     <p id="pin-status" role="status" aria-live="polite">Select the incident location to continue.</p>
     <form method="POST" action="{{ route('public.incident-reports.store') }}" id="report-form" enctype="multipart/form-data">
@@ -131,8 +141,55 @@
         latitude.value=valid?position.lat.toFixed(7):'';
         longitude.value=valid?position.lng.toFixed(7):'';
         submit.disabled=!valid;
-        status.textContent=valid?'Selected location: '+latitude.value+', '+longitude.value:'Please move the pin inside Mandaluyong City.';
+        const names=boundaries.features.filter(f=>{
+            const polygons=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.type==='MultiPolygon'?f.geometry.coordinates:[];
+            return polygons.some(rings=>inRing(position.lng,position.lat,rings[0])&&!rings.slice(1).some(r=>inRing(position.lng,position.lat,r)));
+        }).map(f=>f.properties.barangay);
+        status.textContent=valid?'Selected location: '+latitude.value+', '+longitude.value+(names.length===1?' · Barangay: '+names[0]:' · Verify the barangay boundary.'):'Please move the pin inside Mandaluyong City.';
     }
+    const query=document.getElementById('report-address-query');
+    const searchButton=document.getElementById('report-address-search');
+    const searchStatus=document.getElementById('report-address-status');
+    const searchResults=document.getElementById('report-address-results');
+    let searchVersion=0, searchController;
+    function resetSearch(clearQuery=false) {
+        searchVersion++;searchController?.abort();searchButton.disabled=false;
+        searchResults.replaceChildren();searchResults.hidden=true;
+        if(clearQuery) query.value='';
+    }
+    query.addEventListener('input',()=>resetSearch());
+    query.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();searchButton.click();}});
+    dialog.addEventListener('close',()=>resetSearch());
+    searchButton.addEventListener('click',async()=>{
+        resetSearch();
+        if(query.value.trim().length<3){searchStatus.textContent='Enter at least three characters.';return;}
+        const version=searchVersion;
+        const controller=new AbortController();searchController=controller;
+        const timer=setTimeout(()=>controller.abort(),15000);
+        searchButton.disabled=true;searchStatus.textContent='Searching near Mandaluyong…';
+        try {
+            const url=new URL(@json(route('public.incident-reports.address-search')),window.location.origin);
+            url.searchParams.set('q',query.value.trim());
+            const response=await fetch(url,{credentials:'same-origin',headers:{'Accept':'application/json'},signal:controller.signal});
+            if(!response.ok||response.redirected) throw new Error('Search unavailable');
+            const data=await response.json();
+            if(version!==searchVersion) return;
+            searchStatus.textContent=data.results.length?'Choose a result and verify the pin.':'No results found. Try a landmark or click the map manually.';
+            for(const result of data.results) {
+                const button=document.createElement('button');button.type='button';button.textContent=result.label;
+                button.className='block w-full border-b border-slate-100 bg-white px-4 py-3 text-left text-sm hover:bg-blue-50';
+                button.addEventListener('click',()=>{
+                    if(!map){searchStatus.textContent='Map unavailable. Reload and try again.';return;}
+                    const point=L.latLng(Number(result.latitude),Number(result.longitude));
+                    query.value=result.label.slice(0,150);setPin(point);map.setView(point,17);resetSearch();
+                    searchStatus.textContent='Address selected. Drag the pin to the exact location before submitting.';
+                });searchResults.append(button);
+            }
+            searchResults.hidden=data.results.length===0;
+        } catch {
+            if(version===searchVersion) searchStatus.textContent='Search unavailable. Try again or click the map manually.';
+        } finally {clearTimeout(timer);if(version===searchVersion)searchButton.disabled=false;}
+    });
     function openReport(selected) {
         if(!['fire','flood'].includes(selected)) return;
         const changed=type.value!==selected;
@@ -148,6 +205,8 @@
             map.on('click',e=>setPin(e.latlng));
         }
         if(changed) {
+            resetSearch(true);
+            searchStatus.textContent='Choose a result, then adjust the pin to the exact incident spot.';
             clearPhoto();
             if(pin){map.removeLayer(pin);pin=null;}
             latitude.value='';longitude.value='';submit.disabled=true;

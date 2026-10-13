@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else marker.setLatLng([lat, lon]);
         latitude.value = lat.toFixed(7);
         longitude.value = lon.toFixed(7);
+        document.dispatchEvent(new CustomEvent('incident-coordinates-changed', {detail: {latitude: lat, longitude: lon}}));
         status.textContent = `Selected coordinates: ${latitude.value}, ${longitude.value}. Verify the selected barangay.`;
         if (zoom) map.setView([lat, lon], 17);
     };

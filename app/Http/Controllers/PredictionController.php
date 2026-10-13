@@ -41,11 +41,27 @@ class PredictionController extends Controller
                 [
                     'apiAvailable' => $apiAvailable,
                     'citywideResult' => null,
-                    'selectedForecastHours' => 24,
+                    'selectedForecastHours' => (int) old('forecast_hours', 24),
                 ],
                 $weatherContext
             )
         );
+    }
+
+    public function refreshWeather(Request $request): RedirectResponse
+    {
+        $forecastHours = $this->validatedForecastHours($request);
+        try {
+            $this->liveWeatherService->refreshCurrentWeather();
+            return redirect()->route('prediction.index')
+                ->withInput(['forecast_hours' => $forecastHours])
+                ->with('success', 'Weather refreshed using the latest available Open-Meteo data.');
+        } catch (Throwable $exception) {
+            Log::warning('Manual weather refresh failed.', ['message' => $exception->getMessage()]);
+            return redirect()->route('prediction.index')
+                ->withInput(['forecast_hours' => $forecastHours])
+                ->with('error', 'Could not refresh weather. The last saved weather is retained. Please try again shortly.');
+        }
     }
 
     /**

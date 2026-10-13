@@ -31,9 +31,24 @@
                 {{ $apiAvailable ? 'bg-emerald-500' : 'bg-rose-500' }}">
             </span>
 
-            ML API {{ $apiAvailable ? 'Online' : 'Offline' }}
+            ML API {{ $apiAvailable ? 'Online' : 'Connection unavailable' }}
         </div>
     </div>
+
+    @if (session('success'))
+        <div role="status" class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    <form method="POST" action="{{ route('prediction.weather.refresh') }}" class="flex justify-end"
+        onsubmit="const button = this.querySelector('button'); button.disabled = true; button.textContent = 'Refreshing weather…'; this.setAttribute('aria-busy', 'true');">
+        @csrf
+        <input type="hidden" name="forecast_hours" id="weather-refresh-hours" value="{{ $selectedForecastHours ?? 24 }}">
+        <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm hover:bg-sky-50 disabled:opacity-50">
+            <span aria-hidden="true">↻</span> Refresh Current Weather
+        </button>
+    </form>
 
     @if (session('error'))
         <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
@@ -43,11 +58,10 @@
 
     @unless ($apiAvailable)
         <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-            The ML API is offline. Start it using:
-
-            <code class="mt-2 block rounded bg-amber-100 px-3 py-2 font-mono text-xs">
-                python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
-            </code>
+            The prediction service could not be reached. It may still be starting.
+            You can retry Run Citywide Prediction; the system will attempt to reconnect.
+            If it continues to fail, ask the administrator to check the hosted prediction service.
+            <a href="{{ route('prediction.index') }}" class="ml-2 font-semibold underline">Check connection again</a>
         </div>
     @endunless
 
@@ -257,7 +271,7 @@
 
                 <button
                     type="submit"
-                    @disabled(! $apiAvailable || ! $weatherAvailable)
+                    @disabled(! $weatherAvailable)
                     class="inline-flex w-full items-center justify-center rounded-xl bg-sky-700 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
                 >
                     Run Citywide Prediction
@@ -420,6 +434,10 @@
             if (!select) {
                 return;
             }
+
+            select.addEventListener('change', () => {
+                document.getElementById('weather-refresh-hours').value = select.value;
+            });
 
             const windows = @json($liveWeather['forecast_windows'] ?? []);
             const title = document.getElementById('forecast-window-title');

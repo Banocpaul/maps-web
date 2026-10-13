@@ -277,6 +277,10 @@ Route::middleware('auth')->group(function (): void {
     | Live Weather
     |--------------------------------------------------------------------------
     */
+    Route::post('/prediction/weather/refresh', [PredictionController::class, 'refreshWeather'])
+        ->middleware(['permission:prediction.view', 'throttle:2,1,weather-refresh-'])
+        ->name('prediction.weather.refresh');
+
     Route::get('/weather/live', [WeatherController::class, 'live'])
         ->middleware([
             'permission:prediction.view',

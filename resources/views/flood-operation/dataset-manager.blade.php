@@ -9,7 +9,7 @@
             </p>
 
             <h2 class="mt-1 text-xl font-semibold text-slate-950">
-                Recorded Flood Observations
+                Active Flood Incidents
             </h2>
 
             <p class="mt-1 text-sm text-slate-600">
@@ -30,7 +30,7 @@
 
     <div class="grid grid-cols-2 gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 sm:px-6 lg:grid-cols-6">
         @foreach ([
-            ['id' => 'dataset-total', 'label' => 'Total Records', 'class' => 'text-slate-950'],
+            ['id' => 'dataset-total', 'label' => 'Active Records', 'class' => 'text-slate-950'],
             ['id' => 'dataset-included', 'label' => 'Included', 'class' => 'text-sky-700'],
             ['id' => 'dataset-level-a', 'label' => 'Level A', 'class' => 'text-emerald-600'],
             ['id' => 'dataset-level-b', 'label' => 'Level B', 'class' => 'text-amber-600'],
@@ -68,12 +68,7 @@
             <option value="D">Level D</option>
         </select>
 
-        <select id="dataset-status-filter" aria-label="Flood status" class="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
-            <option value="">All statuses</option>
-            @foreach (['Active', 'Subsided'] as $status)
-                <option value="{{ $status }}" @selected(request('flood_status') === $status)>{{ $status }}</option>
-            @endforeach
-        </select>
+        <input id="dataset-status-filter" type="hidden" value="Active">
 
         <button
             id="dataset-refresh-button"
@@ -410,7 +405,8 @@ document.addEventListener('DOMContentLoaded', function () {
             page,
             search: search.value.trim(),
             flood_level_code: riskFilter.value,
-            flood_status: statusFilter.value,
+            flood_status: 'Active',
+            scope: 'active',
             per_page: 10
         });
 
@@ -428,8 +424,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error(data.message || 'Unable to load dataset.');
             }
 
+            if (page > (data.records?.last_page || 1)) return loadDataset(data.records.last_page);
             renderStatistics(data.statistics || {});
             renderRecords(data.records?.data || []);
+            document.dispatchEvent(new CustomEvent('flood-records-updated'));
 
             currentPage = data.records?.current_page || 1;
             lastPage = data.records?.last_page || 1;

@@ -12,6 +12,7 @@
     $colors = ['A' => '#39FF14', 'B' => '#FFF200', 'C' => '#FF9500', 'D' => '#FF3B1F'];
 @endphp
 <div class="space-y-6">
+    @include('prediction.partials.navigation-tabs', ['activeTab' => 'history'])
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div><h1 class="text-2xl font-bold text-slate-950">Prediction Run #{{ $execution->id }}</h1><p class="mt-1 text-sm text-slate-600">{{ $execution->kind }} · {{ $execution->forecast_hours }} hours · {{ $execution->status }}</p></div>
         <a href="{{ route('prediction.history.index') }}" class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-semibold hover:bg-slate-50">All Runs</a>

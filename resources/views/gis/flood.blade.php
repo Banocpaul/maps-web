@@ -66,6 +66,7 @@
                 <div id="flood-gis-map" class="rounded-xl xl:col-span-2" aria-label="Active flood extent map"></div>
                 <aside class="rounded-xl border border-slate-200">
                     <h2 class="border-b border-slate-200 p-4 font-semibold text-slate-950">Active Flood Observations</h2>
+                    <p class="border-b border-slate-200 px-4 py-2 text-sm text-slate-600">Click to locate. Double-click to open the record when available.</p>
                     <div id="flood-record-list" style="max-height:65vh;overflow-y:auto"></div>
                 </aside>
             </div>
@@ -140,7 +141,21 @@
                         map.fitBounds(line.getBounds(), { padding: [30, 30], maxZoom: 17 });
                         line.getLayers()[0]?.openPopup();
                     });
-                    list.appendChild(button);
+                    if (record.manage_url) {
+                        button.title = 'Click to locate; double-click to open this flood record';
+                        button.addEventListener('dblclick', () => window.location.assign(record.manage_url));
+                        const item = document.createElement('div');
+                        item.appendChild(button);
+                        const link = document.createElement('a');
+                        link.href = record.manage_url;
+                        link.className = 'inline-block px-3 py-2 text-sm font-semibold text-blue-700 underline';
+                        link.textContent = 'Open record';
+                        link.setAttribute('aria-label', 'Open ' + name);
+                        item.appendChild(link);
+                        list.appendChild(item);
+                    } else {
+                        list.appendChild(button);
+                    }
                 });
                 if (extents.getLayers().length) map.fitBounds(extents.getBounds(), { padding: [30, 30], maxZoom: 16 });
                 else {

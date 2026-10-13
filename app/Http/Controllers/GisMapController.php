@@ -268,6 +268,8 @@ class GisMapController extends Controller
             'level_code' => $record->flood_level_code,
             'status' => $record->flood_status,
             'length_m' => round((float) $record->extent_length_m, 1),
+            'manage_url' => auth()->user()->hasPermission('flood.edit') && auth()->user()->hasPermission('prediction.view')
+                ? route('flood-operation.index', ['record_id' => $record->id]).'#dataset-management' : null,
             'geometry' => [
                 'type' => 'LineString',
                 'coordinates' => array_map(

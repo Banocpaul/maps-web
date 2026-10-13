@@ -103,4 +103,21 @@ class FloodAnalystGisTest extends TestCase
             'geometry_geojson' => ['type' => 'LineString', 'coordinates' => [[121.03, 14.58], [121.031, 14.581]]],
         ], $attributes));
     }
+
+    public function test_map_record_link_opens_the_specific_observation_only_with_required_permissions(): void
+    {
+        $record = $this->flood();
+        $user = $this->operator('flood-analyst');
+        // Give this role only GIS access initially, independent of seeded permissions.
+        $user->role->permissions()->sync(Permission::where('slug', 'gis.view')->pluck('id'));
+        $this->actingAs($user)->get(route('gis.data'))->assertOk()->assertJsonPath('floods.0.manage_url', null);
+        foreach (['flood.edit', 'prediction.view'] as $slug) {
+            $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'module' => 'flood', 'is_active' => true]);
+            $user->role->permissions()->syncWithoutDetaching([$permission->id]);
+        }
+        $user->unsetRelation('role');
+        $this->get(route('gis.data'))->assertOk()->assertJsonPath('floods.0.manage_url',
+            route('flood-operation.index', ['record_id' => $record->id]).'#dataset-management');
+        $this->get(route('flood-operation.index', ['record_id' => $record->id]))->assertOk();
+    }
 }

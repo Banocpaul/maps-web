@@ -32,20 +32,29 @@ class PredictionController extends Controller
      */
     public function index(): View
     {
-        $apiAvailable = $this->floodPredictionService->isAvailable();
-        $weatherContext = $this->getLiveWeatherContext();
+        return view('prediction.index', [
+            'apiAvailable' => null,
+            'weatherAvailable' => false,
+            'liveWeather' => [],
+            'citywideResult' => null,
+            'selectedForecastHours' => 24,
+            'loadInBackground' => true,
+        ]);
+    }
 
-        return view(
-            'prediction.index',
-            array_merge(
-                [
-                    'apiAvailable' => $apiAvailable,
-                    'citywideResult' => null,
-                    'selectedForecastHours' => 24,
-                ],
-                $weatherContext
-            )
-        );
+    public function apiStatus(): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'available' => $this->floodPredictionService->isAvailable(),
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    public function weatherPanel(): View
+    {
+        return view('prediction.partials.weather-panel', array_merge([
+            'apiAvailable' => false,
+            'selectedForecastHours' => 24,
+        ], $this->getLiveWeatherContext()));
     }
 
     /**

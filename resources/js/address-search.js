@@ -1,3 +1,4 @@
+import { normalizeBarangay } from './barangay-location.js';
 export function initializeAddressSearch() {
     const root = document.querySelector('[data-address-search]');
     const input = document.getElementById('location');
@@ -48,7 +49,14 @@ export function initializeAddressSearch() {
                 choice.addEventListener('click', () => {
                     input.value = match.label.slice(0, 255);
                     const street = document.getElementById('street');
-                    if (street && match.street) street.value = match.street.slice(0, 255);
+                    if (street) street.value = String(match.street || '').slice(0, 255);
+                    const corner = document.getElementById('corner');
+                    if (corner) corner.value = String(match.corner || '').slice(0, 255);
+                    const select = document.getElementById('barangay_id');
+                    const candidates = (match.barangay_candidates || []).map(normalizeBarangay);
+                    const options = [...(select?.options || [])].filter(option => option.value && candidates.includes(normalizeBarangay(option.textContent)));
+                    match.barangayFallback = options.length === 1 ? options[0].value : '';
+                    document.dispatchEvent(new CustomEvent('incident-address-context', {detail: match}));
                     document.getElementById('latitude').value = Number(match.latitude).toFixed(7);
                     document.getElementById('longitude').value = Number(match.longitude).toFixed(7);
                     document.dispatchEvent(new CustomEvent('incident-address-selected', {detail: match}));

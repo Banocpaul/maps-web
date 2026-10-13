@@ -20,7 +20,7 @@ class AddressSearchController extends Controller
         }
 
         try {
-            $results = Cache::remember('address-search:'.hash('sha256', mb_strtolower($query)), now()->addDay(), function () use ($query): array {
+            $results = Cache::remember('address-search:v2:'.hash('sha256', mb_strtolower($query)), now()->addDay(), function () use ($query): array {
                 $data = Http::acceptJson()->connectTimeout(4)->timeout(10)
                     ->get(config('services.address_search.url'), [
                         'q' => $query,
@@ -54,7 +54,15 @@ class AddressSearchController extends Controller
                     ]);
                     $label = mb_substr(implode(', ', array_unique($parts)), 0, 255);
                     if ($label === '') continue;
-                    $results[] = ['label' => $label, 'street' => $properties['street'] ?? '',
+                    $street = $properties['street'] ?? '';
+                    if ($street === '' && (($properties['type'] ?? '') === 'street' || ($properties['osm_key'] ?? '') === 'highway')) {
+                        $street = $properties['name'] ?? '';
+                    }
+                    $results[] = ['label' => $label, 'street' => $street,
+                        'barangay_candidates' => array_values(array_filter([
+                            $properties['district'] ?? '', $properties['locality'] ?? '', $properties['suburb'] ?? '',
+                        ])),
+                        'corner' => '',
                         'latitude' => (float) $latitude, 'longitude' => (float) $longitude];
                 }
                 return $results;

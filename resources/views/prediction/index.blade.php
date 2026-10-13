@@ -41,15 +41,6 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('prediction.weather.refresh') }}" class="flex justify-end"
-        onsubmit="const button = this.querySelector('button'); button.disabled = true; button.textContent = 'Refreshing weather…'; this.setAttribute('aria-busy', 'true');">
-        @csrf
-        <input type="hidden" name="forecast_hours" id="weather-refresh-hours" value="{{ $selectedForecastHours ?? 24 }}">
-        <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm hover:bg-sky-50 disabled:opacity-50">
-            <span aria-hidden="true">↻</span> Refresh Current Weather
-        </button>
-    </form>
-
     @if (session('error'))
         <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
             {{ session('error') }}
@@ -434,10 +425,6 @@
             if (!select) {
                 return;
             }
-
-            select.addEventListener('change', () => {
-                document.getElementById('weather-refresh-hours').value = select.value;
-            });
 
             const windows = @json($liveWeather['forecast_windows'] ?? []);
             const title = document.getElementById('forecast-window-title');

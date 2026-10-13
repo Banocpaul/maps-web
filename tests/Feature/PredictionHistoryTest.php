@@ -53,7 +53,7 @@ class PredictionHistoryTest extends TestCase
         $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldReceive('getCurrentWeather')->andReturn($this->weather()));
         $this->mock(FloodPredictionService::class, fn ($mock) => $mock->shouldReceive('isAvailable')->andReturn(false));
         $response = $this->actingAs($this->staff())->get(route('prediction.index'))->assertOk()
-            ->assertSee('Refresh Current Weather')->assertSee('Check connection again')
+            ->assertDontSee('Refresh Current Weather')->assertSee('Check connection again')
             ->assertDontSee('python -m uvicorn')->assertSee('Run Citywide Prediction');
         preg_match('/<button[^>]*>\s*Run Citywide Prediction/s', $response->getContent(), $matches);
         $this->assertNotEmpty($matches);

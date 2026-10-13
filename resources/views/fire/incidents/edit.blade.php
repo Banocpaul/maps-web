@@ -267,6 +267,8 @@
                                 required
                             >
 
+                            @include('fire.incidents.partials.address-search')
+
                             @error('location')
                                 <span class="incident-error">{{ $message }}</span>
                             @enderror
@@ -451,6 +453,8 @@
                         </div>
                     </div>
                 </section>
+
+                @include('fire.incidents.partials.address-edit-map')
 
                 <section class="incident-panel">
                     <h2 class="incident-section-title">Additional Remarks</h2>

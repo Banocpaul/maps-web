@@ -410,6 +410,8 @@
                                 required
                             >
 
+                            @include('fire.incidents.partials.address-search')
+
                             @error('location')
                                 <span class="incident-error">
                                     {{ $message }}
@@ -945,6 +947,11 @@
                     incidentMarker.openPopup();
                 }
             }
+
+            document.addEventListener('incident-address-selected', event => {
+                createOrMoveMarker(event.detail.latitude, event.detail.longitude);
+                map.setView([event.detail.latitude, event.detail.longitude], 17);
+            });
 
             function clearSelectedLocation() {
                 if (incidentMarker !== null) {

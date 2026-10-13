@@ -288,6 +288,8 @@ Route::middleware('auth')->group(function (): void {
     | Fire Incidents
     |--------------------------------------------------------------------------
     */
+    Route::get('/fire-address/search', \App\Http\Controllers\AddressSearchController::class)
+        ->middleware('throttle:12,1')->name('fire-address.search');
     Route::resource('fire-incidents', FireIncidentController::class)
     ->only(['create', 'store'])
     ->middleware('permission:fire.create');

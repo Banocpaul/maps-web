@@ -39,6 +39,10 @@ return [
     |--------------------------------------------------------------------------
     */
 
+    'address_search' => [
+        'url' => env('ADDRESS_SEARCH_URL', 'https://photon.komoot.io/api/'),
+    ],
+
     'maps_ml' => [
         'base_url' => env(
             'MAPS_ML_API_URL',

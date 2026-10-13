@@ -38,6 +38,17 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $exception, Request $request) {
+            if (! $request->routeIs('admin.backups.*') || $request->expectsJson()) {
+                return null;
+            }
+            $seconds = max(1, (int) ($exception->getHeaders()['Retry-After'] ?? 60));
+            return redirect()->route('admin.backups.index')
+                ->with('backup_cooldown', [
+                    'action' => $request->route()->getName(),
+                    'until' => now()->timestamp + $seconds,
+                ]);
+        });
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );

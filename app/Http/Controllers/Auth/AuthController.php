@@ -117,10 +117,9 @@ if (!$role || !$role->is_active) {
         }
 
         if ($user->isPublicResident()) {
-            $intended = $request->session()->pull('url.intended');
-            $allowed = [route('public.account'), route('public.reports'), route('public.incident-reports.create')];
+            $request->session()->forget('url.intended');
 
-            return redirect()->to(in_array($intended, $allowed, true) ? $intended : route('public.account'))
+            return redirect()->route('public.portal')
                 ->with('success', 'Welcome back, '.$user->full_name.'.');
         }
 

@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('public-portal/*')
             ? route('public.login') : route('login'));
         $middleware->redirectUsersTo(fn (Request $request) => $request->user()?->isPublicResident()
-            ? route('public.account') : route('dashboard'));
+            ? route('public.portal') : route('dashboard'));
 
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,

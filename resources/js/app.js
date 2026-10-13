@@ -4,6 +4,7 @@ import { initializeRecipientSearch } from "./sms-recipient-search.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     initializeSidebar();
+    initializeSidebarGroups();
     initializeDismissibleAlerts();
     initializeRecipientSearch();
     initializeProfileDialog();
@@ -86,6 +87,27 @@ function initializeDismissibleAlerts() {
 
             window.clearTimeout(timers.get(alert));
             alert.remove();
+        });
+    });
+}
+
+
+/**
+ * Toggle accessible navigation groups. Active child sections always begin open.
+ * This is a presentation-only change: backend route permissions are untouched.
+ */
+function initializeSidebarGroups() {
+    document.querySelectorAll(".sidebar-navigation-group").forEach((group) => {
+        const button = group.querySelector(".sidebar-group-toggle");
+        const panel = group.querySelector("[id^='sidebar-menu-']");
+        const chevron = group.querySelector(".sidebar-group-chevron");
+        if (!button || !panel) return;
+
+        button.addEventListener("click", () => {
+            const open = button.getAttribute("aria-expanded") !== "true";
+            button.setAttribute("aria-expanded", String(open));
+            panel.classList.toggle("hidden", !open);
+            chevron?.classList.toggle("rotate-180", open);
         });
     });
 }

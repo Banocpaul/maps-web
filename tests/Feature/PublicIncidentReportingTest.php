@@ -492,4 +492,29 @@ class PublicIncidentReportingTest extends TestCase
         $this->get(route('public.reports'))->assertOk()->assertSee($fire->incident_number)
             ->assertSee('Responding')->assertDontSee($other->reference);
     }
+
+    public function test_review_prefills_incident_barangay_from_pin_instead_of_reporter_home(): void
+    {
+        $area = new \App\Services\IncidentReportArea;
+        $name = $area->barangayNames(14.5794, 121.0359)[0];
+        $incidentBarangay = Barangay::firstOrCreate(['name' => $name], ['district' => 2, 'is_active' => true]);
+        foreach (['fire', 'flood'] as $type) {
+            $report = $this->report($type, 'Validated');
+            $report->update(['reporter_barangay_id' => $this->barangay()->id]);
+            $this->actingAs($this->operator())->get(route('public-submissions.show', $report))->assertOk()
+                ->assertViewHas('suggestedBarangayId', $incidentBarangay->id)
+                ->assertSee('id="official-barangay"', false);
+        }
+    }
+
+    public function test_pin_barangay_does_not_guess_outside_city_or_override_previous_input(): void
+    {
+        $report = $this->report('fire', 'Validated');
+        $report->update(['latitude' => 10, 'longitude' => 120]);
+        $this->actingAs($this->operator())->get(route('public-submissions.show', $report))->assertOk()
+            ->assertViewHas('suggestedBarangayId', null);
+        $this->withSession(['_old_input' => ['barangay_id' => $this->barangay()->id]])
+            ->get(route('public-submissions.show', $report))->assertOk()
+            ->assertSee('value="'.$this->barangay()->id.'" selected', false);
+    }
 }

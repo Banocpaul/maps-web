@@ -78,8 +78,9 @@
 @if($publicReport->status === 'Validated' && $canPublish)
 <form method="POST" action="{{ route('public-submissions.publish', $publicReport) }}" class="report-panel" id="publish-report-form">
     @csrf<h2>Add official {{ $publicReport->incident_type }} details</h2><p class="report-muted mb-4">All date and time fields use Philippine time (Asia/Manila).</p>
+    <p id="barangay-pin-status" class="report-muted mb-4" role="status">Barangay is suggested from the incident pin. Confirm it before publishing; you can correct the selection.</p>
     <div class="report-fields">
-        <label>Barangay<select name="barangay_id" required><option value="">Select barangay</option>@foreach($barangays as $barangay)<option value="{{ $barangay->id }}" @selected((string) old('barangay_id') === (string) $barangay->id)>{{ $barangay->name }}</option>@endforeach</select></label>
+        <label>Barangay<select name="barangay_id" id="official-barangay" required><option value="">Select barangay</option>@foreach($barangays as $barangay)<option value="{{ $barangay->id }}" @selected((string) old('barangay_id', $suggestedBarangayId) === (string) $barangay->id)>{{ $barangay->name }}</option>@endforeach</select></label>
         @if($publicReport->incident_type === 'fire')
             <label>Fire incident type<input name="incident_type" value="{{ old('incident_type') }}" placeholder="e.g. Residential fire" required maxlength="100"></label>
             <label class="span-full">Confirmed location / landmark<input name="location" value="{{ old('location') }}" required maxlength="255"></label>
@@ -148,14 +149,39 @@
     const type={{ Illuminate\Support\Js::from($publicReport->incident_type) }};
     const map=L.map('review-map').setView(origin,17);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
-    L.geoJSON({{ Illuminate\Support\Js::from($boundaries) }},{style:{color:'#64748b',weight:1,fillOpacity:0.015}}).addTo(map);
+    const boundaries={{ Illuminate\Support\Js::from($boundaries) }};
+    L.geoJSON(boundaries,{style:{color:'#64748b',weight:1,fillOpacity:0.015}}).addTo(map);
     L.circleMarker(origin,{radius:8,color:'#c2410c',fillColor:'#fb923c',fillOpacity:1}).addTo(map).bindPopup('Original public report');
+    const barangay=document.getElementById('official-barangay');
+    const barangayStatus=document.getElementById('barangay-pin-status');
+    function inRing(x,y,ring) {
+        let inside=false;
+        for(let i=0,j=ring.length-1;i<ring.length;j=i++) {
+            const [xi,yi]=ring[i],[xj,yj]=ring[j];
+            const cross=(x-xi)*(yj-yi)-(y-yi)*(xj-xi);
+            if(Math.abs(cross)<1e-10 && x>=Math.min(xi,xj) && x<=Math.max(xi,xj) && y>=Math.min(yi,yj) && y<=Math.max(yi,yj))return true;
+            if((yi>y)!==(yj>y) && x<(xj-xi)*(y-yi)/(yj-yi)+xi)inside=!inside;
+        }
+        return inside;
+    }
+    function populateBarangay(lat,lng) {
+        if(!barangay)return;
+        const matches=boundaries.features.filter(f=>{
+            const polygons=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.type==='MultiPolygon'?f.geometry.coordinates:[];
+            return polygons.some(rings=>inRing(lng,lat,rings[0])&&!rings.slice(1).some(r=>inRing(lng,lat,r)));
+        });
+        const id=matches.length===1?matches[0].properties.review_barangay_id:null;
+        barangay.value=id?String(id):'';
+        barangayStatus.textContent=id?'Barangay filled from pin: '+matches[0].properties.barangay+'. Confirm before publishing.':'Barangay could not be identified uniquely. Select and verify it manually.';
+    }
+    const hasPreviousBarangay={{ Illuminate\Support\Js::from(session()->hasOldInput('barangay_id')) }};
+    if(form && type==='flood' && !hasPreviousBarangay)populateBarangay(origin[0],origin[1]);
     let points=[], line;
     if(form && type==='fire') {
         const latitude=document.getElementById('official-latitude'),longitude=document.getElementById('official-longitude');
         const marker=L.marker([Number(latitude.value),Number(longitude.value)],{draggable:true}).addTo(map);
-        const update=position=>{marker.setLatLng(position);latitude.value=position.lat.toFixed(7);longitude.value=position.lng.toFixed(7);status.textContent='Confirmed pin: '+latitude.value+', '+longitude.value;};
-        marker.on('dragend',()=>update(marker.getLatLng()));map.on('click',e=>update(e.latlng));update(marker.getLatLng());
+        const update=(position,detect=true)=>{if(detect)populateBarangay(position.lat,position.lng);marker.setLatLng(position);latitude.value=position.lat.toFixed(7);longitude.value=position.lng.toFixed(7);status.textContent='Confirmed pin: '+latitude.value+', '+longitude.value;};
+        marker.on('dragend',()=>update(marker.getLatLng()));map.on('click',e=>update(e.latlng));update(marker.getLatLng(),!hasPreviousBarangay);
     }
     if(form && type==='flood') {
         const geometry=document.getElementById('flood-geometry');

@@ -26,6 +26,40 @@ class PredictionHistoryTest extends TestCase
         Barangay::create(['name' => 'Hulo', 'district' => 1, 'is_active' => true]);
     }
 
+    public function test_manual_weather_refresh_preserves_selected_forecast_window(): void
+    {
+        $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldReceive('refreshCurrentWeather')->once()->andReturn($this->weather()));
+        $this->actingAs($this->staff())->post(route('prediction.weather.refresh'), ['forecast_hours' => 72])
+            ->assertRedirect(route('prediction.index'))->assertSessionHas('success')
+            ->assertSessionHas('_old_input.forecast_hours', 72);
+    }
+
+    public function test_failed_weather_refresh_returns_a_useful_error(): void
+    {
+        $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldReceive('refreshCurrentWeather')->once()->andThrow(new RuntimeException('Open-Meteo unavailable')));
+        $this->actingAs($this->staff())->post(route('prediction.weather.refresh'), ['forecast_hours' => 24])
+            ->assertRedirect(route('prediction.index'))->assertSessionHas('error');
+    }
+
+    public function test_weather_refresh_requires_prediction_permission(): void
+    {
+        $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldNotReceive('refreshCurrentWeather'));
+        $this->actingAs($this->staff('fire-responder', ['fire.view']))
+            ->post(route('prediction.weather.refresh'), ['forecast_hours' => 24])->assertForbidden();
+    }
+
+    public function test_temporary_health_failure_does_not_disable_prediction_retry(): void
+    {
+        $this->mock(LiveWeatherService::class, fn ($mock) => $mock->shouldReceive('getCurrentWeather')->andReturn($this->weather()));
+        $this->mock(FloodPredictionService::class, fn ($mock) => $mock->shouldReceive('isAvailable')->andReturn(false));
+        $response = $this->actingAs($this->staff())->get(route('prediction.index'))->assertOk()
+            ->assertSee('Refresh Current Weather')->assertSee('Check connection again')
+            ->assertDontSee('python -m uvicorn')->assertSee('Run Citywide Prediction');
+        preg_match('/<button[^>]*>\s*Run Citywide Prediction/s', $response->getContent(), $matches);
+        $this->assertNotEmpty($matches);
+        $this->assertStringNotContainsString('disabled=', $matches[0]);
+    }
+
     public function test_each_forecast_window_saves_a_distinct_complete_run_without_changing_ml_inputs(): void
     {
         $user = $this->staff();

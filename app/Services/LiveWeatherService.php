@@ -24,16 +24,16 @@ class LiveWeatherService
     private int $timeoutSeconds = 30;
     private int $connectTimeoutSeconds = 10;
 
-    /** One successful snapshot per Manila day; at most three failed/successful attempts. */
-    public function getCurrentWeather(): array
+    /** Reuse the daily snapshot unless staff explicitly request fresh weather. */
+    public function getCurrentWeather(bool $forceRefresh = false): array
     {
         $snapshotDate = now(self::TIMEZONE)->toDateString();
         $snapshot = $this->findSnapshot($snapshotDate);
 
-        if ($this->hasUsableSnapshot($snapshot)) {
+        if (! $forceRefresh && $this->hasUsableSnapshot($snapshot)) {
             return $this->snapshotResponse($snapshot, 'database');
         }
-        if ($this->retryIsBlocked($snapshot)) {
+        if (! $forceRefresh && $this->retryIsBlocked($snapshot)) {
             return $this->staleFallbackOrFail($snapshotDate);
         }
 
@@ -41,12 +41,12 @@ class LiveWeatherService
             // A shared database lock also protects against the web app and cron job racing.
             return Cache::store('database')
                 ->lock('maps:daily-weather-snapshot:' . $snapshotDate, 180)
-                ->block(10, function () use ($snapshotDate): array {
+                ->block(10, function () use ($snapshotDate, $forceRefresh): array {
                     $snapshot = $this->findSnapshot($snapshotDate);
-                    if ($this->hasUsableSnapshot($snapshot)) {
+                    if (! $forceRefresh && $this->hasUsableSnapshot($snapshot)) {
                         return $this->snapshotResponse($snapshot, 'database');
                     }
-                    if ($this->retryIsBlocked($snapshot)) {
+                    if (! $forceRefresh && $this->retryIsBlocked($snapshot)) {
                         return $this->staleFallbackOrFail($snapshotDate);
                     }
 
@@ -72,7 +72,7 @@ class LiveWeatherService
                         $snapshot = DailyWeatherSnapshot::query()->create(
                             array_merge(['snapshot_date' => $snapshotDate], $attributes)
                         );
-                    } else {
+                    } elseif (! $this->hasUsableSnapshot($snapshot)) {
                         $snapshot->update($attributes);
                     }
 
@@ -100,6 +100,13 @@ class LiveWeatherService
                         return $this->snapshotResponse($snapshot, 'open-meteo');
                     } catch (Throwable $exception) {
                         $metadata['last_error'] = $exception->getMessage();
+                        if ($forceRefresh) {
+                            // Do not discard a working snapshot when a manual refresh fails.
+                            throw new RuntimeException(
+                                'Weather refresh failed. The last saved weather is retained. Please try again shortly.',
+                                previous: $exception
+                            );
+                        }
                         $snapshot->update([
                             'source' => 'Open-Meteo-Attempt-Failed',
                             'weather_data' => ['_daily_fetch' => $metadata],
@@ -119,8 +126,11 @@ class LiveWeatherService
         } catch (LockTimeoutException $exception) {
             // A concurrent fetch may have completed while this caller waited.
             $snapshot = $this->findSnapshot($snapshotDate);
-            if ($this->hasUsableSnapshot($snapshot)) {
+            if (! $forceRefresh && $this->hasUsableSnapshot($snapshot)) {
                 return $this->snapshotResponse($snapshot, 'database');
+            }
+            if ($forceRefresh) {
+                throw new RuntimeException('Weather is already being refreshed. Please try again shortly.', previous: $exception);
             }
             return $this->staleFallbackOrFail($snapshotDate, $exception);
         }
@@ -164,10 +174,10 @@ class LiveWeatherService
             );
     }
 
-    /** Uses the same policy: a successful snapshot is never fetched again that day. */
+    /** Explicit staff refresh bypasses the daily cache without deleting saved weather. */
     public function refreshCurrentWeather(): array
     {
-        return $this->getCurrentWeather();
+        return $this->getCurrentWeather(forceRefresh: true);
     }
 
     /** Keep real dates and values; never pad a stale forecast with invented days. */

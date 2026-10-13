@@ -45,63 +45,37 @@ class DailyWeatherSnapshotTest extends TestCase
         );
     }
 
-    public function test_stale_snapshot_is_refreshed_after_fifteen_minutes(): void
+    public function test_daily_snapshot_is_reused_until_explicit_refresh(): void
     {
         $this->freezeManilaTime();
-        Http::fake([
-            'https://api.open-meteo.com/v1/forecast*' =>
-                Http::response($this->openMeteoResponse(), 200),
-        ]);
-
+        Http::fake(['https://api.open-meteo.com/v1/forecast*' => Http::response($this->openMeteoResponse(), 200)]);
         $service = app(LiveWeatherService::class);
         $service->getCurrentWeather();
-
-        Carbon::setTestNow(
-            now('Asia/Manila')->addMinutes(16)
-        );
-
-        $refreshed = $service->getCurrentWeather();
-
-        Http::assertSentCount(2);
-        $this->assertSame(
-            'open-meteo',
-            $refreshed['weather_retrieved_from']
-        );
-        $this->assertFalse($refreshed['weather_is_stale']);
-        $this->assertDatabaseCount('daily_weather_snapshots', 1);
+        Carbon::setTestNow(now('Asia/Manila')->addHours(6));
+        $cached = $service->getCurrentWeather();
+        Http::assertSentCount(1);
+        $this->assertSame('database', $cached['weather_retrieved_from']);
     }
 
-    public function test_stale_snapshot_is_returned_when_open_meteo_is_unavailable(): void
+    public function test_failed_manual_refresh_preserves_today_successful_snapshot(): void
     {
         $this->freezeManilaTime();
-        $attempts = 0;
-
-        Http::fake(function () use (&$attempts) {
-            $attempts++;
-
-            return $attempts === 1
-                ? Http::response($this->openMeteoResponse(), 200)
-                : Http::response(['error' => 'offline'], 503);
-        });
-
+        Http::fake(['https://api.open-meteo.com/v1/forecast*' => Http::response($this->openMeteoResponse(), 200)]);
         $service = app(LiveWeatherService::class);
-        $first = $service->getCurrentWeather();
-
-        Carbon::setTestNow(
-            now('Asia/Manila')->addMinutes(16)
-        );
-
-        $stale = $service->getCurrentWeather();
-
-        $this->assertSame('open-meteo', $first['weather_retrieved_from']);
-        $this->assertSame(
-            'stale-database',
-            $stale['weather_retrieved_from']
-        );
-        $this->assertTrue($stale['weather_is_stale']);
-        $this->assertGreaterThanOrEqual(2, $attempts);
+        $original = $service->getCurrentWeather();
+        Http::fake(['https://api.open-meteo.com/v1/forecast*' => Http::response(['error' => 'offline'], 503)]);
+        try {
+            $service->refreshCurrentWeather();
+            $this->fail('Failed refresh must not report success.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('retained', $exception->getMessage());
+        }
+        $retained = $service->getCurrentWeather();
+        $this->assertSame($original['observed_at'], $retained['observed_at']);
+        $this->assertSame('Open-Meteo', DailyWeatherSnapshot::query()->sole()->source);
         $this->assertDatabaseCount('daily_weather_snapshots', 1);
     }
+
     public function test_forced_refresh_replaces_today_snapshot_without_duplicate_row(): void
     {
         $this->freezeManilaTime();
@@ -193,7 +167,7 @@ class DailyWeatherSnapshotTest extends TestCase
                 'weather_code' => [61, 61, 63, 3],
             ],
             'daily' => [
-                'time' => ['2026-08-26'],
+                'time' => ['2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29', '2026-08-30', '2026-08-31', '2026-09-01', '2026-09-02'],
                 'temperature_2m_max' => [31.0],
                 'temperature_2m_min' => [25.0],
                 'precipitation_sum' => [3.7],

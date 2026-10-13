@@ -97,9 +97,33 @@
         <button type="button" data-bulk-action="subside" class="rounded-lg bg-emerald-100 px-3 py-2 font-semibold">Mark Subsided</button>
     </div>
     @endif
-    <dialog id="flood-change-dialog" class="rounded-2xl p-6 shadow-xl w-full max-w-xl">
+    <style>
+        #flood-change-dialog, #flood-history-dialog {
+            position: fixed; inset: 0; margin: auto;
+            width: calc(100vw - 2rem); max-width: 42rem;
+            max-height: calc(100dvh - 3rem); overflow-y: auto;
+            padding: 0; border: 1px solid #e2e8f0; border-radius: 1rem;
+            background: #fff; color: #0f172a; font-family: inherit;
+            box-shadow: 0 25px 50px -12px rgb(15 23 42 / 35%);
+        }
+        #flood-change-dialog::backdrop, #flood-history-dialog::backdrop {
+            background: rgb(15 23 42 / 55%); backdrop-filter: blur(3px);
+        }
+        #flood-change-dialog form { padding: 1.5rem; }
+        #flood-history-content {
+            padding: 1.25rem; margin: 0; font-family: inherit;
+            font-size: .875rem; line-height: 1.75; color: #475569;
+            white-space: pre-wrap; overflow-wrap: anywhere;
+        }
+        #flood-change-preview { font-family: inherit; line-height: 1.65; }
+    </style>
+    <dialog id="flood-change-dialog" aria-labelledby="flood-change-title">
         <form id="flood-change-form" class="space-y-4">
-            <h3 class="text-xl font-bold">Review verified flood updates</h3>
+            <div class="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+                <div><p class="text-xs font-semibold uppercase tracking-wide text-sky-700">Flood Operations</p>
+                <h3 id="flood-change-title" class="mt-1 text-xl font-semibold text-slate-950">Review verified flood updates</h3></div>
+                <button type="button" id="flood-change-x" aria-label="Close flood update dialog" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100">✕</button>
+            </div>
             <p class="text-sm">Apply only changes confirmed by field observations. Each incident receives a history entry and an SMS update to its eligible barangay recipients.</p>
             <pre id="flood-change-preview" class="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm"></pre>
             <label class="block">Observed time (Philippine time)<input id="flood-change-time" type="datetime-local" step="1" required class="block w-full rounded border p-2"></label>
@@ -108,11 +132,17 @@
             <div class="flex gap-3"><button type="button" id="flood-change-cancel" class="rounded border px-4 py-2">Cancel</button><button id="flood-change-submit" class="rounded bg-sky-700 px-4 py-2 text-white">Confirm updates and send alerts</button></div>
         </form>
     </dialog>
-    <dialog id="flood-history-dialog" class="rounded-2xl p-6 shadow-xl w-full max-w-2xl">
-        <h3 class="text-xl font-bold">Flood change history</h3>
-        <pre id="flood-history-content" class="my-4 whitespace-pre-wrap text-sm"></pre>
-        <div id="flood-history-retry" class="my-3"></div>
-        <button id="flood-history-close" type="button" class="rounded border px-4 py-2">Close</button>
+    <dialog id="flood-history-dialog" aria-labelledby="flood-history-title">
+        <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+            <div><p class="text-xs font-semibold uppercase tracking-wide text-sky-700">Flood Operations</p>
+            <h3 id="flood-history-title" class="mt-1 text-xl font-semibold text-slate-950">Flood change history</h3></div>
+            <button id="flood-history-x" type="button" aria-label="Close flood history" class="rounded-lg p-2 text-slate-500 hover:bg-slate-100">✕</button>
+        </div>
+        <div id="flood-history-content"></div>
+        <div id="flood-history-retry" class="px-6 pb-4"></div>
+        <div class="flex justify-end border-t border-slate-200 bg-slate-50 px-6 py-4">
+            <button id="flood-history-close" type="button" class="rounded-xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-800">Close</button>
+        </div>
     </dialog>
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-200">
@@ -506,6 +536,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('flood-change-error').textContent = '';
         document.getElementById('flood-change-dialog').showModal();
     }));
+    document.getElementById('flood-change-x').addEventListener('click', () => document.getElementById('flood-change-dialog').close());
+    document.getElementById('flood-history-x').addEventListener('click', () => document.getElementById('flood-history-dialog').close());
     document.getElementById('flood-change-cancel').addEventListener('click', () => document.getElementById('flood-change-dialog').close());
     document.getElementById('flood-history-close').addEventListener('click', () => document.getElementById('flood-history-dialog').close());
     document.getElementById('flood-change-form').addEventListener('submit', async event => {

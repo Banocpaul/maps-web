@@ -298,6 +298,41 @@
     $managementHeading = $roleSlug === 'administrator'
         ? 'Administration'
         : 'Resources';
+
+    // Retain the existing role allowlist AND permissions before grouping the links.
+    $allNavigation = collect(array_merge($operationsNavigation, $managementNavigation))
+        ->filter(fn ($item) => $item['route']
+            && Route::has($item['route'])
+            && ($item['permission'] === null || $currentUser?->hasPermission($item['permission'])))
+        ->keyBy('label');
+
+    $navigationGroups = [
+        ['id' => 'flood', 'label' => 'Flood Management', 'icon' => 'flood',
+            'items' => ['Flood Prediction', 'Prediction History', 'Flood Operations']],
+        ['id' => 'fire', 'label' => 'Fire Management', 'icon' => 'fire',
+            'items' => ['Fire Incidents', 'Fire Hydrants']],
+        ['id' => 'records', 'label' => 'Records & Reports', 'icon' => 'records',
+            'items' => ['Operational Records', 'Incident Reports', 'Reports']],
+        ['id' => 'communications', 'label' => 'Communications', 'icon' => 'message',
+            'items' => ['SMS Center', 'Public Advisories']],
+        ['id' => 'administration', 'label' => 'Administration', 'icon' => 'settings',
+            'items' => ['User Management', 'Settings', 'Backup & Recovery', 'Activity Logs']],
+    ];
+
+    $navigationGroups = collect($navigationGroups)
+        ->map(function ($group) use ($allNavigation) {
+            $group['links'] = collect($group['items'])
+                ->filter(fn ($label) => $allNavigation->has($label))
+                ->map(fn ($label) => $allNavigation->get($label))
+                ->values()->all();
+            $group['active'] = collect($group['links'])
+                ->contains(fn ($link) => collect($link['active'])
+                    ->contains(fn ($pattern) => request()->routeIs($pattern)));
+            return $group;
+        })
+        ->filter(fn ($group) => count($group['links']) > 0)
+        ->values();
+
 @endphp
 
 <aside
@@ -358,407 +393,46 @@
         </p>
     </div>
 
-    {{-- Navigation --}}
-    <nav class="flex-1 overflow-y-auto px-3 py-5">
-        <section aria-labelledby="operations-navigation-heading">
-            <h2
-                id="operations-navigation-heading"
-                class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-            >
-                {{ $operationsHeading }}
-            </h2>
+    {{-- Role-aware, collapsible navigation. All existing destinations remain separate. --}}
+    <nav class="flex-1 overflow-y-auto px-3 py-5" aria-label="Modules">
+        <h2 id="operations-navigation-heading"
+            class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            {{ $operationsHeading }}
+        </h2>
+        <div class="space-y-1">
+            @foreach (['Dashboard', 'Incident Analytics', 'System Analytics'] as $topLabel)
+                @if ($allNavigation->has($topLabel))
+                    @include('layouts.partials.sidebar-link', ['item' => $allNavigation->get($topLabel), 'nested' => false])
+                @endif
+            @endforeach
 
-            <div class="space-y-0.5">
-                @foreach ($operationsNavigation as $item)
-                    @php
-                        $canViewItem = $item['permission'] === null
-                            || $currentUser?->hasPermission($item['permission']);
+            @foreach ($navigationGroups as $group)
+                <div class="sidebar-navigation-group" data-sidebar-group="{{ $group['id'] }}"
+                    data-active="{{ $group['active'] ? 'true' : 'false' }}">
+                    <button type="button" aria-expanded="{{ $group['active'] ? 'true' : 'false' }}"
+                        aria-controls="sidebar-menu-{{ $group['id'] }}"
+                        class="sidebar-group-toggle group flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium transition hover:bg-white/[0.06] hover:text-white {{ $group['active'] ? 'bg-white/10 text-white' : 'text-slate-300' }}">
+                        <span class="flex h-5 w-5 flex-none items-center justify-center {{ $group['active'] ? 'text-sky-300' : 'text-slate-400' }}">
+                            @include('layouts.partials.sidebar-icon', ['icon' => $group['icon']])
+                        </span>
+                        <span class="min-w-0 flex-1 truncate">{{ $group['label'] }}</span>
+                        <svg class="sidebar-group-chevron h-4 w-4 flex-none transition-transform {{ $group['active'] ? 'rotate-180' : '' }}"
+                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                        </svg>
+                    </button>
+                    <div id="sidebar-menu-{{ $group['id'] }}" class="space-y-0.5 py-1 {{ $group['active'] ? '' : 'hidden' }}">
+                        @foreach ($group['links'] as $groupLink)
+                            @include('layouts.partials.sidebar-link', ['item' => $groupLink, 'nested' => true])
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
 
-                        $isActive = collect($item['active'])
-                            ->contains(
-                                fn ($pattern) =>
-                                    request()->routeIs($pattern)
-                            );
-                    @endphp
-
-                    @if ($canViewItem && $item['route'])
-                        <a
-                            href="{{ route($item['route']) }}"
-                            @class([
-                                'group relative flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm transition',
-                                'bg-white/10 font-medium text-white' => $isActive,
-                                'text-slate-300 hover:bg-white/[0.06] hover:text-white' => ! $isActive,
-                            ])
-                            @if ($isActive)
-                                aria-current="page"
-                            @endif
-                        >
-                            @if ($isActive)
-                                <span
-                                    class="absolute bottom-2 left-0 top-2 w-0.5 rounded-r bg-sky-400"
-                                    aria-hidden="true"
-                                ></span>
-                            @endif
-
-                            <span
-                                @class([
-                                    'flex h-5 w-5 flex-none items-center justify-center',
-                                    'text-sky-300' => $isActive,
-                                    'text-slate-400 group-hover:text-slate-200' => ! $isActive,
-                                ])
-                            >
-                                @switch($item['icon'])
-                                    @case('dashboard')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M4 4h6v6H4V4Zm10 0h6v6h-6V4Zm0 10h6v6h-6v-6ZM4 14h6v6H4v-6Z"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('analytics')
-                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 20V11m5 9V5m5 15v-7m4 7V8" />
-                                        </svg>
-                                        @break
-
-                                    @case('records')
-                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                            <ellipse cx="12" cy="5" rx="7" ry="3" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
-                                        </svg>
-                                        @break
-
-                                    @case('prediction')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M4 18 9 13l3 3 8-9"
-                                            />
-
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M15 7h5v5"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('flood')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M12 3.5c-2.4 3.2-5.5 6.8-5.5 10A5.5 5.5 0 0 0 12 19a5.5 5.5 0 0 0 5.5-5.5c0-3.2-3.1-6.8-5.5-10Z"
-                                            />
-
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M9.5 14.5c.5 1 1.3 1.5 2.5 1.5"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('fire')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M12 3.5c1.5 3 4.5 4.7 4.5 8.5A4.5 4.5 0 0 1 12 16.5 4.5 4.5 0 0 1 7.5 12c0-2.4 1.2-4.2 2.7-5.8.2 1.8.9 3.2 1.8 4 .4-2.3.1-4.3 0-6.7Z"
-                                            />
-
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M9.8 16c0 2.1 1.1 3.5 2.2 4.2 1.1-.7 2.2-2.1 2.2-4.2"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('hydrant')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M8 10h8m-6-3h4m-7 6h10v7H7v-7Zm3-6V4h4v3M7 15H4v3h3m10-3h3v3h-3"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('map')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="m9 19-5-2V5l5 2m0 12 6-2m-6 2V7m6 10 5 2V7l-5-2m0 12V5m0 0L9 7"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('message')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M7 8h10M7 12h7m7 0a9 9 0 1 1-3.3-7A9 9 0 0 1 21 12Z"
-                                            />
-
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="m5.5 18.5-1.5 2.5 4-.8"
-                                            />
-                                        </svg>
-                                        @break
-                                @endswitch
-                            </span>
-
-                            <span class="min-w-0 truncate">
-                                {{ $item['label'] }}
-                            </span>
-                        </a>
-                    @endif
-                @endforeach
-            </div>
-        </section>
-
-        <section
-            class="mt-7"
-            aria-labelledby="management-navigation-heading"
-        >
-            <h2
-                id="management-navigation-heading"
-                class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-            >
-                {{ $managementHeading }}
-            </h2>
-
-            <div class="space-y-0.5">
-                @foreach ($managementNavigation as $item)
-                    @php
-                        $canViewItem = $item['permission'] === null
-                            || $currentUser?->hasPermission($item['permission']);
-
-                        $isActive = collect($item['active'])
-                            ->contains(
-                                fn ($pattern) =>
-                                    request()->routeIs($pattern)
-                            );
-                    @endphp
-
-                    @if ($canViewItem && $item['route'])
-                        <a
-                            href="{{ route($item['route']) }}"
-                            @class([
-                                'group relative flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm transition',
-                                'bg-white/10 font-medium text-white' => $isActive,
-                                'text-slate-300 hover:bg-white/[0.06] hover:text-white' => ! $isActive,
-                            ])
-                            @if ($isActive)
-                                aria-current="page"
-                            @endif
-                        >
-                            @if ($isActive)
-                                <span
-                                    class="absolute bottom-2 left-0 top-2 w-0.5 rounded-r bg-sky-400"
-                                    aria-hidden="true"
-                                ></span>
-                            @endif
-
-                            <span
-                                @class([
-                                    'flex h-5 w-5 flex-none items-center justify-center',
-                                    'text-sky-300' => $isActive,
-                                    'text-slate-400 group-hover:text-slate-200' => ! $isActive,
-                                ])
-                            >
-                                @switch($item['icon'])
-                                    @case('reports')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M5 20V11m5 9V5m5 15v-7m4 7V8"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('advisory')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('submissions')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M8 7h9M8 11h9M8 15h5M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('users')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M15.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0ZM4.5 20a7.5 7.5 0 0 1 15 0"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('settings')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <circle
-                                                cx="12"
-                                                cy="12"
-                                                r="3"
-                                            />
-
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.1 2.1-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-3v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L6.6 17l.1-.1A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.6-1H5v-3h.4A1.7 1.7 0 0 0 7 10a1.7 1.7 0 0 0-.3-1.9L6.6 8l2.1-2.1.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h3v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.4v3H21a1.7 1.7 0 0 0-1.6 1Z"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('activity')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                d="M9 5h6m-7 4h8m-8 4h5m-5 4h8M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
-                                            />
-                                        </svg>
-                                        @break
-
-                                    @case('backup')
-                                        <svg
-                                            class="h-5 w-5"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            stroke-width="1.8"
-                                            aria-hidden="true"
-                                        >
-                                            <ellipse cx="12" cy="5" rx="7" ry="3" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="m16.5 17.5 1.5 1.5 3-3" />
-                                        </svg>
-                                        @break
-                                @endswitch
-                            </span>
-
-                            <span class="min-w-0 truncate">
-                                {{ $item['label'] }}
-                            </span>
-                        </a>
-                    @endif
-                @endforeach
-            </div>
-        </section>
+            @if ($allNavigation->has('GIS Mapping'))
+                @include('layouts.partials.sidebar-link', ['item' => $allNavigation->get('GIS Mapping'), 'nested' => false])
+            @endif
+        </div>
     </nav>
 
     {{-- User and logout --}}

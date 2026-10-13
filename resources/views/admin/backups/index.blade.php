@@ -4,6 +4,12 @@
 
 @section('content')
     <div class="space-y-6">
+        @if (session('backup_cooldown'))
+            <div role="status" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+                data-backup-cooldown data-action="{{ session('backup_cooldown.action') }}" data-until="{{ session('backup_cooldown.until') }}">
+                This backup action is temporarily limited. Please wait <span data-cooldown-seconds>{{ max(0, session('backup_cooldown.until') - now()->timestamp) }}</span> seconds before trying again. Other backup actions remain available.
+            </div>
+        @endif
         <section class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">
@@ -423,6 +429,31 @@
 
 @push('scripts')
     <script>
+        // Prevent duplicate destructive submissions while the first request is running.
+        document.querySelectorAll('dialog form').forEach(form => {
+            if (!form.action.endsWith('/restore')) return;
+            form.addEventListener('submit', event => {
+                if (form.dataset.submitting === 'true') { event.preventDefault(); return; }
+                form.dataset.submitting = 'true';
+                form.querySelectorAll('button[type="submit"]').forEach(button => {
+                    button.disabled = true;
+                    button.textContent = 'Creating safety backup and restoring…';
+                });
+            });
+        });
+        const cooldown = document.querySelector('[data-backup-cooldown]');
+        if (cooldown) {
+            const suffix = {store: '/admin/backups', verify: '/verify', download: '/download', restore: '/restore', destroy: null}[cooldown.dataset.action.split('.').pop()];
+            const buttons = [...document.querySelectorAll('form')].filter(form => suffix ? new URL(form.action).pathname.endsWith(suffix) : cooldown.dataset.action.endsWith('.destroy') && form.querySelector('input[name="_method"]')?.value === 'DELETE').flatMap(form => [...form.querySelectorAll('button[type="submit"]')]);
+            const tick = () => {
+                const remaining = Math.max(0, Number(cooldown.dataset.until) - Math.floor(Date.now()/1000));
+                cooldown.querySelector('[data-cooldown-seconds]').textContent = String(remaining);
+                buttons.forEach(button => { if (!button.form.dataset.submitting) button.disabled = remaining > 0; });
+                if (!remaining) { cooldown.textContent = 'Cooldown finished. You can try the backup action again.'; clearInterval(timer); }
+            };
+            const timer = setInterval(tick, 1000);
+            tick();
+        }
         document.querySelectorAll('[data-open-dialog]').forEach((button) => {
             button.addEventListener('click', () => {
                 document.getElementById(button.dataset.openDialog)?.showModal();

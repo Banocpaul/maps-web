@@ -529,19 +529,19 @@ Route::resource('fire-incidents', FireIncidentController::class)
             Route::get('/', [DatabaseBackupController::class, 'index'])
                 ->name('index');
             Route::post('/', [DatabaseBackupController::class, 'store'])
-                ->middleware('throttle:3,10')
+                ->middleware('throttle:3,10,backup-store-')
                 ->name('store');
             Route::post('/{databaseBackup}/verify', [DatabaseBackupController::class, 'verify'])
-                ->middleware('throttle:5,10')
+                ->middleware('throttle:5,10,backup-verify-')
                 ->name('verify');
             Route::post('/{databaseBackup}/download', [DatabaseBackupController::class, 'download'])
-                ->middleware('throttle:5,10')
+                ->middleware('throttle:5,10,backup-download-')
                 ->name('download');
             Route::post('/{databaseBackup}/restore', [DatabaseBackupController::class, 'restore'])
-                ->middleware('throttle:1,10')
+                ->middleware('throttle:1,10,backup-restore-')
                 ->name('restore');
             Route::delete('/{databaseBackup}', [DatabaseBackupController::class, 'destroy'])
-                ->middleware('throttle:3,10')
+                ->middleware('throttle:3,10,backup-destroy-')
                 ->name('destroy');
         });
     /*

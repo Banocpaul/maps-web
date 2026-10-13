@@ -48,25 +48,25 @@
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="SMS delivery overview">
         <div class="flex items-center gap-4 rounded-2xl border border-slate-200/90 bg-white px-5 py-5 shadow-sm">
-            <span class="flex h-13 w-13 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-blue-600" aria-hidden="true">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-blue-600" aria-hidden="true">
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><path d="M3 19v-1c0-3 2.5-5 6-5s6 2 6 5v1H3ZM17 5a3 3 0 0 1 0 6m1 3c2.5.5 3 2 3 4v1h-4"/></svg>
             </span>
             <div><p class="text-sm font-medium text-slate-600">Active Recipients</p><p class="mt-1 text-3xl font-bold tabular-nums text-slate-950">{{ $statistics['active_recipients'] ?? 0 }}</p></div>
         </div>
         <div class="flex items-center gap-4 rounded-2xl border border-slate-200/90 bg-white px-5 py-5 shadow-sm">
-            <span class="flex h-13 w-13 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600" aria-hidden="true">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600" aria-hidden="true">
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
             </span>
             <div><p class="text-sm font-medium text-slate-600">Enabled Rules</p><p class="mt-1 text-3xl font-bold tabular-nums text-slate-950">{{ $statistics['enabled_rules'] ?? 0 }}</p></div>
         </div>
         <div class="flex items-center gap-4 rounded-2xl border border-emerald-100 bg-white px-5 py-5 shadow-sm">
-            <span class="flex h-13 w-13 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600" aria-hidden="true">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600" aria-hidden="true">
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4 20-7ZM11 13l11-11"/></svg>
             </span>
             <div><p class="text-sm font-medium text-slate-600">Sent Today</p><p class="mt-1 text-3xl font-bold tabular-nums text-emerald-600">{{ $statistics['sent_today'] ?? 0 }}</p></div>
         </div>
         <div class="flex items-center gap-4 rounded-2xl border border-rose-100 bg-white px-5 py-5 shadow-sm">
-            <span class="flex h-13 w-13 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600" aria-hidden="true">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600" aria-hidden="true">
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg>
             </span>
             <div><p class="text-sm font-medium text-slate-600">Failed Today</p><p class="mt-1 text-3xl font-bold tabular-nums text-rose-600">{{ $statistics['failed_today'] ?? 0 }}</p></div>

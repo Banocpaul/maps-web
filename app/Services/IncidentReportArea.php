@@ -18,6 +18,12 @@ class IncidentReportArea
 
     public function contains(float $latitude, float $longitude): bool
     {
+        return $this->barangayNames($latitude, $longitude) !== [];
+    }
+
+    public function barangayNames(float $latitude, float $longitude): array
+    {
+        $names = [];
         foreach ($this->boundaries()['features'] as $feature) {
             $geometry = $feature['geometry'];
             $polygons = $geometry['type'] === 'Polygon'
@@ -35,12 +41,13 @@ class IncidentReportArea
                     }
                 }
                 if (! $insideHole) {
-                    return true;
+                    $names[] = $feature['properties']['barangay'];
+                    break;
                 }
             }
         }
 
-        return false;
+        return array_values(array_unique($names));
     }
 
     private function inRing(float $x, float $y, array $ring): bool

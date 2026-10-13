@@ -16,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -50,6 +51,23 @@ class IncidentReportReviewController extends Controller
         $publicReport->load(['events.actor', 'fireIncident', 'floodTrainingRecord', 'submitter', 'reporterBarangay']);
         $barangays = Barangay::active()->orderBy('name')->get(['id', 'name']);
         $boundaries = $area->boundaries();
+        $barangayKey = static function (string $name): string {
+            $key = preg_replace('/[^a-z0-9]/', '', strtolower(Str::ascii($name)));
+            $key = str_replace('hagdangbato', 'hagdanbato', $key);
+            return $key === 'wackwackgreenhillseast' ? 'wackwackgreenhills' : $key;
+        };
+        foreach ($boundaries['features'] as &$feature) {
+            $matches = $barangays->filter(fn ($barangay) => $barangayKey($barangay->name)
+                === $barangayKey($feature['properties']['barangay']));
+            $feature['properties']['review_barangay_id'] = $matches->count() === 1 ? $matches->first()->id : null;
+        }
+        unset($feature);
+        $pinNames = $area->barangayNames($publicReport->latitude, $publicReport->longitude);
+        $suggestedBarangayId = null;
+        if (count($pinNames) === 1) {
+            $matches = $barangays->filter(fn ($barangay) => $barangayKey($barangay->name) === $barangayKey($pinNames[0]));
+            $suggestedBarangayId = $matches->count() === 1 ? $matches->first()->id : null;
+        }
         $canReview = $request->user()->hasPermission('public-submissions.review');
         $canReject = $request->user()->hasPermission('public-submissions.reject');
         $canPublish = $request->user()->hasPermission('public-submissions.approve')
@@ -88,7 +106,7 @@ class IncidentReportReviewController extends Controller
         }
 
         return view('incident-reports.show', compact(
-            'publicReport', 'barangays', 'boundaries', 'canReview', 'canReject', 'canPublish', 'photoAvailable', 'matchingFires', 'fireSearch'
+            'publicReport', 'barangays', 'boundaries', 'canReview', 'canReject', 'canPublish', 'photoAvailable', 'matchingFires', 'fireSearch', 'suggestedBarangayId'
         ));
     }
 

@@ -4,6 +4,7 @@
 <fieldset data-recipient-search-scope>
     <legend class="mb-3 text-sm font-semibold text-slate-800">Select Recipients</legend>
     @include('sms.partials.recipient-search', ['searchId' => 'manual-recipient-search', 'showSelection' => true])
+    <div class="mt-2 flex justify-end"><button type="button" data-recipient-selection-clear class="text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline">Clear selection</button></div>
     <p class="mt-2 text-xs leading-5 text-slate-500">Only active internal officers can receive manual SMS. Public residents receive their subscribed automatic alerts.</p>
     <div class="mt-4 space-y-3">
         @foreach ($recipientGroups as $group)

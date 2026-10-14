@@ -43,6 +43,8 @@ class PublicIncidentReportController extends Controller
         $photoDisk = config('filesystems.incident_report_disk', 'local');
         try {
             $report = DB::transaction(function () use ($validated, $request, $photoDisk, &$storedPhoto): PublicIncidentReport {
+                $verification = app(\App\Services\PublicReportVerification::class);
+                $settings = $verification->lockSettings();
                 $report = PublicIncidentReport::firstOrCreate(
                     ['submission_token' => $validated['submission_token']],
                     [
@@ -68,6 +70,7 @@ class PublicIncidentReportController extends Controller
                     }
                     $report->events()->create(['actor_id' => $request->user()->id,
                         'to_status' => 'Pending', 'notes' => 'Submitted by a public resident.']);
+                    $verification->verify($report, $settings);
                 }
 
                 return $report;

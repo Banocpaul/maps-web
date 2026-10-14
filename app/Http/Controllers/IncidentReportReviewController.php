@@ -38,7 +38,8 @@ class IncidentReportReviewController extends Controller
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->latest('created_at')->orderByDesc('id')->paginate(15)->withQueryString();
 
-        return view('incident-reports.index', compact('reports', 'counts', 'types'));
+        $settings = DB::table('incident_report_settings')->where('id', 1)->first();
+        return view('incident-reports.index', compact('reports', 'counts', 'types', 'settings'));
     }
 
     public function show(

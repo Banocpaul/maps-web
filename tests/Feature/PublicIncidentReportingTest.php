@@ -69,6 +69,62 @@ class PublicIncidentReportingTest extends TestCase
         ));
     }
 
+    public function test_ten_distinct_residents_verify_each_hazard_without_publishing(): void
+    {
+        foreach (['fire', 'flood'] as $type) {
+            for ($i = 1; $i <= 10; $i++) {
+                $resident = User::factory()->create([
+                    'role_id' => Role::where('slug', 'public-resident')->value('id'),
+                    'barangay_id' => $this->barangay()->id, 'is_active' => true,
+                ]);
+                $this->actingAs($resident)->post(route('public.incident-reports.store'), $this->submission($type))
+                    ->assertRedirect()->assertSessionHasNoErrors();
+                $this->assertSame($i < 10 ? 0 : 10,
+                    PublicIncidentReport::where('incident_type', $type)->where('status', 'Validated')->count());
+            }
+        }
+        $this->assertSame(20, PublicIncidentReport::where('community_verified', true)->count());
+        $this->assertDatabaseCount('fire_incidents', 0);
+        $this->assertDatabaseCount('flood_training_records', 0);
+    }
+
+    public function test_repeated_resident_different_hazard_far_pin_and_expired_reports_do_not_count(): void
+    {
+        $verification = app(\App\Services\PublicReportVerification::class);
+        $settings = (object) ['threshold' => 2, 'radius_m' => 100, 'window_minutes' => 120];
+        $first = $this->report();
+        $first->forceFill(['submitted_by' => Auth::id()])->save();
+        $verification->verify($first, $settings);
+        $repeat = $this->report();
+        $repeat->forceFill(['submitted_by' => Auth::id()])->save();
+        $verification->verify($repeat, $settings);
+        $this->assertSame('Pending', $first->fresh()->status);
+        foreach (['flood', 'far', 'expired'] as $scenario) {
+            $report = $this->report($scenario === 'flood' ? 'flood' : 'fire');
+            $report->forceFill(['submitted_by' => User::factory()->create()->id,
+                'latitude' => $scenario === 'far' ? 14.59 : 14.5794])->save();
+            if ($scenario === 'expired') {
+                $first->forceFill(['created_at' => now()->subHours(3)])->save();
+                $repeat->forceFill(['created_at' => now()->subHours(3)])->save();
+            }
+            $verification->verify($report, $settings);
+            $this->assertSame('Pending', $report->fresh()->status);
+        }
+    }
+
+    public function test_only_operations_can_change_verification_settings(): void
+    {
+        $data = ['threshold' => 5, 'radius_m' => 80, 'window_minutes' => 60];
+        $this->post(route('public-submissions.settings'), $data)->assertForbidden();
+        $this->actingAs($this->operator('fire-responder'))
+            ->post(route('public-submissions.settings'), $data)->assertForbidden();
+        $this->actingAs($this->operator())->post(route('public-submissions.settings'), $data)
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('incident_report_settings', $data);
+        $this->post(route('public-submissions.settings'), array_replace($data, ['threshold' => 0]))
+            ->assertSessionHasErrors('threshold');
+    }
+
     public function test_public_can_attach_a_photo_to_a_fire_or_flood_report(): void
     {
         foreach (['fire', 'flood'] as $type) {

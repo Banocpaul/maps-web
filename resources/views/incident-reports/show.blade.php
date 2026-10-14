@@ -16,6 +16,9 @@
     <p class="mt-2 font-semibold">{{ $publicReport->reference }}</p>
     <p class="report-muted">Reporter: {{ $publicReport->submitter?->name ?? 'Legacy public report' }} · Reporter barangay: {{ $publicReport->reporterBarangay?->name ?? 'Not recorded' }}</p>
     <p class="report-muted">Submitted {{ $publicReport->created_at->timezone('Asia/Manila')->format('M d, Y g:i A') }} · Original pin: {{ number_format($publicReport->latitude, 7) }}, {{ number_format($publicReport->longitude, 7) }}</p>
+    @if($publicReport->community_verified)
+        <p class="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">Public verified · Report group #{{ $publicReport->report_group_id }}. {{ $publicReport->validation_notes }}</p>
+    @endif
     <div id="review-map" aria-label="Reported incident location"></div>
     @if($publicReport->status === 'Validated' && $canPublish)
         @if($publicReport->incident_type === 'fire')

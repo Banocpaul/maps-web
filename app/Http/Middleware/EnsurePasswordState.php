@@ -22,7 +22,7 @@ class EnsurePasswordState
             abort_unless($user->is_active && $user->role()->where('is_active', true)->exists(), 403);
         }
         if ((int) $request->session()->get('password_version', 0) !== $user->password_version) {
-            $login = $user->isPublicResident() ? 'public.login' : 'login';
+            $login = 'login';
             // Do not rotate another browser's valid remember token on a stale session.
             Auth::logoutCurrentDevice();
             $request->session()->invalidate();

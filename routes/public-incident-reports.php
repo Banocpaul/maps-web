@@ -14,6 +14,7 @@ Route::post('/public-portal/report-incident', [PublicIncidentReportController::c
 Route::middleware(['auth', 'permission:public-submissions.view'])
     ->prefix('incident-reports')->name('public-submissions.')->group(function (): void {
         Route::get('/', [IncidentReportReviewController::class, 'index'])->name('index');
+        Route::post('/settings', [\App\Http\Controllers\IncidentReportSettingsController::class, 'update'])->name('settings');
         Route::get('/{publicReport}', [IncidentReportReviewController::class, 'show'])->name('show');
         Route::get('/{publicReport}/photo', [IncidentReportReviewController::class, 'photo'])->name('photo');
         Route::post('/{publicReport}/validate', [IncidentReportReviewController::class, 'validateReport'])

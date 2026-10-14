@@ -65,6 +65,20 @@ class PublicResidentAccountTest extends TestCase
             'submission_token' => (string) Str::uuid()];
     }
 
+    public function test_shared_login_redirects_each_active_role_and_ignores_stale_intended_url(): void
+    {
+        foreach (['public-resident', 'administrator', 'operations-manager', 'operations-officer', 'fire-responder', 'flood-analyst'] as $slug) {
+            $role = Role::firstOrCreate(['slug' => $slug], ['name' => $slug, 'is_active' => true]);
+            $user = User::factory()->create(['role_id' => $role->id, 'is_active' => true,
+                'must_change_password' => false]);
+            $this->withSession(['url.intended' => route('public.account')])
+                ->post(route('login.attempt'), ['email' => $user->email, 'password' => 'password'])
+                ->assertRedirect(route($slug === 'public-resident' ? 'public.portal' : 'dashboard'));
+            $this->assertAuthenticatedAs($user);
+            $this->post(route('logout'));
+        }
+    }
+
     public function test_guests_can_view_public_information_but_must_log_in_to_report(): void
     {
         $this->barangay();
@@ -72,14 +86,14 @@ class PublicResidentAccountTest extends TestCase
             $mock->shouldReceive('getCurrentWeather')->andReturn([]);
             $mock->shouldReceive('getSevenDayForecast')->andReturn(['days' => []]);
         });
-        $this->get(route('public.portal'))->assertOk()->assertSee('Public Login')->assertSee('Create Account / Get Alerts');
+        $this->get(route('public.portal'))->assertOk()->assertSee('Sign In')->assertSee('Create Account / Get Alerts');
         $this->get(route('public.flood-map'))->assertOk();
         $this->get(route('public.advisories'))->assertOk();
         $this->get(route('public.weather'))->assertOk();
-        $this->get(route('public.incident-reports.create'))->assertRedirect(route('public.login'));
-        $this->post(route('public.incident-reports.store'), $this->submission())->assertRedirect(route('public.login'));
+        $this->get(route('public.incident-reports.create'))->assertRedirect(route('login'));
+        $this->post(route('public.incident-reports.store'), $this->submission())->assertRedirect(route('login'));
         $this->assertDatabaseCount('public_incident_reports', 0);
-        $this->get(route('public.login'))->assertOk();
+        $this->get(route('public.login'))->assertRedirect(route('login'));
         $this->get(route('public.register'))->assertOk()->assertSee('Hulo');
     }
 
@@ -194,7 +208,7 @@ class PublicResidentAccountTest extends TestCase
     public function test_resident_login_lands_on_portal_and_keeps_staff_routes_forbidden(): void
     {
         $resident = $this->resident(overrides: ['email' => 'paul@example.test', 'password' => 'Resident123!']);
-        $this->get(route('public.incident-reports.create'))->assertRedirect(route('public.login'));
+        $this->get(route('public.incident-reports.create'))->assertRedirect(route('login'));
         $this->post(route('public.login.attempt'), ['email' => $resident->email, 'password' => 'Resident123!'])
             ->assertRedirect(route('public.portal'));
         foreach (['dashboard', 'users.index', 'sms.index', 'public-submissions.index', 'prediction.index'] as $route) {

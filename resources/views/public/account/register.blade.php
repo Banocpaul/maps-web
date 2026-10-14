@@ -14,6 +14,6 @@
         </div>
         <button class="rounded-xl bg-blue-700 px-6 py-3 font-bold text-white hover:bg-blue-800">Create account</button>
     </form>
-    <p class="mt-6 text-sm">Already registered? <a href="{{ route('public.login') }}" class="font-semibold text-blue-700 underline">Public login</a></p>
+    <p class="mt-6 text-sm">Already registered? <a href="{{ route('login') }}" class="font-semibold text-blue-700 underline">Public login</a></p>
 </section>
 @endsection

@@ -20,15 +20,15 @@ class AuthController extends Controller
     public function showLoginForm(): View|RedirectResponse
     {
         if (Auth::check()) {
-            return redirect()->route('dashboard');
+            return redirect()->route(Auth::user()->isPublicResident() ? 'public.portal' : 'dashboard');
         }
 
         return view('auth.login');
     }
 
-    public function showPublicLoginForm(): View
+    public function showPublicLoginForm(): RedirectResponse
     {
-        return view('public.account.login');
+        return redirect()->route('login');
     }
 
     /**
@@ -124,7 +124,7 @@ if (!$role || !$role->is_active) {
         }
 
         return redirect()
-            ->intended(route('dashboard'))
+            ->route('dashboard')
             ->with('success', 'Welcome back, ' . $user->full_name . '.');
     }
 

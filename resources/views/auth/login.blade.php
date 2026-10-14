@@ -283,7 +283,7 @@
                             <p
                                 class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700"
                             >
-                                Authorized Personnel Access
+                                Resident & Personnel Access
                             </p>
 
                             <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900">
@@ -291,8 +291,7 @@
                             </h2>
 
                             <p class="mt-3 text-sm leading-6 text-slate-500">
-                                Enter your authorized account credentials to access the
-                                disaster management operations portal.
+                                Sign in with your account. Your role determines which portal opens.
                             </p>
                         </header>
 
@@ -548,7 +547,7 @@
                             </a>
                         </div>
 
-                        <p class="mt-5 text-center text-sm text-slate-600">For resident reports and SMS alerts, <a href="{{ route('public.login') }}" class="font-semibold text-blue-700 underline">use Public Login</a> or <a href="{{ route('public.register') }}" class="font-semibold text-blue-700 underline">create a public account</a>.</p>
+                        <p class="mt-5 text-center text-sm text-slate-600">For resident reports and SMS alerts, <a href="{{ route('login') }}" class="font-semibold text-blue-700 underline">sign in above</a> or <a href="{{ route('public.register') }}" class="font-semibold text-blue-700 underline">create a public account</a>.</p>
                         {{-- System footer --}}
                         <footer class="mt-8 border-t border-slate-200 pt-5">
                             <div

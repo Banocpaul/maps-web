@@ -298,7 +298,7 @@
 
                         href="{{ route('public.flood-map') }}"
 
-                        class="mt-6 inline-flex rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
+                        class="mt-6 inline-flex rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-yellow-700"
 
                     >
 

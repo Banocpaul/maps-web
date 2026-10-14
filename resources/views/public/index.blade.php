@@ -368,7 +368,7 @@
 
                     <a
                         href="{{ route('public.weather') }}"
-                        class="mt-6 inline-flex rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-yellow-700"
+                        class="mt-6 inline-flex rounded-xl bg-yellow-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-yellow-700"
                     >
                         View Weather
                     </a>

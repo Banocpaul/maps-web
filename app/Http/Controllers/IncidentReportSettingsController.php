@@ -13,8 +13,14 @@ class IncidentReportSettingsController extends Controller {
             'window_minutes' => ['required', 'integer', 'between:5,1440'],
         ]);
         DB::transaction(function () use ($data): void {
-            app(\App\Services\PublicReportVerification::class)->lockSettings();
+            $before = (array) app(\App\Services\PublicReportVerification::class)->lockSettings();
             DB::table('incident_report_settings')->where('id', 1)->update($data);
+            app(\App\Services\Audit\AuditRecorder::class)->record([
+                'action' => 'update_report_settings', 'module' => 'incident-reports',
+                'description' => 'Updated flood and fire public verification settings.',
+                'subject_type' => 'incident_report_settings', 'subject_id' => 1,
+                'old_values' => $before, 'new_values' => $data,
+            ]);
         });
         return back()->with('success', 'Incident reporting settings saved. Applied to new submissions for flood and fire.');
     }

@@ -21,7 +21,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Services\Audit\AuditRecorder::class);
     }
 
     /**
@@ -29,6 +29,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        foreach (['created', 'updated', 'deleted', 'restored'] as $event) {
+            \Illuminate\Support\Facades\Event::listen('eloquent.'.$event.': *',
+                function (string $name, array $payload) use ($event): void {
+                    if (($payload[0] ?? null) instanceof \Illuminate\Database\Eloquent\Model) {
+                        app(\App\Services\Audit\AuditRecorder::class)->modelChanged($event, $payload[0]);
+                    }
+                });
+        }
+        \Illuminate\Support\Facades\DB::listen(function (\Illuminate\Database\Events\QueryExecuted $query): void {
+            app(\App\Services\Audit\AuditRecorder::class)->databaseWritten($query);
+        });
+
         RateLimiter::for('public-registration', function (Request $request): Limit {
             return Limit::perMinutes(10, 5)->by($request->ip())
                 ->response(function (Request $request, array $headers) {

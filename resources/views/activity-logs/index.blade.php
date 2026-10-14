@@ -88,6 +88,15 @@
                 <a href="{{ route('activity-logs.index') }}" class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Reset</a>
             </div>
             <div>
+                <label class="text-xs font-semibold uppercase text-slate-500" for="kind">Entry type</label>
+                <select id="kind" name="kind" class="mt-1 w-full rounded-lg border-slate-300 text-sm">
+                    <option value="">All entries</option>
+                    @foreach(['request' => 'User actions and outcomes', 'record' => 'Record field changes', 'database' => 'Database operations'] as $kind => $label)
+                        <option value="{{ $kind }}" @selected(request('kind') === $kind)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
                 <label class="text-xs font-semibold uppercase text-slate-500" for="date_from">From</label>
                 <input type="date" id="date_from" name="date_from" value="{{ request('date_from') }}" class="mt-1 w-full rounded-lg border-slate-300 text-sm">
             </div>
@@ -132,6 +141,16 @@
                                 @if ($log->route_name)
                                     <div class="mt-1 font-mono text-[11px] text-slate-400">{{ $log->http_method }} {{ $log->route_name }}</div>
                                 @endif
+                                <div class="mt-1 text-xs {{ str_starts_with($log->action, 'failed_') || ($log->response_status ?? 0) >= 400 ? 'text-rose-700' : 'text-slate-500' }}">
+                                    @if($log->response_status !== null)
+                                        {{ $log->new_values['_audit']['outcome'] ?? ($log->response_status >= 400 ? 'Failed' : 'Completed') }} · HTTP {{ $log->response_status }}
+                                    @elseif(str_starts_with($log->action, 'database_'))
+                                        Database operation
+                                    @else
+                                        Record change
+                                    @endif
+                                    @if($log->subject_id) · Record #{{ $log->subject_id }} @endif
+                                </div>
                             </td>
                             <td class="max-w-xs px-5 py-4 text-xs text-slate-600">
                                 <div class="font-mono">{{ $log->ip_address ?? 'Unknown' }}</div>
@@ -144,7 +163,7 @@
                                         <pre class="mt-2 max-h-64 w-72 overflow-auto rounded-lg bg-slate-950 p-3 text-[11px] text-slate-100">{{ json_encode(['old' => $log->old_values, 'new' => $log->new_values], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                     </details>
                                 @else
-                                    <span class="text-xs text-slate-400">No request data</span>
+                                    <span class="text-xs text-slate-400">No field data</span>
                                 @endif
                             </td>
                         </tr>

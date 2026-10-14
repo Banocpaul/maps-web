@@ -2,32 +2,15 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\ActivityLog;
 use App\Models\User;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 class LogUserActivity
 {
-    private const SENSITIVE_FIELDS = [
-        '_token',
-        'password',
-        'password_confirmation',
-        'current_password',
-        'new_password',
-        'new_password_confirmation',
-        'remember_token',
-        'token',
-        'api_key',
-        'secret',
-        'credential',
-    ];
-
     public function handle(
         Request $request,
         Closure $next
@@ -36,72 +19,76 @@ class LogUserActivity
         [$subjectType, $subjectId, $oldValues] =
             $this->resolveSubjectBeforeAction($request);
 
-        $response = $next($request);
-
-        if (! $this->shouldLog($request)) {
-            return $response;
-        }
-
         try {
-            if (! Schema::hasTable('activity_logs')) {
-                return $response;
-            }
-
-            $user = $userBefore ?? $request->user();
-            $routeName = $request->route()?->getName();
-            $action = $this->resolveAction($request, $user);
-            $module = $this->resolveModule($routeName);
-
-            ActivityLog::create([
-                'user_id' => $user?->id,
-                'user_name' => $this->userName($user),
-                'role_name' => $this->roleName($user),
-                'action' => $action,
-                'module' => $module,
-                'description' => $this->description(
-                    $user,
-                    $action,
-                    $module,
-                    $subjectType,
-                    $subjectId
-                ),
-                'route_name' => $routeName,
-                'http_method' => $request->method(),
-                'subject_type' => $subjectType,
-                'subject_id' => $subjectId,
-                'old_values' => $oldValues,
-                'new_values' => $this->safeInput($request),
-                'ip_address' => $request->ip(),
-                'user_agent' => mb_substr(
-                    (string) $request->userAgent(),
-                    0,
-                    1000
-                ),
-                'response_status' => $response->getStatusCode(),
-            ]);
-        } catch (Throwable $exception) {
-            Log::warning('Activity log could not be recorded.', [
-                'route_name' => $request->route()?->getName(),
-                'http_method' => $request->method(),
-                'user_id' => $userBefore?->id,
-                'error' => $exception->getMessage(),
-            ]);
+            $response = $next($request);
+        } catch (Throwable $error) {
+            $status = $error instanceof \Illuminate\Validation\ValidationException ? 422
+                : ($error instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
+                    ? $error->getStatusCode() : ($error instanceof \Illuminate\Auth\Access\AuthorizationException ? 403
+                        : ($error instanceof \Illuminate\Auth\AuthenticationException ? 401
+                            : ($error instanceof \Illuminate\Database\Eloquent\ModelNotFoundException ? 404 : 500))));
+            $this->recordRequest($request, $userBefore, $subjectType, $subjectId, $oldValues, $status, true);
+            throw $error;
         }
-
+        $failed = $response->getStatusCode() >= 400
+            || (! $request->isMethodSafe() && $request->hasSession()
+                && in_array('errors', $request->session()->get('_flash.new', []), true));
+        $this->recordRequest($request, $userBefore, $subjectType, $subjectId, $oldValues,
+            $response->getStatusCode(), $failed);
         return $response;
     }
 
-    private function shouldLog(Request $request): bool
+    public function recordFailure(Request $request, int $status): void
     {
-        if ($request->isMethod('HEAD')) {
-            return false;
+        if (! $request->attributes->get('_audit_recorded')) {
+            $this->recordRequest($request, $request->user(), null, null, null, $status, true);
         }
+    }
 
-        if ($request->isMethod('GET')) {
-            return $request->routeIs('*.export');
+    private function recordRequest(Request $request, ?User $userBefore, ?string $subjectType,
+        ?int $subjectId, ?array $oldValues, int $status, bool $failed): void
+    {
+        if ($request->attributes->get('_audit_recorded')) {
+            return;
         }
-
-        return ! $request->routeIs('activity-logs.*');
+        $request->attributes->set('_audit_recorded', true);
+        try {
+            $user = $request->routeIs('login.attempt', 'public.login.attempt') ? $request->user()
+                : ($userBefore ?? $request->user());
+            $routeName = $request->route()?->getName();
+            $action = $this->resolveAction($request, $failed ? null : $user);
+            if ($failed && $action !== 'failed_login') {
+                $action = 'failed_'.$action;
+            }
+            $module = $this->resolveModule($routeName);
+            $input = $this->safeInput($request) ?? [];
+            $input['_audit'] = ['path' => $request->route()?->uri() ?? '[unmatched route]', 'outcome' => $failed ? 'Failed' : 'Completed'];
+            foreach ($request->allFiles() as $key => $file) {
+                // File contents and temporary paths must never enter the trail.
+                $files = is_array($file) ? \Illuminate\Support\Arr::flatten($file) : [$file];
+                foreach ($files as $upload) {
+                    if ($upload instanceof \Illuminate\Http\UploadedFile) {
+                        $input['_audit']['uploads'][$key][] = ['extension' => $upload->getClientOriginalExtension(),
+                            'size_bytes' => $upload->getSize()];
+                    }
+                }
+            }
+            app(\App\Services\Audit\AuditRecorder::class)->record([
+                'user_id' => $user?->id, 'user_name' => $this->userName($user),
+                'role_name' => $this->roleName($user),
+                'action' => $action, 'module' => $module,
+                'description' => $this->description($user, $action, $module, $subjectType, $subjectId)
+                    .' Outcome: '.($failed ? 'Failed' : 'Completed').'.',
+                'route_name' => $routeName, 'http_method' => $request->method(),
+                'subject_type' => $subjectType, 'subject_id' => $subjectId,
+                'old_values' => $oldValues, 'new_values' => $input,
+                'ip_address' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 1000),
+                'response_status' => $status,
+            ]);
+        } catch (Throwable $error) {
+            \Illuminate\Support\Facades\Log::warning('Request audit could not be recorded.', ['error_type' => get_class($error)]);
+        }
     }
 
     private function resolveAction(
@@ -111,10 +98,10 @@ class LogUserActivity
         $routeName = (string) $request->route()?->getName();
 
         return match (true) {
-            $routeName === 'login.attempt' && $user !== null =>
+            $request->routeIs('login.attempt', 'public.login.attempt') && $user !== null =>
                 'login',
 
-            $routeName === 'login.attempt' =>
+            $request->routeIs('login.attempt', 'public.login.attempt') =>
                 'failed_login',
 
             $routeName === 'logout' =>
@@ -167,9 +154,13 @@ class LogUserActivity
             $request->isMethod('PATCH') =>
                 'update',
 
-            $request->isMethod('POST') =>
-                'create',
+            $request->isMethod('POST') && str_contains($routeName, '.') =>
+                str_replace('-', '_', substr($routeName, strrpos($routeName, '.') + 1)),
+            $request->isMethod('POST') => 'create',
 
+            $request->isMethod('GET') && str_contains($routeName, 'download') => 'download',
+            $request->isMethod('GET') && $request->filled('search') => 'search',
+            $request->isMethod('GET') => 'view',
             default => strtolower($request->method()),
         };
     }
@@ -180,6 +171,8 @@ class LogUserActivity
 
         return match ($prefix) {
             'login', 'logout' => 'authentication',
+            'public' => str_contains((string) $routeName, 'login') ? 'authentication' : 'public-portal',
+            'public-submissions' => 'incident-reports',
             'fire-incidents' => 'fire-incidents',
             'fire-hydrants' => 'fire-hydrants',
             'flood-operation', 'flood-dataset' => 'flood',
@@ -207,10 +200,7 @@ class LogUserActivity
             $oldValues = null;
 
             if (
-                $request->isMethod('PUT') ||
-                $request->isMethod('PATCH') ||
-                $request->isMethod('DELETE') ||
-                $request->routeIs('fire-incidents.fire-out', 'fire-incidents.finalize')
+                ! $request->isMethodSafe()
             ) {
                 $oldValues = $this->safeModelAttributes(
                     $parameter
@@ -229,37 +219,12 @@ class LogUserActivity
 
     private function safeModelAttributes(Model $model): ?array
     {
-        $attributes = $model->attributesToArray();
-
-        foreach (array_keys($attributes) as $key) {
-            if ($this->isSensitiveKey((string) $key)) {
-                unset($attributes[$key]);
-            }
-        }
-
-        return $attributes === [] ? null : $attributes;
+        return app(\App\Services\Audit\AuditRecorder::class)->redact($model->attributesToArray());
     }
 
     private function safeInput(Request $request): ?array
     {
-        // Uploaded files contain streams, which cannot be JSON encoded.
-        $input = \Illuminate\Support\Arr::except($request->input(), self::SENSITIVE_FIELDS);
-
-        foreach (array_keys($input) as $key) {
-            if ($this->isSensitiveKey((string) $key)) {
-                unset($input[$key]);
-            }
-        }
-
-        return $input === [] ? null : $input;
-    }
-
-    private function isSensitiveKey(string $key): bool
-    {
-        return (bool) preg_match(
-            '/password|token|secret|credential|api.?key/i',
-            $key
-        );
+        return app(\App\Services\Audit\AuditRecorder::class)->redact($request->input());
     }
 
     private function userName(?User $user): ?string

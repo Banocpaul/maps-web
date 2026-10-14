@@ -37,6 +37,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response) {
+            if ($response->getStatusCode() >= 400) {
+                app(\App\Http\Middleware\LogUserActivity::class)->recordFailure(request(), $response->getStatusCode());
+            }
+            return $response;
+        });
         $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $exception, Request $request) {
             if (! $request->routeIs('admin.backups.*') || $request->expectsJson()) {
                 return null;

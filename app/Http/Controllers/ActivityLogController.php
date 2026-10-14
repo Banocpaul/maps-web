@@ -25,7 +25,7 @@ class ActivityLogController extends Controller
         $this->applyFilters($query, $request);
 
         $logs = $query
-            ->latest('created_at')
+            ->latest('created_at')->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
 
@@ -63,7 +63,7 @@ class ActivityLogController extends Controller
             'Only administrators may export activity logs.'
         );
 
-        $query = ActivityLog::query()->latest('created_at');
+        $query = ActivityLog::query()->latest('created_at')->orderByDesc('id');
         $this->applyFilters($query, $request);
 
         $filename = 'maps-audit-trail-'.now('Asia/Manila')->format('Y-m-d-His').'.xls';
@@ -133,6 +133,14 @@ class ActivityLogController extends Controller
         Builder $query,
         Request $request
     ): void {
+        if ($request->input('kind') === 'request') {
+            $query->whereNotNull('response_status');
+        } elseif ($request->input('kind') === 'database') {
+            $query->where('action', 'like', 'database_%');
+        } elseif ($request->input('kind') === 'record') {
+            $query->whereNull('response_status')->where('action', 'not like', 'database_%');
+        }
+
         if ($request->filled('search')) {
             $search = trim($request->string('search')->toString());
 

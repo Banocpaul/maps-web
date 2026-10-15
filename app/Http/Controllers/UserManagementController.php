@@ -348,6 +348,12 @@ class UserManagementController extends Controller
         ]);
 
         $newStatus = (bool) $validated['is_active'];
+        if ($user->isPublicResident()) {
+            abort_unless($request->user()->isAdministrator(), 403);
+            if ($newStatus && $user->suspended_at) {
+                return back()->with('error', 'Review and reinstate this suspended resident before activating the account.');
+            }
+        }
 
         if (auth()->id() === $user->id && ! $newStatus) {
             return back()->with(
@@ -357,8 +363,17 @@ class UserManagementController extends Controller
         }
 
         try {
-            $user->is_active = $newStatus;
-            $user->save();
+            DB::transaction(function () use ($user, $newStatus): void {
+                $user->is_active = $newStatus;
+                if (! $newStatus) {
+                    $user->password_version++;
+                    $user->remember_token = null;
+                }
+                $user->save();
+                if ($user->isPublicResident() && $user->contact_number) {
+                    app(\App\Services\ResidentSubscriptionService::class)->sync($user);
+                }
+            });
 
             $message = $newStatus
                 ? 'User account activated successfully.'
@@ -425,8 +440,9 @@ class UserManagementController extends Controller
     /**
      * Delete a user account.
      */
-    public function destroy(User $user): RedirectResponse
+    public function destroy(Request $request, User $user): RedirectResponse
     {
+        abort_unless($request->user()->isAdministrator(), 403);
         if (auth()->id() === $user->id) {
             return back()->with(
                 'error',
@@ -435,7 +451,16 @@ class UserManagementController extends Controller
         }
 
         try {
-            $user->delete();
+            DB::transaction(function () use ($user): void {
+                // Reports use nullable ownership; retain the incident and event history.
+                $user->smsRecipient()->delete();
+                $user->delete();
+                app(\App\Services\Audit\AuditRecorder::class)->record([
+                    'action' => 'delete_user_account', 'module' => 'users',
+                    'description' => 'Permanently deleted account #'.$user->id.'. Incident reports and audit history retained.',
+                    'subject_type' => User::class, 'subject_id' => $user->id,
+                ]);
+            });
 
             return redirect()
                 ->route('users.index')

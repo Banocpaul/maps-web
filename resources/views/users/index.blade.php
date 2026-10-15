@@ -18,6 +18,7 @@
 
         <div class="page-header-actions">
             @if(auth()->user()->isAdministrator())
+                <a href="{{ route('users.index', ['role_id' => $roles->firstWhere('slug', 'public-resident')?->id]) }}" class="button button-secondary">Public Accounts</a>
                 <a href="{{ route('users.password-requests') }}" class="button button-secondary">Account Change Requests</a>
             @endif
             <a href="{{ route('users.create') }}" class="button button-primary">
@@ -499,7 +500,7 @@
                                             <button
                                                 type="submit"
                                                 class="action-button delete-button"
-                                                title="Delete account"
+                                                title="Permanently delete account"
                                             >
                                                 Delete
                                             </button>
@@ -1933,13 +1934,13 @@
 
     function confirmUserDeletion(event, userName) {
         return openUserActionModal(event, {
-            title: 'Delete this account?',
+            title: 'Permanently delete this account?',
             message:
                 'You are about to permanently delete the account of "' +
                 userName +
                 '".',
             note:
-                'This action cannot be undone. Use Deactivate instead if the account may be needed later.',
+                'This action cannot be undone. Incident reports and audit history will be retained. Use Deactivate if the account may be needed later.',
             confirmLabel: 'Delete Account',
             variant: 'is-danger',
             icon: '!',

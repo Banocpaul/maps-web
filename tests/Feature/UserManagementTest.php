@@ -168,4 +168,34 @@ class UserManagementTest extends TestCase
         $this->assertTrue($admin->isAdministrator());
         $this->assertNull($admin->role_changed_at);
     }
+    public function test_public_account_can_be_deactivated_reactivated_and_deleted_without_deleting_reports(): void
+    {
+        $admin = $this->administrator();
+        $role = Role::firstOrCreate(['slug' => 'public-resident'], ['name' => 'Public Resident', 'is_active' => true]);
+        $resident = User::factory()->create(['role_id' => $role->id, 'is_active' => true]);
+        $report = \App\Models\PublicIncidentReport::create([
+            'reference' => 'KEEP-REPORT', 'submission_token' => (string) \Illuminate\Support\Str::uuid(),
+            'incident_type' => 'fire', 'latitude' => 14.58, 'longitude' => 121.03,
+            'status' => 'Pending', 'submitted_by' => $resident->id,
+        ]);
+        $this->actingAs($admin)->patch(route('users.status', $resident), ['is_active' => false])->assertSessionHas('success');
+        $this->assertFalse($resident->fresh()->is_active);
+        $this->assertSame(1, $resident->fresh()->password_version);
+        $this->patch(route('users.status', $resident), ['is_active' => true])->assertSessionHas('success');
+        $this->assertTrue($resident->fresh()->is_active);
+        $this->delete(route('users.destroy', $resident))->assertRedirect(route('users.index'));
+        $this->assertDatabaseMissing('users', ['id' => $resident->id]);
+        $this->assertDatabaseHas('public_incident_reports', ['id' => $report->id, 'submitted_by' => null]);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'delete_user_account', 'subject_id' => $resident->id]);
+    }
+
+    public function test_suspended_resident_cannot_be_activated_without_review(): void
+    {
+        $admin = $this->administrator();
+        $role = Role::firstOrCreate(['slug' => 'public-resident'], ['name' => 'Public Resident', 'is_active' => true]);
+        $resident = User::factory()->create(['role_id' => $role->id, 'is_active' => false]);
+        $resident->forceFill(['suspended_at' => now()])->save();
+        $this->actingAs($admin)->patch(route('users.status', $resident), ['is_active' => true])->assertSessionHas('error');
+        $this->assertFalse($resident->fresh()->is_active);
+    }
 }

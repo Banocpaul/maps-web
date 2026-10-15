@@ -15,6 +15,7 @@
         </select>
     </label>
 </div>
+@include('public.account.residence-field')
 <fieldset class="mt-6 space-y-3 rounded-xl border border-blue-200 bg-blue-50 p-5">
     <legend class="px-2 font-bold">Barangay SMS alerts (optional)</legend>
     <input type="hidden" name="receive_flood_alerts" value="0">

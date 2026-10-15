@@ -3,6 +3,13 @@
 @section('title', 'Edit User')
 
 @section('content')
+@if($user->suspended_at && auth()->user()->isAdministrator())
+<form method="POST" action="{{ route('users.reinstate', $user) }}" class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-5">@csrf
+<h2 class="font-bold">Review suspended resident</h2><p>{{ $user->suspension_reason }}</p>
+<label class="block mt-3">Reason for reinstatement<textarea name="reason" required minlength="5" maxlength="1000" class="block w-full border rounded-lg p-2"></textarea></label>
+<button class="mt-3 rounded-lg bg-blue-700 text-white px-4 py-2">Reinstate account</button>
+</form>
+@endif
 <div class="user-edit-page">
 
     <div class="page-header">
@@ -127,6 +134,10 @@
         id="user-edit-form"
     >
         @csrf
+                        @if($user->isPublicResident())
+                            @include('public.account.residence-field', ['resident' => $user])
+                            @if($user->suspended_at)<p class="text-red-700">Suspended: {{ $user->suspension_reason }}</p>@endif
+                        @endif
         @method('PUT')
 
         <div class="form-layout">

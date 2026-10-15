@@ -20,13 +20,24 @@ class FireIncidentAlertService
 
     public function sendCreatedAlert(FireIncident $incident, ?int $sentBy): array
     {
-        if ($incident->status === 'Resolved' || in_array($incident->record_classification, ['Example', 'Superseded'], true)
+        return $this->sendAlert($incident, $sentBy, self::ALERT_KEY);
+    }
+
+    public function sendProgressAlert(FireIncident $incident, \App\Models\FireIncidentUpdate $update, ?int $sentBy): array
+    {
+        return $this->sendAlert($incident, $sentBy, 'fire_progress_'.$update->id, $update);
+    }
+
+    private function sendAlert(FireIncident $incident, ?int $sentBy, string $alertKey, ?\App\Models\FireIncidentUpdate $update = null): array
+    {
+        if (($incident->status === 'Resolved' && ! $update) || in_array($incident->record_classification, ['Example', 'Superseded'], true)
             || $incident->coordinate_accuracy === 'Approximate' || $incident->barangay_id === null) {
             return ['eligible' => 0, 'sent' => 0, 'failed' => 0, 'skipped' => 0, 'nearest_hydrant' => null];
         }
         $incident->loadMissing('barangay');
         $nearestHydrant = $this->nearestHydrantService->findForIncident($incident);
         $message = $this->buildMessage($incident, $nearestHydrant);
+        if ($update) $message .= "\nUpdate: ".$update->observed_at->copy()->timezone('Asia/Manila')->format('M d, Y h:i A').' PHT'."\n".$update->notes;
         $recipients = SmsRecipient::query()
             ->where('barangay_id', $incident->barangay_id)
             ->where('receive_fire_alerts', true)
@@ -52,12 +63,12 @@ class FireIncidentAlertService
                     'phone_number' => $recipient->phone_number,
                     'message' => $message,
                     'source' => 'automatic',
-                    'alert_key' => self::ALERT_KEY,
+                    'alert_key' => $alertKey,
                     'status' => 'pending',
                     'condition_data' => $this->conditionData($incident, $nearestHydrant),
                 ]);
             } catch (QueryException $exception) {
-                if ($this->isDuplicateAlert($incident, $recipient)) {
+                if ($this->isDuplicateAlert($incident, $recipient, $alertKey)) {
                     $summary['skipped']++;
                     continue;
                 }
@@ -112,6 +123,8 @@ class FireIncidentAlertService
             'Incident: ' . $incident->incident_number,
             'Brgy: ' . ($incident->barangay?->name ?? 'Not specified'),
             'Severity: ' . $incident->severity,
+            'BFP alarm: '.($incident->alarm_level ?: 'Not yet confirmed'),
+            'Status: '.$incident->status,
             $locationLine,
             sprintf('GPS: %.7f, %.7f', (float) $incident->latitude, (float) $incident->longitude),
             $hydrantLine,
@@ -140,12 +153,12 @@ class FireIncidentAlertService
         ];
     }
 
-    private function isDuplicateAlert(FireIncident $incident, SmsRecipient $recipient): bool
+    private function isDuplicateAlert(FireIncident $incident, SmsRecipient $recipient, string $alertKey): bool
     {
         return SmsLog::query()
             ->where('fire_incident_id', $incident->id)
             ->where('sms_recipient_id', $recipient->id)
-            ->where('alert_key', self::ALERT_KEY)
+            ->where('alert_key', $alertKey)
             ->exists();
     }
 

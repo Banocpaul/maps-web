@@ -40,7 +40,8 @@ class GisMapController extends Controller
             )->count(),
         ];
 
-        return view('gis.index', compact('statistics'));
+        $firePriorityAreas = app(\App\Services\FireAnalyticsService::class)->getTopBarangays(null, null, 5)['rows'];
+        return view('gis.index', compact('statistics', 'firePriorityAreas'));
     }
 
     /**

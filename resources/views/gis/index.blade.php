@@ -5,6 +5,13 @@
 @section('page-description', 'Interactive fire incident and hydrant response map')
 
 @section('content')
+<section class="mb-5 rounded-2xl border border-slate-200 bg-white p-5">
+<h2 class="text-lg font-bold text-slate-900">Fire mitigation priority areas</h2>
+<p class="mt-2 text-sm text-slate-600">Barangays with the most recorded fire incidents across available years. Use these historical patterns to prioritize prevention and preparedness. Counts do not estimate the probability of a future fire.</p>
+<div class="mt-4 flex flex-wrap gap-3">
+@forelse($firePriorityAreas as $area)<div class="rounded-xl bg-red-50 px-4 py-3"><strong>{{ $area['barangay_name'] }}</strong><p>{{ number_format($area['incident_count']) }} recorded incidents</p></div>
+@empty<p>No historical fire records available.</p>@endforelse
+</div></section>
     <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"

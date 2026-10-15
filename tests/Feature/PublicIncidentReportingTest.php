@@ -50,7 +50,7 @@ class PublicIncidentReportingTest extends TestCase
 
     private function submission(string $type = 'fire', ?string $token = null): array
     {
-        return ['incident_type' => $type, 'latitude' => 14.5794, 'longitude' => 121.0359,
+        return ['street' => 'Mabini Street', 'incident_type' => $type, 'latitude' => 14.5794, 'longitude' => 121.0359,
             'submission_token' => $token ?? (string) Str::uuid()];
     }
 
@@ -69,21 +69,21 @@ class PublicIncidentReportingTest extends TestCase
         ));
     }
 
-    public function test_ten_distinct_residents_verify_each_hazard_without_publishing(): void
+    public function test_five_distinct_residents_verify_each_hazard_without_publishing(): void
     {
         foreach (['fire', 'flood'] as $type) {
-            for ($i = 1; $i <= 10; $i++) {
+            for ($i = 1; $i <= 5; $i++) {
                 $resident = User::factory()->create([
                     'role_id' => Role::where('slug', 'public-resident')->value('id'),
                     'barangay_id' => $this->barangay()->id, 'is_active' => true,
                 ]);
                 $this->actingAs($resident)->post(route('public.incident-reports.store'), $this->submission($type))
                     ->assertRedirect()->assertSessionHasNoErrors();
-                $this->assertSame($i < 10 ? 0 : 10,
+                $this->assertSame($i < 5 ? 0 : 5,
                     PublicIncidentReport::where('incident_type', $type)->where('status', 'Validated')->count());
             }
         }
-        $this->assertSame(20, PublicIncidentReport::where('community_verified', true)->count());
+        $this->assertSame(10, PublicIncidentReport::where('community_verified', true)->count());
         $this->assertDatabaseCount('fire_incidents', 0);
         $this->assertDatabaseCount('flood_training_records', 0);
     }

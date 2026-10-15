@@ -318,6 +318,8 @@ Route::resource('fire-incidents', FireIncidentController::class)
         ->middleware('permission:fire.edit')->name('fire-incidents.assessment');
     Route::post('/fire-incidents/{fire_incident}/finalize', [FireIncidentController::class, 'finalize'])
         ->middleware('permission:fire.edit')->name('fire-incidents.finalize');
+    Route::post('/fire-incidents/{fire_incident}/progress', [\App\Http\Controllers\FireProgressController::class, 'store'])
+        ->middleware(['permission:fire.edit', 'throttle:30,1'])->name('fire-incidents.progress');
     Route::post('/fire-incidents/{fire_incident}/fire-out', [FireIncidentController::class, 'recordFireOut'])
         ->middleware('permission:fire.edit')->name('fire-incidents.fire-out');
     Route::delete('/fire-incidents/{fire_incident}', [FireIncidentController::class, 'destroy'])
@@ -338,6 +340,14 @@ Route::resource('fire-incidents', FireIncidentController::class)
     Route::get('/operational-records', [OperationalRecordController::class, 'index'])
         ->middleware('permission:records.view')
         ->name('operational-records.index');
+    Route::get('/operational-records/print', [OperationalRecordController::class, 'printRecords'])
+        ->middleware(['permission:records.export', 'throttle:10,1'])->name('operational-records.print');
+    Route::get('/operational-records/archives', [OperationalRecordController::class, 'archives'])
+        ->middleware('permission:records.export')->name('operational-records.archives');
+    Route::post('/operational-records/archives', [OperationalRecordController::class, 'archiveReport'])
+        ->middleware(['permission:records.export', 'throttle:10,1'])->name('operational-records.archives.store');
+    Route::get('/operational-records/archives/{archive}', [OperationalRecordController::class, 'showArchive'])
+        ->middleware('permission:records.export')->name('operational-records.archives.show');
     Route::get('/operational-records/report-builder', [OperationalRecordController::class, 'reportBuilder'])
         ->middleware('permission:records.view')
         ->name('operational-records.report-builder');
@@ -495,6 +505,8 @@ Route::resource('fire-incidents', FireIncidentController::class)
             '/users/{user}',
             [UserManagementController::class, 'update']
         )->name('users.update');
+        Route::post('/users/{user}/reinstate', [UserManagementController::class, 'reinstate'])
+            ->middleware(['admin', 'throttle:10,1'])->name('users.reinstate');
         Route::patch(
             '/users/{user}/status',
             [UserManagementController::class, 'updateStatus']

@@ -14,6 +14,7 @@ class FireIncident extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'injured_count', 'deceased_count',
         'barangay_id',
         'incident_number',
         'incident_type',
@@ -153,6 +154,11 @@ class FireIncident extends Model
     public function publicReports(): HasMany
     {
         return $this->hasMany(PublicIncidentReport::class);
+    }
+
+    public function progressUpdates(): HasMany
+    {
+        return $this->hasMany(FireIncidentUpdate::class)->orderByDesc('observed_at')->orderByDesc('id');
     }
 
     public function smsLogs(): HasMany

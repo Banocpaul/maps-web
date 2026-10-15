@@ -14,6 +14,7 @@ class FloodTrainingRecord extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'injured_count', 'deceased_count',
         'observed_at',
         'barangay',
         'location_name',

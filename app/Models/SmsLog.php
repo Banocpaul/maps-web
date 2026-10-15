@@ -11,6 +11,7 @@ class SmsLog extends Model
     use HasFactory;
 
     protected $fillable = [
+        'public_report_group_id',
         'sms_recipient_id',
         'automation_rule_id',
         'fire_incident_id',

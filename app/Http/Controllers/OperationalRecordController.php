@@ -102,7 +102,7 @@ class OperationalRecordController extends Controller
                 foreach (array_keys($dataset['columns']) as $column) {
                     $value = data_get($record, $column);
                     $row[] = $dataset['table'] === 'fire_incidents'
-                        && in_array($column, ['individuals_affected', 'houses_destroyed'], true) && $value === null
+                        && in_array($column, ['individuals_affected', 'houses_destroyed', 'injured_count', 'deceased_count'], true) && $value === null
                         ? 'Not yet assessed' : $this->csvValue($value);
                 }
 
@@ -111,6 +111,48 @@ class OperationalRecordController extends Controller
 
             fclose($handle);
         }, $fileName, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function printableSnapshot(Request $request): array
+    {
+        $key = $request->string('dataset', 'flood-records')->toString();
+        abort_unless(in_array($key, ['flood-records', 'fire-incidents'], true), 422, 'Printing and archives support flood and fire incident records.');
+        $dataset = $this->resolveDataset($this->datasets(), $key);
+        $filters = $this->validatedFilters($request, $dataset);
+        $query = $this->filteredQuery($dataset, $filters);
+        abort_if((clone $query)->count() > 10000, 422, 'Narrow the filters to 10,000 records or fewer before printing or archiving.');
+        $rows = $query->get()->map(function ($row) use ($dataset) {
+            $row = $this->formatRecordDates($row, $dataset);
+            return collect(array_keys($dataset['columns']))->map(fn ($column) =>
+                is_scalar($value = data_get($row, $column)) || $value === null ? $value : json_encode($value))->all();
+        })->all();
+        return ['title' => 'M.A.P.S. '.($key === 'fire-incidents' ? 'Fire Incident Report' : 'Flood Incident Report'),
+            'dataset' => $key, 'columns' => array_values($dataset['columns']), 'rows' => $rows,
+            'filters' => $filters, 'generated_at' => now('Asia/Manila')->format('M d, Y g:i A').' PHT',
+            'prepared_by' => $request->user()->name];
+    }
+
+    public function printRecords(Request $request): View
+    {
+        return view('operational-records.print', ['snapshot' => $this->printableSnapshot($request)]);
+    }
+
+    public function archiveReport(Request $request): RedirectResponse
+    {
+        $snapshot = $this->printableSnapshot($request);
+        $archive = \App\Models\ReportArchive::create(['title' => $snapshot['title'],
+            'dataset' => $snapshot['dataset'], 'created_by' => $request->user()->id, 'snapshot' => $snapshot]);
+        return redirect()->route('operational-records.archives.show', $archive)->with('success', 'Report snapshot archived.');
+    }
+
+    public function archives(): View
+    {
+        return view('operational-records.archives', ['archives' => \App\Models\ReportArchive::with('creator')->latest('id')->paginate(20)]);
+    }
+
+    public function showArchive(\App\Models\ReportArchive $archive): View
+    {
+        return view('operational-records.print', ['snapshot' => $archive->snapshot, 'archive' => $archive]);
     }
 
     public function reportBuilder(Request $request): View
@@ -593,6 +635,8 @@ class OperationalRecordController extends Controller
             $request->merge(['geometry_geojson' => json_decode($request->input('geometry_geojson'), true)]);
         }
         $validated = $request->validate([
+            'injured_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'deceased_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'event_id' => ['prohibited'], 'observation_datetime' => ['prohibited'],
             'flood_start_datetime' => ['prohibited'], 'flood_subsided_datetime' => ['prohibited'],
             'status' => ['prohibited'],
@@ -844,7 +888,7 @@ class OperationalRecordController extends Controller
                 'barangay_text_column' => 'barangay', 'order_column' => 'flood_start_datetime',
                 'search_columns' => ['event_id', 'barangay', 'nearest_waterway', 'flood_code', 'status'],
                 'statuses' => ['Active', 'Subsided'], 'crud_route' => null,
-                'columns' => ['id' => 'Record ID', 'event_id' => 'Event ID', 'observation_datetime' => 'Observation (PHT)', 'flood_start_datetime' => 'Flood Start (PHT)', 'flood_subsided_datetime' => 'Flood Subsided (PHT)', 'duration_hours' => 'Duration (hours)', 'status' => 'Status', 'barangay' => 'Barangay', 'flood_code' => 'Flood Code', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'nearest_waterway' => 'Nearest Waterway', 'elevation_m' => 'Elevation (m)', 'distance_to_waterway_m' => 'Distance to Waterway (m)', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'rainfall_3d_mm' => 'Rainfall 3d (mm)', 'rainfall_7d_mm' => 'Rainfall 7d (mm)', 'temperature_c' => 'Temperature (°C)', 'temp_max_c' => 'Maximum Temp (°C)', 'temp_min_c' => 'Minimum Temp (°C)', 'wind_speed_kph' => 'Wind Speed (km/h)', 'wind_direction_deg' => 'Wind Direction (°)', 'storm_signal' => 'Storm Signal', 'year' => 'Year'],
+                'columns' => ['id' => 'Record ID', 'event_id' => 'Event ID', 'observation_datetime' => 'Observation (PHT)', 'flood_start_datetime' => 'Flood Start (PHT)', 'flood_subsided_datetime' => 'Flood Subsided (PHT)', 'duration_hours' => 'Duration (hours)', 'status' => 'Status', 'barangay' => 'Barangay', 'flood_code' => 'Flood Code', 'injured_count' => 'Injured', 'deceased_count' => 'Deceased', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'nearest_waterway' => 'Nearest Waterway', 'elevation_m' => 'Elevation (m)', 'distance_to_waterway_m' => 'Distance to Waterway (m)', 'rainfall_24h_mm' => 'Rainfall 24h (mm)', 'rainfall_3d_mm' => 'Rainfall 3d (mm)', 'rainfall_7d_mm' => 'Rainfall 7d (mm)', 'temperature_c' => 'Temperature (°C)', 'temp_max_c' => 'Maximum Temp (°C)', 'temp_min_c' => 'Minimum Temp (°C)', 'wind_speed_kph' => 'Wind Speed (km/h)', 'wind_direction_deg' => 'Wind Direction (°)', 'storm_signal' => 'Storm Signal', 'year' => 'Year'],
             ],
             'fire-incidents' => [
                 'label' => 'Fire Incidents', 'table' => 'fire_incidents',
@@ -852,7 +896,7 @@ class OperationalRecordController extends Controller
                 'joins_barangays' => true, 'order_column' => 'occurred_at',
                 'search_columns' => ['incident_number', 'incident_type', 'location', 'barangay_name', 'source_barangay', 'alarm_level', 'cause'],
                 'statuses' => ['Reported', 'Responding', 'Controlled', 'Resolved'], 'crud_route' => 'fire-incidents.index', 'crud_permission' => 'fire.view',
-                'columns' => ['id' => 'ID', 'incident_number' => 'Incident Number', 'occurred_at' => 'Time Occurred', 'fire_out_at' => 'Fire Out', 'duration_minutes' => 'Duration (minutes)', 'barangay_name' => 'Barangay', 'location' => 'Street / Location', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'alarm_level' => 'Alarm', 'cause' => 'Cause', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'status' => 'Status'],
+                'columns' => ['id' => 'ID', 'incident_number' => 'Incident Number', 'occurred_at' => 'Time Occurred', 'fire_out_at' => 'Fire Out', 'duration_minutes' => 'Duration (minutes)', 'barangay_name' => 'Barangay', 'location' => 'Street / Location', 'individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'injured_count' => 'Injured', 'deceased_count' => 'Deceased', 'alarm_level' => 'Alarm', 'cause' => 'Cause', 'latitude' => 'Latitude', 'longitude' => 'Longitude', 'status' => 'Status'],
             ],
             'fire-hydrants' => [
                 'label' => 'Fire Hydrants', 'table' => 'fire_hydrants',

@@ -48,6 +48,11 @@
 <form method="POST" action="{{ route('public-submissions.validate', $publicReport) }}" class="report-panel">
     @csrf<h2>Validate the report</h2><p class="report-muted">Confirm the incident through your response team or field verification, then record how it was verified.</p>
     <label for="validation-notes" class="mt-4 block font-semibold">Verification notes</label><textarea name="validation_notes" id="validation-notes" class="review-notes" rows="3" required minlength="5" maxlength="2000">{{ old('validation_notes') }}</textarea>
+    @if($publicReport->incident_type === 'fire')
+        <label class="block mt-3">BFP alarm level<select name="alarm_level" class="review-notes"><option value="">Not yet confirmed</option>@foreach(\App\Models\FireIncidentUpdate::ALARMS as $alarm)<option @selected(old('alarm_level') === $alarm)>{{ $alarm }}</option>@endforeach</select></label>
+        <label class="block mt-3">BFP source / reference<input name="alarm_source" maxlength="255" value="{{ old('alarm_source') }}" class="review-notes" placeholder="Radio update, officer or reference"></label>
+    @endif
+    @include('incident-reports.casualty-fields', ['record' => $publicReport])
     <button class="report-button">Mark as validated</button>
 </form>
 @endif
@@ -80,7 +85,9 @@
 @endif
 @if($publicReport->status === 'Validated' && $canPublish)
 <form method="POST" action="{{ route('public-submissions.publish', $publicReport) }}" class="report-panel" id="publish-report-form">
-    @csrf<h2>Add official {{ $publicReport->incident_type }} details</h2><p class="report-muted mb-4">All date and time fields use Philippine time (Asia/Manila).</p>
+    @csrf
+    @if($publicReport->incident_type === 'flood')@include('incident-reports.casualty-fields', ['record' => $publicReport])@endif
+    <h2>Add official {{ $publicReport->incident_type }} details</h2><p class="report-muted mb-4">All date and time fields use Philippine time (Asia/Manila).</p>
     <p id="barangay-pin-status" class="report-muted mb-4" role="status">Barangay is suggested from the incident pin. Confirm it before publishing; you can correct the selection.</p>
     <div class="report-fields">
         <label>Barangay<select name="barangay_id" id="official-barangay" required><option value="">Select barangay</option>@foreach($barangays as $barangay)<option value="{{ $barangay->id }}" @selected((string) old('barangay_id', $suggestedBarangayId) === (string) $barangay->id)>{{ $barangay->name }}</option>@endforeach</select></label>
@@ -124,6 +131,8 @@
 <form method="POST" action="{{ route('public-submissions.reject', $publicReport) }}" class="report-panel">
     @csrf<h2>Reject report</h2><p class="report-muted">Use for a false report or an incident that could not be confirmed. Link verified duplicate fire reports to the existing incident above.</p>
     <label for="rejection-reason" class="mt-4 block font-semibold">Reason</label><textarea name="rejection_reason" id="rejection-reason" class="review-notes" rows="2" required minlength="5" maxlength="2000">{{ old('rejection_reason') }}</textarea>
+    <label class="block mt-4"><input type="checkbox" name="confirmed_fraud" value="1" @checked(old('confirmed_fraud'))> Confirmed fraudulent report (counts toward suspension after three confirmed reports)</label>
+    <p class="report-muted">Select only after verifying deliberate false reporting. Duplicates and incidents that could not be confirmed are not automatically fraud.</p>
     <button class="report-button report-reject">Reject report</button>
 </form>
 @endif

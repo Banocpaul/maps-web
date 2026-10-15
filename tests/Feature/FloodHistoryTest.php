@@ -96,7 +96,8 @@ class FloodHistoryTest extends TestCase
 
     public function test_history_is_not_public_and_requires_prediction_view_permission(): void
     {
-        $this->getJson(route('flood-history.index'))->assertRedirect(route('login'));
+        $this->get(route('flood-history.index'))->assertRedirect(route('login'));
+        $this->getJson(route('flood-history.index'))->assertUnauthorized();
         $user = $this->staff();
         $user->role->permissions()->detach(Permission::where('slug', 'prediction.view')->value('id'));
         $this->actingAs($user)->getJson(route('flood-history.index'))->assertForbidden();

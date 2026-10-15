@@ -27,6 +27,7 @@ class PublicIncidentReportController extends Controller
     public function store(Request $request, IncidentReportArea $area): RedirectResponse
     {
         $validated = $request->validate([
+            'street' => ['nullable', 'string', 'max:255'],
             'incident_type' => ['required', Rule::in(['fire', 'flood'])],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
@@ -48,6 +49,8 @@ class PublicIncidentReportController extends Controller
                 $report = PublicIncidentReport::firstOrCreate(
                     ['submission_token' => $validated['submission_token']],
                     [
+                        'street' => trim($validated['street'] ?? '') ?: null,
+                        'street_key' => \App\Services\PublicReportVerification::streetKey($validated['street'] ?? ''),
                         'reference' => 'PR-'.Str::ulid(),
                         'incident_type' => $validated['incident_type'],
                         'latitude' => $validated['latitude'], 'longitude' => $validated['longitude'],

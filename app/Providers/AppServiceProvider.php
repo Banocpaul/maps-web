@@ -29,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->app->terminating(fn () => app(\App\Services\Audit\AuditRecorder::class)->flushInserts());
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Database\Events\TransactionRolledBack::class,
+            fn ($event) => app(\App\Services\Audit\AuditRecorder::class)->discardRolledBackInserts($event->connection->transactionLevel()));
         foreach (['created', 'updated', 'deleted', 'restored'] as $event) {
             \Illuminate\Support\Facades\Event::listen('eloquent.'.$event.': *',
                 function (string $name, array $payload) use ($event): void {

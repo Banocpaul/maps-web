@@ -385,6 +385,8 @@ class FloodDatasetController extends Controller
     private function validationRules(): array
     {
         return [
+            'injured_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'deceased_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'observed_at' => ['nullable', 'date'],
             'barangay' => ['required', 'string', 'max:100'],
             'location_name' => ['nullable', 'string', 'max:255'],

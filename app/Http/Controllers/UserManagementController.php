@@ -233,6 +233,7 @@ class UserManagementController extends Controller
                 'integer',
                 'exists:roles,id',
             ],
+            'residence_type' => ['nullable', Rule::in(['Homeowner', 'Tenant', 'Boarder', 'Living with family', 'Other'])],
             'password' => ['prohibited'],
             'is_active' => [
                 'nullable',
@@ -311,6 +312,7 @@ class UserManagementController extends Controller
                     $user->role_changed_at = now();
                 }
 
+                if (array_key_exists('residence_type', $validated)) $user->residence_type = $validated['residence_type'];
                 $user->is_active = (bool) ($validated['is_active'] ?? false);
 
                 $user->save();
@@ -373,9 +375,24 @@ class UserManagementController extends Controller
         }
     }
 
-    /**
-     * Reset a user's password.
-     */
+    /** Reinstate a resident after an administrator reviews the suspension. */
+    public function reinstate(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($request->user()->isAdministrator() && $user->isPublicResident(), 403);
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:1000']]);
+        DB::transaction(function () use ($user, $data): void {
+            $current = User::lockForUpdate()->findOrFail($user->id);
+            abort_unless($current->suspended_at, 409, 'This account is not suspended.');
+            $current->forceFill(['suspended_at' => null, 'suspension_reason' => null, 'is_active' => true])->save();
+            if ($current->contact_number) app(\App\Services\ResidentSubscriptionService::class)->sync($current);
+            app(\App\Services\Audit\AuditRecorder::class)->record([
+                'action' => 'reinstate_resident', 'module' => 'users', 'description' => $data['reason'],
+                'subject_type' => User::class, 'subject_id' => $current->id,
+            ]);
+        });
+        return back()->with('success', 'Resident account reinstated. Fraud history is retained.');
+    }
+
     public function resetPassword(Request $request, User $user, \App\Services\PasswordChangeService $passwords): RedirectResponse
     {
         $temporaryPassword = $this->generateTemporaryPassword();

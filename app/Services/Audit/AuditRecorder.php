@@ -13,6 +13,19 @@ use Throwable;
 class AuditRecorder
 {
     private bool $writing = false;
+    private array $pendingInserts = [];
+
+    public function flushInserts(): void
+    {
+        $pending = $this->pendingInserts;
+        $this->pendingInserts = [];
+        foreach ($pending as $entry) $this->record($entry['values']);
+    }
+
+    public function discardRolledBackInserts(int $level): void
+    {
+        $this->pendingInserts = array_filter($this->pendingInserts, fn ($entry) => $entry['level'] <= $level);
+    }
 
     public function redact(array $values): array
     {
@@ -62,6 +75,8 @@ class AuditRecorder
         if ($model instanceof ActivityLog || ! str_starts_with(get_class($model), 'App\\Models\\')) {
             return;
         }
+        // The model already obtained its generated ID. It is now safe to write insert audit rows.
+        $this->flushInserts();
         $changes = $model->getChanges();
         $meaningful = array_diff(array_keys($changes), ['updated_at', 'last_seen_at', 'last_login_at', 'remember_token']);
         if ($event === 'updated' && ! $meaningful) {
@@ -101,12 +116,20 @@ class AuditRecorder
             return;
         }
         $operation = strtolower(explode(' ', trim($match[1]))[0]);
-        $this->record([
+        $values = [
             'action' => 'database_'.$operation,
             'module' => str_replace('_', '-', $table),
             'description' => 'Executed '.$operation.' on '.$table.'. See record events for field changes when available.',
             'subject_type' => $table,
             'new_values' => ['table' => $table, 'operation' => $operation],
-        ]);
+        ];
+        if (in_array($operation, ['insert', 'replace'], true)) {
+            // QueryExecuted runs before insertGetId reads PDO::lastInsertId().
+            // A synchronous audit INSERT would replace the business row's ID.
+            $this->pendingInserts[] = ['level' => $query->connection->transactionLevel(), 'values' => $values];
+        } else {
+            $this->flushInserts();
+            $this->record($values);
+        }
     }
 }

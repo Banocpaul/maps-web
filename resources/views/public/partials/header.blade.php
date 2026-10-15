@@ -41,7 +41,6 @@
             @else
                 <a href="{{ route('login') }}" class="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10">Sign In</a>
                 <a href="{{ route('public.register') }}" class="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50">Create Account / Get Alerts</a>
-                <a href="{{ route('login') }}" class="px-2 py-2 text-xs font-semibold text-slate-300 hover:text-white">Staff Login</a>
             @endif
             </nav>
 

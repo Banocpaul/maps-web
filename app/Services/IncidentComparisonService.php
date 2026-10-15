@@ -10,7 +10,7 @@ class IncidentComparisonService
     public static function comparison(int $current, int $previous): array {
         $delta = $current - $previous;
         $percent = $previous > 0 ? round($delta * 100 / $previous, 1) : ($current === 0 ? 0.0 : null);
-        $label = $percent === null ? 'No prior-year baseline'
+        $label = $percent === null ? 'No baseline records'
             : ($delta === 0 ? 'No change' : number_format(abs($percent), 1).'% '.($delta > 0 ? 'increase' : 'decrease'));
         return compact('current', 'previous', 'delta', 'percent', 'label');
     }
@@ -19,11 +19,13 @@ class IncidentComparisonService
         $key = str_replace('hagdangbato', 'hagdanbato', $key);
         return $key === 'wackwackgreenhillseast' ? 'wackwackgreenhills' : $key;
     }
-    public function build(int $year, array $types, ?int $barangayId = null): array {
+    public function build(int $year, array $types, ?int $barangayId = null, ?int $baselineYear = null): array {
         $now = now('Asia/Manila');
+        $baselineYear ??= $year - 1;
         $incomplete = $year === $now->year;
+        $baselineIncomplete = $baselineYear === $now->year;
         $end = $incomplete ? $now : Carbon::create($year, 12, 31, 23, 59, 59, 'Asia/Manila');
-        $previousEnd = Carbon::create($year - 1, 12, 31, 23, 59, 59, 'Asia/Manila');
+        $previousEnd = $baselineIncomplete ? $now->copy() : Carbon::create($baselineYear, 12, 31, 23, 59, 59, 'Asia/Manila');
         $start = $end->copy()->startOfYear(); $previousStart = $previousEnd->copy()->startOfYear();
         $names = Barangay::query()->pluck('name', 'id');
         $canonical = $names->mapWithKeys(fn ($name) => [$this->key($name) => $name])->all();
@@ -68,8 +70,9 @@ class IncidentComparisonService
             $current = $data['current']->filter(fn ($r) => $r['at']->month === $month)->count();
             $previous = $data['previous']->filter(fn ($r) => $r['at']->month === $month)->count();
             $future = $incomplete && $month > $end->month;
-            $months[] = ['month' => Carbon::create(2000, $month, 1)->format('M'), 'partial' => $incomplete && $month === $end->month,
-                ...($future ? ['current' => null, 'previous' => $previous, 'delta' => null, 'percent' => null, 'label' => 'Not yet elapsed'] : self::comparison($current, $previous))];
+            $baselineFuture = $baselineIncomplete && $month > $previousEnd->month;
+            $months[] = ['month' => Carbon::create(2000, $month, 1)->format('M'), 'partial' => ($incomplete && $month === $end->month) || ($baselineIncomplete && $month === $previousEnd->month),
+                ...(($future || $baselineFuture) ? ['current' => $future ? null : $current, 'previous' => $baselineFuture ? null : $previous, 'delta' => null, 'percent' => null, 'label' => 'Not yet elapsed'] : self::comparison($current, $previous))];
         }
         $barangays = $data['current']->pluck('barangay')->merge($data['previous']->pluck('barangay'))->unique()->map(fn ($name) => [
             'name' => $name, ...self::comparison($data['current']->where('barangay', $name)->count(), $data['previous']->where('barangay', $name)->count()),
@@ -96,7 +99,7 @@ class IncidentComparisonService
             }
             $sources[] = $row;
         }
-        return ['incomplete' => $incomplete, 'year' => $year, 'start' => $start, 'end' => $end, 'previous_start' => $previousStart, 'previous_end' => $previousEnd,
+        return ['incomplete' => $incomplete || $baselineIncomplete, 'baseline_year' => $baselineYear, 'year' => $year, 'start' => $start, 'end' => $end, 'previous_start' => $previousStart, 'previous_end' => $previousEnd,
             'types' => $types, 'barangay' => $selectedName ?? 'All barangays', 'cards' => $cards,
             'months' => $months, 'barangays' => $barangays, 'categories' => $categories, 'sources' => $sources];
     }

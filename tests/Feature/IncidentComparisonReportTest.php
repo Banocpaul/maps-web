@@ -40,7 +40,7 @@ class IncidentComparisonReportTest extends TestCase {
         $this->assertSame('25.0% decrease', IncidentComparisonService::comparison(15,20)['label']);
         $this->assertSame(-100.0, IncidentComparisonService::comparison(0,5)['percent']);
         $this->assertNull(IncidentComparisonService::comparison(5,0)['percent']);
-        $this->assertSame('No prior-year baseline', IncidentComparisonService::comparison(5,0)['label']);
+        $this->assertSame('No baseline records', IncidentComparisonService::comparison(5,0)['label']);
         $this->assertSame('No change', IncidentComparisonService::comparison(0,0)['label']);
     }
     public function test_default_compares_full_2025_against_full_2024_and_includes_archived_records(): void {
@@ -110,4 +110,28 @@ class IncidentComparisonReportTest extends TestCase {
         $this->get(route('public-submissions.index'))->assertOk()->assertSee('Annual official incident comparison')->assertSee('2025 versus 2024');
     }
 
+    public function test_custom_year_pair_and_print_use_the_selected_baseline(): void {
+        $this->fire('2012-01-01 00:00:00');
+        $this->fire('2020-02-01 00:00:00'); $this->fire('2020-12-31 23:59:59');
+        $this->fire('2019-06-01 00:00:00');
+        $this->actingAs($this->user());
+        $filters = ['year' => 2020, 'baseline_year' => 2012, 'hazard' => 'fire'];
+        $response = $this->get(route('incident-comparison.index', $filters))->assertOk()->assertSee('2020 compared with 2012');
+        $report = $response->viewData('report');
+        $this->assertSame(2012, $report['baseline_year']);
+        $this->assertSame(2, $report['cards']['fire']['current']);
+        $this->assertSame(1, $report['cards']['fire']['previous']);
+        $this->assertEquals(100, $report['cards']['fire']['percent']);
+        $this->get(route('incident-comparison.index', $filters + ['print' => 1]))->assertOk()->assertSee('2020 compared with 2012');
+        $this->get(route('incident-comparison.index', ['year' => 2020, 'baseline_year' => 2020]))->assertSessionHasErrors('baseline_year');
+        $reverse = $this->get(route('incident-comparison.index', ['year' => 2012, 'baseline_year' => 2020, 'hazard' => 'fire']))->assertOk()->viewData('report');
+        $this->assertEquals(-50, $reverse['cards']['fire']['percent']);
+    }
+    public function test_current_year_can_be_baseline_without_future_months_becoming_zero(): void {
+        $this->actingAs($this->user());
+        $report = $this->get(route('incident-comparison.index', ['year' => 2012, 'baseline_year' => 2026]))->assertOk()->viewData('report');
+        $this->assertTrue($report['incomplete']);
+        $this->assertNull($report['months'][11]['previous']);
+        $this->assertNull($report['months'][11]['percent']);
+    }
 }

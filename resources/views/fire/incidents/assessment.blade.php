@@ -15,6 +15,7 @@
         @csrf
         <h2 class="text-lg font-bold text-slate-950">Impact Assessment</h2>
         <p class="mt-2 text-sm text-slate-600">Enter the verified totals. Enter 0 only when none were affected or destroyed.</p>
+        @include('incident-reports.casualty-fields', ['record' => $fireIncident])
         <div class="mt-5 grid gap-5 sm:grid-cols-2">
             @foreach(['individuals_affected' => 'Total Individuals Affected', 'houses_destroyed' => 'Total Houses Destroyed'] as $field => $label)
                 <div>

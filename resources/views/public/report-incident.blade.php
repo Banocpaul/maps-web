@@ -67,6 +67,9 @@
     <p id="pin-status" role="status" aria-live="polite">Select the incident location to continue.</p>
     <form method="POST" action="{{ route('public.incident-reports.store') }}" id="report-form" enctype="multipart/form-data">
         @csrf
+        <label class="block font-semibold mt-4">Street of the incident
+            <input id="report-street" name="street" maxlength="255" value="{{ old('street') }}" class="block w-full rounded-lg border border-slate-300 p-3 mt-2" placeholder="Street name (same spelling as the map)">
+        </label><p class="text-sm text-slate-600">A street name and matching nearby reports are needed for automatic community verification.</p>
         <input type="hidden" name="incident_type" id="incident-type" value="{{ old('incident_type') }}">
         <input type="hidden" name="latitude" id="report-latitude" value="{{ old('latitude') }}">
         <input type="hidden" name="longitude" id="report-longitude" value="{{ old('longitude') }}">
@@ -181,6 +184,7 @@
                 button.addEventListener('click',()=>{
                     if(!map){searchStatus.textContent='Map unavailable. Reload and try again.';return;}
                     const point=L.latLng(Number(result.latitude),Number(result.longitude));
+                    document.getElementById('report-street').value=(result.street || '').slice(0,255);
                     query.value=result.label.slice(0,150);setPin(point);map.setView(point,17);resetSearch();
                     searchStatus.textContent='Address selected. Drag the pin to the exact location before submitting.';
                 });searchResults.append(button);

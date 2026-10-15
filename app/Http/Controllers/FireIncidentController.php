@@ -170,10 +170,16 @@ class FireIncidentController extends Controller
                     $this->generateIncidentNumber();
 
                 if ($publicReport) {
+                    $validated['alarm_level'] = $validated['alarm_level'] ?? $publicReport->alarm_level;
+                    $validated['injured_count'] = $validated['injured_count'] ?? $publicReport->injured_count;
+                    $validated['deceased_count'] = $validated['deceased_count'] ?? $publicReport->deceased_count;
                     $validated['data_source'] = 'Public report verified by staff';
                     $validated['remarks'] = 'Public report '.$publicReport->reference.'. '.($validated['remarks'] ?? '');
                 }
                 $incident = FireIncident::create($validated);
+                $incident->progressUpdates()->create(['actor_id' => auth()->id(),
+                    'observed_at' => now(), 'status' => $incident->status, 'alarm_level' => $incident->alarm_level,
+                    'alarm_source' => $publicReport?->alarm_source, 'notes' => 'Official fire incident recorded.']);
                 if ($publicReport) {
                     $reportWorkflow->published($publicReport, 'fire_incident_id', $incident->id, $request->user());
                 }
@@ -268,6 +274,7 @@ class FireIncidentController extends Controller
             $current = FireIncident::lockForUpdate()->findOrFail($fireIncident->id);
             $this->ensureIncidentIsEditable($current);
             $current->update($this->normalizeIncidentTimes($validated, $current));
+            $this->recordProgress($current, 'Response details updated. '.($validated['remarks'] ?? ''));
         });
 
         return redirect()
@@ -328,6 +335,7 @@ class FireIncidentController extends Controller
             }
             $current->update(['status' => 'Resolved', 'fire_out_at' => $end, 'resolved_at' => $end,
                 'occurred_at' => $start]);
+            $this->recordProgress($current, 'Fire out recorded.', $end);
         });
         return redirect()->route('fire-incidents.show', $fireIncident)
             ->with('success', 'Fire-out time saved. The record is now For Assessment.');
@@ -338,6 +346,8 @@ class FireIncidentController extends Controller
         abort_unless($fireIncident->canFinalize(), 403, 'Only resolved incidents awaiting assessment can be finalized.');
         $validated = $request->validate([
             'individuals_affected' => ['required', 'integer', 'min:0', 'max:4294967295'],
+            'injured_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'deceased_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'houses_destroyed' => ['required', 'integer', 'min:0', 'max:4294967295'],
             'cause' => ['nullable', 'string', 'max:255'],
             'remarks' => ['nullable', 'string', 'max:2000'],
@@ -358,6 +368,19 @@ class FireIncidentController extends Controller
 
         return redirect()->route('fire-incidents.show', $fireIncident)
             ->with('success', 'Fire incident finalized. Impact details are saved and the record is locked.');
+    }
+
+    private function recordProgress(FireIncident $incident, string $notes, ?\Carbon\Carbon $observed = null): void
+    {
+        $update = $incident->progressUpdates()->create([
+            'actor_id' => auth()->id(), 'observed_at' => $observed ?? now(),
+            'status' => $incident->status, 'alarm_level' => $incident->alarm_level, 'notes' => trim($notes),
+        ]);
+        $actorId = auth()->id();
+        DB::afterCommit(function () use ($incident, $update, $actorId): void {
+            try { app(FireIncidentAlertService::class)->sendProgressAlert($incident->fresh(), $update, $actorId); }
+            catch (\Throwable $error) { report($error); }
+        });
     }
 
     /** Convert Philippine wall times and validate the response timeline. */
@@ -486,6 +509,8 @@ class FireIncidentController extends Controller
             'occurred_at' => ['nullable', 'date', 'before_or_equal:reported_at'],
             'fire_out_at' => ['nullable', 'date'],
             'individuals_affected' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'injured_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'deceased_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'houses_destroyed' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'alarm_level' => ['nullable', Rule::in(['1st', '2nd', '3rd', '4th', '5th', 'Task Force Alpha', 'Task Force Bravo', 'General Alarm'])],
             'cause' => ['nullable', 'string', 'max:255'],

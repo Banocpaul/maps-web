@@ -41,6 +41,7 @@
     @endif
     <form id="flood-record-form" method="POST" action="{{ $editing ? route('operational-records.flood.update', $record->id) : route('operational-records.flood.store') }}" class="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         @csrf
+        @include('incident-reports.casualty-fields', ['record' => $record])
         @if ($editing) @method('PUT') @endif
         <div class="grid gap-4 sm:grid-cols-2">
             <label><span class="text-sm font-semibold text-slate-700">Barangay</span><select id="flood-record-barangay" name="barangay" required @disabled($closed) class="mt-1 w-full rounded-xl border-slate-300"><option value="">Select barangay</option>@foreach ($barangays as $barangay)<option value="{{ $barangay->name }}" @selected($selectedBarangay === $barangay->name)>{{ $barangay->name }}</option>@endforeach</select></label>

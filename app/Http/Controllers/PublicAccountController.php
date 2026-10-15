@@ -34,6 +34,7 @@ class PublicAccountController extends Controller
                 'name' => $data['first_name'].' '.$data['last_name'],
                 'first_name' => $data['first_name'], 'last_name' => $data['last_name'],
                 'email' => $data['email'], 'password' => $data['password'],
+                'residence_type' => $data['residence_type'] ?? null,
                 'contact_number' => $data['contact_number'], 'barangay_id' => $data['barangay_id'],
                 'receive_flood_alerts' => $request->boolean('receive_flood_alerts'),
                 'receive_fire_alerts' => $request->boolean('receive_fire_alerts'),
@@ -94,6 +95,7 @@ class PublicAccountController extends Controller
             'last_name' => trim((string) $request->input('last_name')),
         ]);
         return $request->validate([
+            'residence_type' => ['nullable', Rule::in(['Homeowner', 'Tenant', 'Boarder', 'Living with family', 'Other'])],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'barangay_id' => ['required', 'integer', Rule::exists('barangays', 'id')->where('is_active', true)],

@@ -22,6 +22,7 @@ class LogUserActivity
         try {
             $response = $next($request);
         } catch (Throwable $error) {
+            app(\App\Services\Audit\AuditRecorder::class)->flushInserts();
             $status = $error instanceof \Illuminate\Validation\ValidationException ? 422
                 : ($error instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
                     ? $error->getStatusCode() : ($error instanceof \Illuminate\Auth\Access\AuthorizationException ? 403
@@ -30,6 +31,7 @@ class LogUserActivity
             $this->recordRequest($request, $userBefore, $subjectType, $subjectId, $oldValues, $status, true);
             throw $error;
         }
+        app(\App\Services\Audit\AuditRecorder::class)->flushInserts();
         $failed = $response->getStatusCode() >= 400
             || (! $request->isMethodSafe() && $request->hasSession()
                 && in_array('errors', $request->session()->get('_flash.new', []), true));
@@ -87,6 +89,7 @@ class LogUserActivity
                 'response_status' => $status,
             ]);
         } catch (Throwable $error) {
+            app(\App\Services\Audit\AuditRecorder::class)->flushInserts();
             \Illuminate\Support\Facades\Log::warning('Request audit could not be recorded.', ['error_type' => get_class($error)]);
         }
     }

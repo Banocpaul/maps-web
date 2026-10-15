@@ -81,7 +81,7 @@ class AuthController extends Controller
 
         $user = Auth::user()->load('role');
 
-        if (!$user->is_active) {
+        if (!$user->is_active || $user->suspended_at) {
             Auth::logout();
 
             $request->session()->invalidate();

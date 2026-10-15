@@ -19,6 +19,7 @@ class User extends Authenticatable
     ];
 
     protected $fillable = [
+        'residence_type',
         'role_id',
         'role_changed_at',
         'name',
@@ -44,6 +45,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'suspended_at' => 'datetime',
             'email_verified_at' => 'datetime',
             'role_changed_at' => 'datetime',
             'password' => 'hashed',
@@ -99,7 +101,7 @@ class User extends Authenticatable
 
     public function hasPermission(string $permissionSlug): bool
     {
-        if (! $this->is_active) {
+        if (! $this->is_active || $this->suspended_at) {
             return false;
         }
 

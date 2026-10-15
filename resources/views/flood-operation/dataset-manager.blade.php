@@ -216,6 +216,7 @@
 
         <form id="dataset-form" class="p-5 sm:p-6">
             @csrf
+            @include('incident-reports.casualty-fields', ['record' => null])
             <input id="dataset-record-id" type="hidden">
 
             <div

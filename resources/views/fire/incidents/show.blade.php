@@ -375,7 +375,7 @@
         <section class="incident-panel">
             <h2>Fire Incident Record</h2>
             <div class="incident-detail-grid">
-                @foreach(['individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'duration_minutes' => 'Duration (minutes)', 'alarm_level' => 'Alarm', 'cause' => 'Cause'] as $field => $label)
+                @foreach(['individuals_affected' => 'Individuals Affected', 'houses_destroyed' => 'Houses Destroyed', 'duration_minutes' => 'Duration (minutes)', 'alarm_level' => 'BFP Alarm', 'injured_count' => 'Injured', 'deceased_count' => 'Deceased', 'cause' => 'Cause'] as $field => $label)
                     <div class="incident-detail"><span>{{ $label }}</span><strong>{{ $fireIncident->{$field} ?? (in_array($field, ['individuals_affected', 'houses_destroyed']) ? 'Not yet assessed' : 'Not recorded') }}</strong></div>
                 @endforeach
                 @foreach(['occurred_at' => 'Time Occurred (PHT)', 'fire_out_at' => 'Fire Out (PHT)'] as $field => $label)
@@ -468,4 +468,5 @@
             </div>
         </section>
     </div>
+@include('fire.incidents.progress')
 @endsection

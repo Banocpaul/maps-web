@@ -170,13 +170,21 @@ class IncidentReportReviewController extends Controller
         IncidentReportWorkflow $workflow
     ): RedirectResponse {
         $workflow->authorize($request->user(), $publicReport->incident_type, 'review');
-        $data = $request->validate(['validation_notes' => ['required', 'string', 'min:5', 'max:2000']]);
+        $data = $request->validate(['validation_notes' => ['required', 'string', 'min:5', 'max:2000'],
+            'alarm_level' => ['nullable', Rule::in(\App\Models\FireIncidentUpdate::ALARMS)],
+            'alarm_source' => ['nullable', 'string', 'max:255'],
+            'injured_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'deceased_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+        ]);
         DB::transaction(function () use ($publicReport, $data, $request): void {
             $report = PublicIncidentReport::query()->lockForUpdate()->findOrFail($publicReport->id);
             abort_unless($report->status === 'Pending', 409, 'Only pending reports can be validated.');
             $report->update([
                 'status' => 'Validated', 'validation_notes' => $data['validation_notes'],
                 'validated_by' => $request->user()->id, 'validated_at' => now(),
+                'alarm_level' => $report->incident_type === 'fire' ? ($data['alarm_level'] ?? null) : null,
+                'alarm_source' => $report->incident_type === 'fire' ? ($data['alarm_source'] ?? null) : null,
+                'injured_count' => $data['injured_count'] ?? null, 'deceased_count' => $data['deceased_count'] ?? null,
             ]);
             $report->events()->create([
                 'actor_id' => $request->user()->id, 'from_status' => 'Pending', 'to_status' => 'Validated',
@@ -193,20 +201,30 @@ class IncidentReportReviewController extends Controller
         IncidentReportWorkflow $workflow
     ): RedirectResponse {
         $workflow->authorize($request->user(), $publicReport->incident_type, 'reject');
-        $data = $request->validate(['rejection_reason' => ['required', 'string', 'min:5', 'max:2000']]);
+        $data = $request->validate(['rejection_reason' => ['required', 'string', 'min:5', 'max:2000'],
+            'confirmed_fraud' => ['nullable', 'boolean']]);
         DB::transaction(function () use ($publicReport, $data, $request): void {
             $report = PublicIncidentReport::query()->lockForUpdate()->findOrFail($publicReport->id);
             abort_unless(in_array($report->status, ['Pending', 'Validated'], true), 409,
                 'Only pending or validated reports can be rejected.');
+            $resident = $report->submitted_by ? \App\Models\User::lockForUpdate()->find($report->submitted_by) : null;
             $previous = $report->status;
             $report->update([
                 'status' => 'Rejected', 'rejection_reason' => $data['rejection_reason'],
+                'confirmed_fraud' => $request->boolean('confirmed_fraud'),
                 'rejected_by' => $request->user()->id, 'rejected_at' => now(),
             ]);
             $report->events()->create([
                 'actor_id' => $request->user()->id, 'from_status' => $previous, 'to_status' => 'Rejected',
-                'notes' => $data['rejection_reason'],
+                'notes' => ($request->boolean('confirmed_fraud') ? 'Confirmed fraudulent report. ' : '').$data['rejection_reason'],
             ]);
+            if ($resident && $resident->isPublicResident() && $request->boolean('confirmed_fraud')
+                && PublicIncidentReport::where('submitted_by', $resident->id)->where('confirmed_fraud', true)->count() >= 3
+                && ! $resident->suspended_at) {
+                $resident->forceFill(['suspended_at' => now(), 'suspension_reason' => 'Three confirmed fraudulent incident reports.',
+                    'is_active' => false, 'password_version' => $resident->password_version + 1])->save();
+                $resident->smsRecipient()->update(['is_active' => false]);
+            }
         });
 
         return back()->with('success', 'Report rejected. No official incident was created.');
@@ -248,6 +266,8 @@ class IncidentReportReviewController extends Controller
             'flood_level_code' => ['required', Rule::in(['A', 'B', 'C', 'D'])],
             'flood_status' => ['required', Rule::in(['Active', 'Subsided'])],
             'subsided_at' => [Rule::requiredIf($request->input('flood_status') === 'Subsided'), 'nullable', 'date', 'after:observed_at'],
+            'injured_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'deceased_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'geometry_json' => ['required', 'string', 'max:20000', 'json'],
             'remarks' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -277,6 +297,8 @@ class IncidentReportReviewController extends Controller
             $report = $workflow->lockForPublication($publicReport->id, 'flood', $request->user());
             $barangay = Barangay::active()->findOrFail($data['barangay_id']);
             $record = FloodTrainingRecord::create([
+                'injured_count' => $data['injured_count'] ?? $report->injured_count,
+                'deceased_count' => $data['deceased_count'] ?? $report->deceased_count,
                 'barangay' => $barangay->name, 'location_name' => $data['location_name'],
                 'observed_at' => $observed->copy()->utc(),
                 'month' => $observed->month, 'is_weekend' => $observed->isWeekend(),

@@ -3,6 +3,17 @@
 @section('title', 'Operational Records | M.A.P.S')
 
 @section('content')
+@if(auth()->user()->hasPermission('records.export'))
+<div class="flex flex-wrap gap-3 mb-4">
+<a href="{{ route('operational-records.archives') }}" class="rounded-lg border px-4 py-2 text-blue-700">Archived reports</a>
+@if(in_array($datasetKey, ['flood-records', 'fire-incidents']))
+<a href="{{ route('operational-records.print', array_merge($filters, ['dataset' => $datasetKey])) }}" target="_blank" rel="noopener" class="rounded-lg bg-blue-700 px-4 py-2 text-white">Print filtered report</a>
+<form method="POST" action="{{ route('operational-records.archives.store') }}">@csrf
+@foreach(array_merge($filters, ['dataset' => $datasetKey]) as $key => $value)<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endforeach
+<button class="rounded-lg border px-4 py-2 text-blue-700">Archive filtered report</button></form>
+@endif
+</div>
+@endif
 <div class="space-y-6">
     @if (session('success'))
         <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>

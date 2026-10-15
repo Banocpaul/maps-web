@@ -15,6 +15,12 @@ class EnsurePasswordState
         if (! $user) {
             return $next($request);
         }
+        if ($user->suspended_at) {
+            Auth::logoutCurrentDevice();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login')->withErrors(['email' => 'Your account is suspended. Contact the administrator.']);
+        }
         if (Auth::viaRemember() && ! $request->session()->has('password_version')) {
             $request->session()->put('password_version', $user->password_version);
         }

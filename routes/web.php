@@ -333,11 +333,11 @@ Route::resource('fire-incidents', FireIncidentController::class)
     |--------------------------------------------------------------------------
     */
     Route::resource('fire-hydrants', FireHydrantController::class)
-        ->only(['index', 'show'])
-        ->middleware('permission:fire.view');
-    Route::resource('fire-hydrants', FireHydrantController::class)
         ->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->middleware('permission:hydrants.manage');
+    Route::resource('fire-hydrants', FireHydrantController::class)
+        ->only(['index', 'show'])
+        ->middleware('permission:fire.view');
     Route::middleware('permission:records.view')->prefix('incident-archives')->name('incident-archives.')->group(function (): void {
         Route::get('/', [\App\Http\Controllers\IncidentArchiveController::class, 'index'])->name('index');
         Route::post('/bulk', [\App\Http\Controllers\IncidentArchiveController::class, 'bulk'])->middleware('throttle:10,1')->name('bulk');

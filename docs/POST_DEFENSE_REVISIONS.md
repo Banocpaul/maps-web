@@ -26,8 +26,19 @@ Chapter updates require the current manuscript and survey tables: actual preproc
 
 ## Incident archives (three-year rule)
 
-Operational Records → Incident archives is separate from generated report snapshots. Select Fire incidents, Flood incident records, or Flood field observations and choose Eligible to archive. Only Resolved fires and Subsided floods whose incident date is strictly before the Philippine calendar date three years ago qualify. No records are automatically archived or deleted.
+Operational Records → Incident archives is separate from generated report snapshots. Select Fire incidents, Flood incident records, or Flood field observations and choose Eligible to archive. Only Resolved fires and Subsided floods whose incident date is strictly before the Philippine calendar date three years ago qualify. No records are deleted. The owner-authorized one-time pass runs during deployment, followed by monthly automatic archiving.
 
 Authorized personnel with records.view and the relevant fire.edit/flood.edit permission can archive or restore records, individually or in explicit batches of up to 100 IDs. Each action requires a reason and is audited. A mixed eligible/ineligible batch changes nothing. Archived incidents leave current operational lists, remain searchable and printable through Incident archives, and remain in historical analytics and existing training selections. Operational Records offers Current, Archived only and All filters for viewing, printing and CSV exports.
 
 Deploy the new migration before serving this version (`php artisan migrate --force`). Existing records start unarchived. Restore records before modifying their operational details.
+
+
+### Initial and monthly automation
+
+`php artisan incidents:archive --initial` performs the owner-authorized initial archive of every eligible resolved fire and subsided flood (including field observations). The Docker startup runs it after migrations and fire data import. A durable database ledger makes this a one-time operation across restarts and redeployments. It also records the current month as complete.
+
+`php artisan incidents:archive --monthly` performs at most one pass per Philippine calendar month. Startup and request termination provide catch-up checks when free hosting wakes; the existing daily public weather trigger also wakes the application. An hourly Laravel scheduled due check is registered for installations running the scheduler. On sleeping hosting, work runs at the first available startup/request of the month rather than a guaranteed exact minute. No additional paid service or secret is required.
+
+Records are archived in bounded database batches, with exact affected IDs in the audit details and per-type totals in the ledger. One transaction covers each run, so a failed run rolls back both records and completion state and may retry. Manual restoration remains available; the system will not rearchive restored records again in the same completed month. They can become eligible again at the next month's pass.
+
+The archive page displays initial completion, the last completed month and totals. Archiving changes metadata only; analytics, predictor values and approved training flags are retained. The one-time command is explicit and idempotent; it is not run by a schema migration or during a build.

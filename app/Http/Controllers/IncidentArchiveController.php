@@ -21,7 +21,8 @@ class IncidentArchiveController extends Controller
         $records = $query->orderByDesc('id')->paginate(25)->withQueryString();
         $cutoff = $service->cutoff(true)->toDateString();
         $canManage = $request->user()->hasPermission($service->definition($type)[1]);
-        return view('incident-archives.index', compact('records', 'type', 'state', 'search', 'cutoff', 'canManage'));
+        $automation = \Illuminate\Support\Facades\DB::table('incident_archive_automation')->where('id', 1)->first();
+        return view('incident-archives.index', compact('records', 'type', 'state', 'search', 'cutoff', 'canManage', 'automation'));
     }
     public function bulk(Request $request, IncidentArchiveService $service) {
         $data = $request->validate([

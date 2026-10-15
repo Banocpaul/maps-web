@@ -3,6 +3,14 @@
 @section('content')
 <section class="rounded-2xl border bg-white p-6 space-y-5">
 <h1 class="text-2xl font-bold">Incident archives</h1>
+<div class="rounded-lg bg-blue-50 p-4 text-sm text-blue-900">
+<p>Automatic archiving runs once per month, with a catch-up check when the system wakes. Only closed incidents older than three years qualify.</p>
+@if($automation?->initial_completed_at)<p>Initial archive completed: {{ \Carbon\Carbon::parse($automation->initial_completed_at, 'UTC')->timezone('Asia/Manila')->format('M d, Y g:i A') }} PHT.</p>@else<p>Initial archive: awaiting deployment run.</p>@endif
+@if($automation?->last_completed_month)<p>Last completed month: {{ $automation->last_completed_month }}.</p>
+@php($archiveResult = json_decode($automation->last_result ?? '{}', true))
+<p>Last run: {{ $archiveResult['counts']['fire'] ?? 0 }} fires, {{ $archiveResult['counts']['flood'] ?? 0 }} flood records, {{ $archiveResult['counts']['observations'] ?? 0 }} flood observations archived.</p>
+@endif
+</div>
 <p class="text-slate-600">Only resolved fires and subsided floods dated before {{ $cutoff }} (Philippine time) qualify. Archiving hides records from current lists while preserving historical analytics. Report snapshots are separate.</p>
 @if(session('success'))<p class="rounded-lg bg-emerald-50 text-emerald-800 p-3">{{ session('success') }}</p>@endif
 <a class="text-blue-700" href="{{ route('operational-records.index') }}">Operational Records</a>

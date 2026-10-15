@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsurePasswordState::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\RunMonthlyIncidentArchives::class);
 
         $middleware->appendToGroup(
             'web',

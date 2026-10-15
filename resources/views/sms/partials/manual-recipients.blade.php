@@ -5,9 +5,10 @@
     <legend class="mb-3 text-sm font-semibold text-slate-800">Select Recipients</legend>
     @include('sms.partials.recipient-search', ['searchId' => 'manual-recipient-search', 'showSelection' => true])
     <div class="mt-2 flex justify-end"><button type="button" data-recipient-selection-clear class="text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline">Clear selection</button></div>
-    <p class="mt-2 text-xs leading-5 text-slate-500">Only active internal officers can receive manual SMS. Public residents receive their subscribed automatic alerts.</p>
+    <p class="mt-2 text-xs leading-5 text-slate-500">Select active internal officers. Residents receive automatic alerts.</p>
     <div class="mt-4 space-y-3">
-        @foreach ($recipientGroups as $group)
+        @foreach (array_filter($recipientGroups, fn ($group) => $group['key'] === 'internal') as $group)
+            @php($manualRecipients = $group['recipients']->where('is_active', true)->values())
             <details open data-recipient-group data-recipient-group-key="{{ $group['key'] }}"
                 class="overflow-hidden rounded-xl border border-slate-200 bg-white"
                 aria-labelledby="manual-{{ $group['key'] }}-heading">
@@ -16,15 +17,12 @@
                     <span class="flex min-w-0 items-center gap-2">
                         <svg class="h-4 w-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M2 19v-1c0-3 2-5 6-5s6 2 6 5v1H2Zm14-14a3 3 0 0 1 0 6m1 3c2 .5 3 2 3 4v1h-3"/></svg>
                         {{ $group['label'] }}
-                        <span data-recipient-group-count class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{{ $group['recipients']->count() }}</span>
+                        <span data-recipient-group-count class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{{ $manualRecipients->count() }}</span>
                     </span>
                     <svg class="sms-group-chevron h-4 w-4 shrink-0 text-slate-500 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
                 </summary>
-                @if ($group['key'] === 'public')
-                    <p class="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">Residents manage their own subscriptions; manual sending is unavailable.</p>
-                @endif
                 <div class="max-h-72 divide-y divide-slate-100 overflow-y-auto px-2">
-                    @foreach ($group['recipients'] as $recipient)
+                    @foreach ($manualRecipients as $recipient)
                         <label data-recipient-row data-recipient-id="{{ $recipient->id }}"
                             data-recipient-search-text="{{ implode(' ', [$recipient->full_name, $recipient->phone_number, $recipient->position, $recipient->barangay?->name, $recipient->office_or_barangay]) }}"
                             data-recipient-phone="{{ $recipient->phone_number }}"
@@ -45,7 +43,7 @@
                             @endunless
                         </label>
                     @endforeach
-                    <p data-recipient-empty @if ($group['recipients']->isNotEmpty()) hidden @endif class="px-3 py-5 text-sm text-slate-500">No recipients to display.</p>
+                    <p data-recipient-empty @if ($manualRecipients->isNotEmpty()) hidden @endif class="px-3 py-5 text-sm text-slate-500">No recipients to display.</p>
                 </div>
             </details>
         @endforeach

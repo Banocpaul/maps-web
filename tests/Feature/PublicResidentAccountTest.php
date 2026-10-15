@@ -316,7 +316,7 @@ class PublicResidentAccountTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_sms_lists_show_internal_and_public_groups_before_search_and_preserve_selection_rules(): void
+    public function test_sms_directory_keeps_all_recipients_and_manual_sender_only_shows_active_officers(): void
     {
         $resident = $this->resident();
         $public = $resident->smsRecipient;
@@ -339,23 +339,21 @@ class PublicResidentAccountTest extends TestCase
         $xpath = new \DOMXPath($document);
         $this->assertSame(2, $xpath->query('//*[@data-recipient-search-scope]')->length);
         foreach (['internal' => [$officer->id, $inactive->id], 'public' => [$public->id]] as $key => $expectedIds) {
-            $panels = $xpath->query('//*[@data-recipient-group-key="'.$key.'"]');
-            $this->assertSame(2, $panels->length);
-            foreach ($panels as $panel) {
-                $rows = $xpath->query('.//*[@data-recipient-row]', $panel);
-                $ids = [];
-                foreach ($rows as $row) {
-                    $ids[] = (int) $row->getAttribute('data-recipient-id');
-                    $this->assertFalse($row->hasAttribute('hidden'));
-                }
-                $this->assertEqualsCanonicalizing($expectedIds, $ids);
+            $panels = $xpath->query('//section[@data-recipient-group-key="'.$key.'"]');
+            $this->assertSame(1, $panels->length);
+            $ids = [];
+            foreach ($xpath->query('.//*[@data-recipient-row]', $panels->item(0)) as $row) {
+                $ids[] = (int) $row->getAttribute('data-recipient-id');
             }
+            $this->assertEqualsCanonicalizing($expectedIds, $ids);
         }
-        foreach ([$officer->id => false, $inactive->id => true, $public->id => true] as $id => $disabled) {
-            $checkbox = $xpath->query('//input[@name="recipient_ids[]" and @value="'.$id.'"]')->item(0);
-            $this->assertNotNull($checkbox);
-            $this->assertSame($disabled, $checkbox->hasAttribute('disabled'));
-            $this->assertSame(! $disabled, $checkbox->hasAttribute('checked'));
+        $this->assertSame(0, $xpath->query('//details[@data-recipient-group-key="public"]')->length);
+        $checkbox = $xpath->query('//input[@name="recipient_ids[]" and @value="'.$officer->id.'"]')->item(0);
+        $this->assertNotNull($checkbox);
+        $this->assertFalse($checkbox->hasAttribute('disabled'));
+        $this->assertTrue($checkbox->hasAttribute('checked'));
+        foreach ([$inactive->id, $public->id] as $id) {
+            $this->assertSame(0, $xpath->query('//input[@name="recipient_ids[]" and @value="'.$id.'"]')->length);
         }
         Http::assertNothingSent();
     }

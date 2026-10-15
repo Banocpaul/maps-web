@@ -504,7 +504,7 @@
                             href="{{ route('login') }}"
                             class="inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-bold text-blue-700 transition hover:bg-blue-50"
                         >
-                            Return to Staff Login
+                            Sign In
                         </a>
                     </div>
                 </div>

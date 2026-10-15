@@ -3,6 +3,7 @@
 @section('title', 'Operational Records | M.A.P.S')
 
 @section('content')
+@if(auth()->user()->hasPermission('dashboard.view'))<a href="{{ route('incident-comparison.index') }}" class="mb-4 inline-block rounded-lg border border-blue-200 bg-white px-4 py-2 font-semibold text-blue-700">Annual incident comparison report</a>@endif
 <a href="{{ route('incident-archives.index') }}" class="mb-4 inline-block rounded-lg border px-4 py-2 text-blue-700">Incident archives · older than 3 years</a>
 @if(auth()->user()->hasPermission('records.export'))
 <div class="flex flex-wrap gap-3 mb-4">

@@ -39,7 +39,9 @@ class IncidentReportReviewController extends Controller
             ->latest('created_at')->orderByDesc('id')->paginate(15)->withQueryString();
 
         $settings = DB::table('incident_report_settings')->where('id', 1)->first();
-        return view('incident-reports.index', compact('reports', 'counts', 'types', 'settings'));
+        $comparisonTypes = isset($filters['type']) ? [$filters['type']] : $types;
+        $annualComparison = app(\App\Services\IncidentComparisonService::class)->build(now('Asia/Manila')->year - 1, $comparisonTypes);
+        return view('incident-reports.index', compact('reports', 'counts', 'types', 'settings', 'annualComparison'));
     }
 
     public function show(

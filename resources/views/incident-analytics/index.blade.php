@@ -24,6 +24,7 @@
 @endpush
 
 @section('content')
+@if(auth()->user()->hasPermission('dashboard.view'))<a href="{{ route('incident-comparison.index') }}" class="mb-4 inline-block rounded-lg border border-blue-200 bg-white px-4 py-2 font-semibold text-blue-700">Annual incident comparison report</a>@endif
 @php
     $fireKpis = $fireDashboard['kpis'] ?? [];
     $floodKpis = $floodDashboard['kpis'] ?? [];

@@ -1,8 +1,20 @@
 @extends('layouts.app')
 @section('title', 'Incident Reports | M.A.P.S.')
 @section('content')
+@if(auth()->user()->hasPermission('dashboard.view'))<a href="{{ route('incident-comparison.index') }}" class="mb-4 inline-block rounded-lg border border-blue-200 bg-white px-4 py-2 font-semibold text-blue-700">Annual incident comparison report</a>@endif
 <div class="space-y-6">
     <div><h1 class="text-2xl font-bold">Incident Reports</h1><p class="mt-2 text-slate-600">Reports can be verified by staff or by matching reports from distinct residents. Staff complete official incident details before publication.</p></div>
+    <section class="rounded-xl border border-blue-100 bg-white p-5">
+    <h2 class="font-bold text-lg">Annual official incident comparison · {{ $annualComparison['year'] }} versus {{ $annualComparison['year'] - 1 }}</h2>
+    <p class="text-sm text-slate-500 mt-1">Full January–December totals, including archived records. These compare official incident records, independently of the public submission statuses below.</p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+    @foreach($annualComparison['cards'] as $hazard => $card)
+    <div class="rounded-xl bg-slate-50 p-4"><h3 class="text-sm font-semibold">{{ $hazard === 'all' ? 'All recorded incidents' : ucfirst($hazard).' incidents' }}</h3><strong class="block text-3xl mt-2">{{ number_format($card['current']) }}</strong>
+    <p class="font-semibold mt-2 {{ $card['delta'] > 0 ? 'text-red-700' : ($card['delta'] < 0 ? 'text-emerald-700' : 'text-slate-600') }}">{{ $card['label'] }}</p><p class="text-sm text-slate-500">{{ number_format($card['previous']) }} in {{ $annualComparison['year'] - 1 }}</p></div>
+    @endforeach
+    </div>
+    <a href="{{ route('incident-comparison.index') }}" class="mt-4 inline-block font-semibold text-blue-700">View annual, monthly, barangay and severity comparisons →</a>
+    </section>
     @if(auth()->user()->hasAnyRole(['operations-manager', 'operations-officer']) && auth()->user()->hasPermission('public-submissions.review'))
     <details class="rounded-xl border border-slate-200 bg-white p-5">
         <summary class="cursor-pointer font-semibold">Incident reporting settings</summary>

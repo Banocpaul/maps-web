@@ -42,3 +42,14 @@ Deploy the new migration before serving this version (`php artisan migrate --for
 Records are archived in bounded database batches, with exact affected IDs in the audit details and per-type totals in the ledger. One transaction covers each run, so a failed run rolls back both records and completion state and may retry. Manual restoration remains available; the system will not rearchive restored records again in the same completed month. They can become eligible again at the next month's pass.
 
 The archive page displays initial completion, the last completed month and totals. Archiving changes metadata only; analytics, predictor values and approved training flags are retained. The one-time command is explicit and idempotent; it is not run by a schema migration or during a build.
+
+
+## Full calendar-year comparison report
+
+Incident Reports displays a compact comparison for the latest completed year and its previous year (currently 2025 versus 2024). The Annual incident comparison report is also linked from Incident Analytics, Operational Records and System Analytics. Select the calendar year, hazard and barangay, then print/save a PDF from the dedicated print view.
+
+Completed years compare January 1 through December 31 against the full preceding calendar year. Selecting the current year labels it incomplete, limits it to the current Philippine time and still compares against the full previous year. Future months have no current value rather than fabricated zeros. The initial default is the latest completed year so comparisons normally use two full calendar years.
+
+Metrics include hazard totals and percentage change, paired monthly counts, barangay count changes, flood severity codes, BFP fire alarm distributions, source counts and latest dated record per source. The formula is (current - previous) / previous * 100. A nonzero current count with no prior records has no percentage baseline; both zero means no change.
+
+The report includes archived operational fire and flood records plus staff-recorded flood field observations, excludes soft-deleted/superseded fire records and does not count individual public submissions as separate official incidents. Flood records/observations can represent barangay observations of a wider event. Counts reflect the stored data and do not establish a change in actual disaster frequency when coverage is incomplete. Philippine dates are applied consistently to UTC fire/observation timestamps and local flood incident timestamps. Barangay names are normalized across source spellings.

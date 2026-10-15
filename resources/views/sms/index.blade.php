@@ -73,7 +73,7 @@
         </div>
     </div>
 
-    <div class="grid items-start gap-5 xl:grid-cols-2">
+    <div class="grid items-stretch gap-5 xl:grid-cols-2">
         @if (auth()->user()?->hasPermission('sms.recipients.manage'))
             <section class="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm" aria-labelledby="sms-add-heading">
                 <div class="flex items-center gap-3 border-b border-slate-100 px-5 py-5 sm:px-6">

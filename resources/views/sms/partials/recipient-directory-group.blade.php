@@ -90,7 +90,27 @@
 
                             <td class="px-6 py-4 text-right">
                                @if($recipient->user_id !== null)
-                                    <span class="text-xs text-slate-500">Resident manages preferences</span>
+                                    @if(auth()->user()?->isAdministrator() && $recipient->user?->isPublicResident())
+                                        <div class="flex justify-end gap-2">
+                                            @if($recipient->user->suspended_at)
+                                                <a href="{{ route('users.edit', $recipient->user) }}" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs">Review suspension</a>
+                                            @else
+                                                <form method="POST" action="{{ route('users.status', $recipient->user) }}" onsubmit="return confirm('Change access for this public account? Incident reports will be retained.')">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="is_active" value="{{ $recipient->user->is_active ? 0 : 1 }}">
+                                                    <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">{{ $recipient->user->is_active ? 'Deactivate account' : 'Activate account' }}</button>
+                                                </form>
+                                            @endif
+                                            <form method="POST" action="{{ route('users.destroy', $recipient->user) }}" onsubmit="return confirm('Permanently delete this public account and its SMS subscription? This cannot be undone. Incident reports and audit history will be retained.')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700">Delete account</button>
+                                            </form>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-slate-500">Resident manages preferences</span>
+                                    @endif
                                @elseif(auth()->user()?->hasPermission('sms.recipients.manage'))
                                     <div class="flex justify-end gap-2">
                                         <form

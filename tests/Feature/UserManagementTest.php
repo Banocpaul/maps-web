@@ -198,4 +198,14 @@ class UserManagementTest extends TestCase
         $this->actingAs($admin)->patch(route('users.status', $resident), ['is_active' => true])->assertSessionHas('error');
         $this->assertFalse($resident->fresh()->is_active);
     }
+    public function test_sms_directory_exposes_public_account_controls_to_administrator(): void
+    {
+        $admin = $this->administrator();
+        $role = Role::firstOrCreate(['slug' => 'public-resident'], ['name' => 'Public Resident', 'is_active' => true]);
+        $resident = User::factory()->create(['role_id' => $role->id, 'contact_number' => '+639171234567', 'is_active' => true, 'receive_flood_alerts' => false, 'receive_fire_alerts' => true]);
+        app(\App\Services\ResidentSubscriptionService::class)->sync($resident);
+        $this->actingAs($admin)->get(route('sms.index'))->assertOk()
+            ->assertSee('Deactivate account')->assertSee('Delete account')
+            ->assertSee(route('users.destroy', $resident), false);
+    }
 }

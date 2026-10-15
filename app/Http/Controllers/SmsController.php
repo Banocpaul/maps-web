@@ -24,7 +24,7 @@ class SmsController extends Controller
         $start = $request->filled('date') ? $request->date('date', 'Y-m-d', 'Asia/Manila')->startOfDay()->utc() : null;
         $today = now('Asia/Manila')->startOfDay()->utc();
         $recipients = SmsRecipient::query()
-            ->with('barangay')
+            ->with(['barangay', 'user'])
             ->latest()
             ->get();
 

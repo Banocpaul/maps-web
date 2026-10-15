@@ -22,3 +22,12 @@ SMS delivery uses the existing gateway and recipient opt-in settings. Check SMS 
 ## Document-only revisions
 
 Chapter updates require the current manuscript and survey tables: actual preprocessing steps, purposive sampling justification, respondent types, and the fire-mitigation/flood-prediction limitation. This change does not modify the manuscript or add a fire prediction model.
+
+
+## Incident archives (three-year rule)
+
+Operational Records → Incident archives is separate from generated report snapshots. Select Fire incidents, Flood incident records, or Flood field observations and choose Eligible to archive. Only Resolved fires and Subsided floods whose incident date is strictly before the Philippine calendar date three years ago qualify. No records are automatically archived or deleted.
+
+Authorized personnel with records.view and the relevant fire.edit/flood.edit permission can archive or restore records, individually or in explicit batches of up to 100 IDs. Each action requires a reason and is audited. A mixed eligible/ineligible batch changes nothing. Archived incidents leave current operational lists, remain searchable and printable through Incident archives, and remain in historical analytics and existing training selections. Operational Records offers Current, Archived only and All filters for viewing, printing and CSV exports.
+
+Deploy the new migration before serving this version (`php artisan migrate --force`). Existing records start unarchived. Restore records before modifying their operational details.

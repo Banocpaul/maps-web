@@ -336,6 +336,13 @@ Route::resource('fire-incidents', FireIncidentController::class)
     Route::resource('fire-hydrants', FireHydrantController::class)
         ->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->middleware('permission:hydrants.manage');
+    Route::middleware('permission:records.view')->prefix('incident-archives')->name('incident-archives.')->group(function (): void {
+        Route::get('/', [\App\Http\Controllers\IncidentArchiveController::class, 'index'])->name('index');
+        Route::post('/bulk', [\App\Http\Controllers\IncidentArchiveController::class, 'bulk'])->middleware('throttle:10,1')->name('bulk');
+        Route::get('/{type}/{id}', [\App\Http\Controllers\IncidentArchiveController::class, 'show'])->whereNumber('id')->name('show');
+        Route::post('/{type}/{id}/archive', [\App\Http\Controllers\IncidentArchiveController::class, 'archive'])->whereNumber('id')->middleware('throttle:30,1')->name('archive');
+        Route::post('/{type}/{id}/restore', [\App\Http\Controllers\IncidentArchiveController::class, 'restore'])->whereNumber('id')->middleware('throttle:30,1')->name('restore');
+    });
     /* Operational database browser and controlled CSV exports. */
     Route::get('/operational-records', [OperationalRecordController::class, 'index'])
         ->middleware('permission:records.view')

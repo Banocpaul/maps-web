@@ -542,6 +542,7 @@ class OperationalRecordController extends Controller
     public function editFlood(int $id): View
     {
         $record = FloodIncidentRecord::findOrFail($id);
+        abort_if($record->archived_at, 409, 'Restore this archived incident before changing it.');
         return view('operational-records.flood-form', [
             'record' => $record,
             'barangays' => Barangay::active()->orderBy('name')->get(),
@@ -551,6 +552,7 @@ class OperationalRecordController extends Controller
     public function updateFlood(Request $request, int $id, OperationalFloodEnrichmentService $enrichment): RedirectResponse
     {
         $record = FloodIncidentRecord::findOrFail($id);
+        abort_if($record->archived_at, 409, 'Restore this archived incident before changing it.');
         $data = $this->validatedFloodRecord($request, $record);
         DB::transaction(function () use ($record, $data): void {
             $locked = FloodIncidentRecord::lockForUpdate()->findOrFail($record->id);
@@ -602,7 +604,11 @@ class OperationalRecordController extends Controller
 
     public function destroyFlood(int $id): RedirectResponse
     {
-        FloodIncidentRecord::findOrFail($id)->delete();
+        DB::transaction(function () use ($id): void {
+            $record = FloodIncidentRecord::lockForUpdate()->findOrFail($id);
+            abort_if($record->archived_at, 409, 'Restore this archived incident before deleting it.');
+            $record->delete();
+        });
         return $this->floodRedirect('Flood incident record removed.');
     }
 
@@ -665,10 +671,14 @@ class OperationalRecordController extends Controller
         return $validated;
     }
 
-    private function baseQuery(array $dataset, string $classification = 'Current'): Builder
+    private function baseQuery(array $dataset, string $classification = 'Current', string $archiveState = 'current'): Builder
     {
         $table = $dataset['table'];
         $query = DB::table($table);
+        if (in_array($table, ['fire_incidents', self::FLOOD_TABLE], true)) {
+            if ($archiveState === 'current') $query->whereNull($table.'.archived_at');
+            if ($archiveState === 'archived') $query->whereNotNull($table.'.archived_at');
+        }
         if (Schema::hasColumn($table, 'deleted_at')) {
             $query->whereNull("{$table}.deleted_at");
         }
@@ -688,7 +698,7 @@ class OperationalRecordController extends Controller
     private function filteredQuery(array $dataset, array $filters): Builder
     {
         $table = $dataset['table'];
-        $query = $this->baseQuery($dataset, $filters['record_classification']);
+        $query = $this->baseQuery($dataset, $filters['record_classification'], $filters['archive_state']);
 
         if (($dataset['joins_barangays'] ?? false) && Schema::hasTable('barangays')) {
             $query->leftJoin('barangays', "{$table}.barangay_id", '=', 'barangays.id');
@@ -779,6 +789,7 @@ class OperationalRecordController extends Controller
     private function validatedFilters(Request $request, array $dataset): array
     {
         $validated = $request->validate([
+            'archive_state' => ['nullable', Rule::in(['current', 'archived', 'all'])],
             'record_classification' => ['nullable', Rule::in(['Current', 'Superseded'])],
             'search' => ['nullable', 'string', 'max:100'],
             'date_from' => ['nullable', 'date'],
@@ -790,6 +801,7 @@ class OperationalRecordController extends Controller
         ]);
 
         return [
+            'archive_state' => $validated['archive_state'] ?? 'current',
             'record_classification' => $validated['record_classification'] ?? 'Current',
             'search' => trim((string) ($validated['search'] ?? '')),
             'date_from' => (string) ($validated['date_from'] ?? ''),

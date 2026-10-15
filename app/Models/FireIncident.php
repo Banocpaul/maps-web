@@ -133,19 +133,20 @@ class FireIncident extends Model
 
     public function canUpdateResponse(): bool
     {
-        return $this->status !== 'Resolved' && $this->record_status !== 'Finalized'
+        return ! $this->archived_at && $this->status !== 'Resolved' && $this->record_status !== 'Finalized'
             && ! in_array($this->record_classification, ['Example', 'Superseded'], true);
     }
 
     public function canFinalize(): bool
     {
-        return $this->status === 'Resolved' && $this->fire_out_at !== null
+        return ! $this->archived_at && $this->status === 'Resolved' && $this->fire_out_at !== null
             && $this->record_status === 'For Assessment'
             && ! in_array($this->record_classification, ['Example', 'Superseded'], true);
     }
 
     public function canRecordFireOut(): bool
     {
+        if ($this->archived_at) return false;
         return $this->canUpdateResponse() || ($this->status === 'Resolved' && $this->fire_out_at === null
             && $this->record_status === 'For Assessment'
             && ! in_array($this->record_classification, ['Example', 'Superseded'], true));

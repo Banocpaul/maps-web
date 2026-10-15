@@ -19,7 +19,7 @@ class FloodDatasetController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $records = FloodTrainingRecord::query()
+        $records = FloodTrainingRecord::query()->whereNull('archived_at')
             ->search(
                 $request->string('search')->toString()
             )
@@ -42,7 +42,7 @@ class FloodDatasetController extends Controller
                 )
             );
 
-        $statisticsQuery = FloodTrainingRecord::query();
+        $statisticsQuery = FloodTrainingRecord::query()->whereNull('archived_at');
         if ($request->input('scope') === 'active') $statisticsQuery->where('flood_status', 'Active');
 
         $statistics = [
@@ -137,6 +137,7 @@ class FloodDatasetController extends Controller
         FloodTrainingRecord $floodTrainingRecord,
         FloodObservationEnrichmentService $enrichmentService
     ): JsonResponse {
+        abort_if($floodTrainingRecord->archived_at, 409, 'Restore this archived incident before changing it.');
         $request->validate([
             'change_observed_at' => ['nullable', 'date', 'before_or_equal:now'],
             'change_note' => ['nullable', 'string', 'max:2000'],
@@ -272,6 +273,7 @@ class FloodDatasetController extends Controller
     public function destroy(
         FloodTrainingRecord $floodTrainingRecord
     ): JsonResponse {
+        abort_if($floodTrainingRecord->archived_at, 409, 'Restore this archived incident before deleting it.');
         $floodTrainingRecord->delete();
 
         return response()->json([

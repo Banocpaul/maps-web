@@ -27,7 +27,7 @@ class FireIncidentController extends Controller
         $query = FireIncident::withoutGlobalScope('operational_records')
             ->when($classification === 'Current', fn ($query) => $query->whereIn('record_classification', ['Reported', 'Dataset']),
                 fn ($query) => $query->where('record_classification', $classification))
-            ->with('barangay')
+            ->whereNull('archived_at')->with('barangay')
             ->latest('reported_at');
 
         if ($request->filled('search')) {
@@ -99,9 +99,9 @@ class FireIncidentController extends Controller
             ->get();
 
         $statistics = [
-            'total' => FireIncident::count(),
+            'total' => FireIncident::whereNull('archived_at')->count(),
 
-            'active' => FireIncident::whereIn(
+            'active' => FireIncident::whereNull('archived_at')->whereIn(
                 'status',
                 [
                     'Reported',
@@ -110,12 +110,12 @@ class FireIncidentController extends Controller
                 ]
             )->count(),
 
-            'resolved' => FireIncident::where(
+            'resolved' => FireIncident::whereNull('archived_at')->where(
                 'status',
                 'Resolved'
             )->count(),
 
-            'for_assessment' => FireIncident::where('record_status', 'For Assessment')->count(),
+            'for_assessment' => FireIncident::whereNull('archived_at')->where('record_status', 'For Assessment')->count(),
         ];
 
         return view(

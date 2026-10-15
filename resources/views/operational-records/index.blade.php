@@ -3,6 +3,7 @@
 @section('title', 'Operational Records | M.A.P.S')
 
 @section('content')
+<a href="{{ route('incident-archives.index') }}" class="mb-4 inline-block rounded-lg border px-4 py-2 text-blue-700">Incident archives · older than 3 years</a>
 @if(auth()->user()->hasPermission('records.export'))
 <div class="flex flex-wrap gap-3 mb-4">
 <a href="{{ route('operational-records.archives') }}" class="rounded-lg border px-4 py-2 text-blue-700">Archived reports</a>
@@ -55,6 +56,9 @@
         @if($datasetKey === 'fire-incidents')<p class="mb-3 text-sm text-slate-500">Complete fire test dataset.</p>@endif
         <form method="GET" action="{{ route('operational-records.index') }}" class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <input type="hidden" name="dataset" value="{{ $datasetKey }}">
+            @if(in_array($datasetKey, ['fire-incidents', 'flood-records']))
+            <label>Archive status<select name="archive_state" class="block w-full border rounded-lg p-2">@foreach(['current' => 'Current records', 'archived' => 'Archived only', 'all' => 'All records'] as $value => $label)<option value="{{ $value }}" @selected($filters['archive_state'] === $value)>{{ $label }}</option>@endforeach</select></label>
+            @endif
 
             <label class="xl:col-span-2">
                 <span class="text-xs font-semibold text-slate-600">Search</span>

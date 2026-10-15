@@ -280,19 +280,11 @@
 
                         {{-- Form heading --}}
                         <header>
-                            <p
-                                class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700"
-                            >
-                                Resident & Personnel Access
-                            </p>
-
-                            <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900">
+                            <h2 class="text-3xl font-bold tracking-tight text-slate-900">
                                 Sign in to M.A.P.S
                             </h2>
 
-                            <p class="mt-3 text-sm leading-6 text-slate-500">
-                                Sign in with your account. Your role determines which portal opens.
-                            </p>
+
                         </header>
 
                         {{-- Success message --}}
@@ -514,16 +506,6 @@
 
                         {{-- Public access --}}
                         <div class="mt-7 border-t border-slate-200 pt-6">
-                            <div class="text-center">
-                                <p class="text-sm font-semibold text-slate-700">
-                                    Public information access
-                                </p>
-
-                                <p class="mt-1 text-xs leading-5 text-slate-500">
-                                    View public disaster information without signing in.
-                                </p>
-                            </div>
-
                             <a
                                 href="{{ route('public.portal') }}"
                                 class="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-600/10"
@@ -543,11 +525,11 @@
                                     />
                                 </svg>
 
-                                <span>View Public Disaster Information</span>
+                                <span>Continue as guest</span>
                             </a>
                         </div>
 
-                        <p class="mt-5 text-center text-sm text-slate-600">For resident reports and SMS alerts, <a href="{{ route('login') }}" class="font-semibold text-blue-700 underline">sign in above</a> or <a href="{{ route('public.register') }}" class="font-semibold text-blue-700 underline">create a public account</a>.</p>
+                        <p class="mt-5 text-center text-sm text-slate-600">Don’t have an account? <a href="{{ route('public.register') }}" class="font-semibold text-blue-700 underline">Create an account</a>.</p>
                         {{-- System footer --}}
                         <footer class="mt-8 border-t border-slate-200 pt-5">
                             <div

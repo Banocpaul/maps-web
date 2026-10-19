@@ -3,6 +3,7 @@
 @section('content')
 <section class="rounded-2xl border bg-white p-6 space-y-5">
 <h1 class="text-2xl font-bold">Incident archives</h1>
+<a href="{{ route('incident-archives.analytics') }}" class="inline-block rounded-lg bg-blue-700 px-4 py-2 text-white">Generate Annual Analytics Report</a>
 <div class="rounded-lg bg-blue-50 p-4 text-sm text-blue-900">
 <p>Automatic archiving runs once per month, with a catch-up check when the system wakes. Only closed incidents older than three years qualify.</p>
 @if($automation?->initial_completed_at)<p>Initial archive completed: {{ \Carbon\Carbon::parse($automation->initial_completed_at, 'UTC')->timezone('Asia/Manila')->format('M d, Y g:i A') }} PHT.</p>@else<p>Initial archive: awaiting deployment run.</p>@endif

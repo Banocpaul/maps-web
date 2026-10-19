@@ -16,7 +16,14 @@ alert type. Existing staff SMS recipients are preserved and cannot be claimed by
 Resident subscriptions cannot be changed through staff recipient endpoints or included in
 untyped manual broadcasts.
 
-Fire messages use the existing automatic incident sender. Active flood observations now
+Validating a public report, either through staff review or matching community reports,
+sends one automatic SMS per eligible subscriber for that report group. Residents select the
+incident barangay when reporting; staff confirm it during manual validation. Routing uses
+this selection rather than the reporter's home or the simplified map polygons. Legacy
+community alerts are recognized to avoid sending the same alert again. Gateway failures
+are recorded in SMS Center. Previously validated reports are not broadcast retroactively.
+
+Fire publication messages use the existing automatic incident sender. Active flood observations now
 send barangay-specific flood messages when added by staff through Flood Operations or when
 a validated public flood report is published. Pending or rejected reports do not trigger SMS.
 Each incident/recipient alert is sent once, with gateway successes and failures recorded in
@@ -24,9 +31,9 @@ SMS logs. These alerts concern recorded incidents; forecast and simulation calcu
 unchanged. SMS requires the existing configured Android gateway.
 
 Public reports require an active resident account. Reports store the submitting user and a
-snapshot of the reporter's barangay, with the submission event attributed to that account.
-The reporter barangay describes the resident, not the incident pin; staff confirm the incident
-barangay during publication. Reusing a form token is idempotent for its owner and rejected for
+snapshot of the reporter's barangay and a separate incident barangay, with the submission
+event attributed to that account. The reporter barangay describes the resident; incident
+alerts use the selected incident barangay. Reusing a form token is idempotent for its owner and rejected for
 other accounts. Photos remain private staff attachments. My Reports displays only the current
 resident's submissions, current status, and rejection reason; it does not expose internal staff notes.
 

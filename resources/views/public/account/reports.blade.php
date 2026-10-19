@@ -2,7 +2,7 @@
 @section('title', 'My Reports')
 @section('content')
 <div class="flex flex-wrap items-center justify-between gap-4"><div><h1 class="text-3xl font-black">My Reports</h1><p class="mt-2 text-slate-600">Track the flood and fire incidents you submitted.</p></div><a href="{{ route('public.incident-reports.create') }}" class="rounded-xl bg-blue-700 px-5 py-3 font-bold text-white">Report an Incident</a></div>
-<p class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-slate-700">Pending: awaiting review. Accepted: validated by staff. Published: added to official incident records. Rejected: declined with a reason.</p>
+<p class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-slate-700">Pending: awaiting review. Accepted: validated by staff or matching community reports. Validation triggers SMS alerts for opted-in residents in the incident barangay. Published: added to official incident records. Rejected: declined with a reason.</p>
 <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
     <table class="w-full text-left text-sm"><thead class="bg-slate-50"><tr><th class="p-4">Reference</th><th class="p-4">Type</th><th class="p-4">Submitted (Manila)</th><th class="p-4">Status</th><th class="p-4">Review result</th></tr></thead><tbody>
     @forelse($reports as $report)

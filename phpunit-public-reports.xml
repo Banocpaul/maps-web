@@ -4,6 +4,7 @@
         <testsuite name="Public incident reporting">
             <file>tests/Feature/PublicIncidentReportingTest.php</file>
             <file>tests/Feature/PublicResidentAccountTest.php</file>
+            <file>tests/Feature/ValidatedReportAlertTest.php</file>
             <file>tests/Unit/IncidentReportAreaTest.php</file>
             <file>tests/Feature/FireIncidentAutomaticSmsTest.php</file>
             <file>tests/Feature/FloodFieldObservationTest.php</file>

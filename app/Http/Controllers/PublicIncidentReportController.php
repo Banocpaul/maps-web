@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Barangay;
 use App\Models\PublicIncidentReport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class PublicIncidentReportController extends Controller
     public function create(): View
     {
         return view('public.report-incident', [
+            'barangays' => Barangay::active()->orderBy('name')->get(['id', 'name']),
             'submissionToken' => (string) Str::uuid(),
         ]);
     }
@@ -25,6 +27,7 @@ class PublicIncidentReportController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'incident_barangay_id' => ['required', 'integer', Rule::exists('barangays', 'id')->where('is_active', true)],
             'street' => ['nullable', 'string', 'max:255'],
             'incident_type' => ['required', Rule::in(['fire', 'flood'])],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
@@ -51,6 +54,7 @@ class PublicIncidentReportController extends Controller
                         'status' => 'Pending',
                         'submitted_by' => $request->user()->id,
                         'reporter_barangay_id' => $request->user()->barangay_id,
+                        'incident_barangay_id' => $validated['incident_barangay_id'],
                     ]
                 );
                 abort_unless((int) $report->submitted_by === $request->user()->id, 409,

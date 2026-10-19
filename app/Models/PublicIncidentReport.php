@@ -15,7 +15,7 @@ class PublicIncidentReport extends Model
         'status', 'validated_by', 'validated_at', 'published_by', 'published_at',
         'rejected_by', 'rejected_at', 'validation_notes', 'rejection_reason',
         'fire_incident_id', 'flood_training_record_id',
-        'submitted_by', 'reporter_barangay_id',
+        'submitted_by', 'reporter_barangay_id', 'incident_barangay_id',
     ];
 
     protected function casts(): array
@@ -48,6 +48,11 @@ class PublicIncidentReport extends Model
     public function reporterBarangay(): BelongsTo
     {
         return $this->belongsTo(Barangay::class, 'reporter_barangay_id');
+    }
+
+    public function incidentBarangay(): BelongsTo
+    {
+        return $this->belongsTo(Barangay::class, 'incident_barangay_id');
     }
 
     public function fireIncident(): BelongsTo

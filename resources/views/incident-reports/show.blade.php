@@ -15,6 +15,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3"><h1 class="text-2xl font-bold">{{ ucfirst($publicReport->incident_type) }} report</h1><strong>{{ $publicReport->status }}</strong></div>
     <p class="mt-2 font-semibold">{{ $publicReport->reference }}</p>
     <p class="report-muted">Reporter: {{ $publicReport->submitter?->name ?? 'Legacy public report' }} · Reporter barangay: {{ $publicReport->reporterBarangay?->name ?? 'Not recorded' }}</p>
+    <p class="report-muted">Incident barangay: {{ $publicReport->incidentBarangay?->name ?? 'Confirm before validation' }}</p>
     <p class="report-muted">Submitted {{ $publicReport->created_at->timezone('Asia/Manila')->format('M d, Y g:i A') }} · Original pin: {{ number_format($publicReport->latitude, 7) }}, {{ number_format($publicReport->longitude, 7) }}</p>
     @if($publicReport->community_verified)
         <p class="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">Public verified · Report group #{{ $publicReport->report_group_id }}. {{ $publicReport->validation_notes }}</p>
@@ -47,6 +48,12 @@
 @if($publicReport->status === 'Pending' && $canReview)
 <form method="POST" action="{{ route('public-submissions.validate', $publicReport) }}" class="report-panel">
     @csrf<h2>Validate the report</h2><p class="report-muted">Confirm the incident through your response team or field verification, then record how it was verified.</p>
+    <label for="validation-barangay" class="mt-4 block font-semibold">Confirm incident barangay</label>
+    <select name="incident_barangay_id" id="validation-barangay" required class="review-notes">
+        <option value="">Select the barangay where the incident occurred</option>
+        @foreach($barangays as $barangay)<option value="{{ $barangay->id }}" @selected((string) old('incident_barangay_id', $suggestedBarangayId) === (string) $barangay->id)>{{ $barangay->name }}</option>@endforeach
+    </select>
+    <p class="report-muted mt-2">Validation automatically sends SMS alerts to opted-in residents in this barangay.</p>
     <label for="validation-notes" class="mt-4 block font-semibold">Verification notes</label><textarea name="validation_notes" id="validation-notes" class="review-notes" rows="3" required minlength="5" maxlength="2000">{{ old('validation_notes') }}</textarea>
     @if($publicReport->incident_type === 'fire')
         <label class="block mt-3">BFP alarm level<select name="alarm_level" class="review-notes"><option value="">Not yet confirmed</option>@foreach(\App\Models\FireIncidentUpdate::ALARMS as $alarm)<option @selected(old('alarm_level') === $alarm)>{{ $alarm }}</option>@endforeach</select></label>
@@ -187,13 +194,14 @@
         barangayStatus.textContent=id?'Barangay filled from pin: '+matches[0].properties.barangay+'. Confirm before publishing.':'Barangay could not be identified uniquely. Select and verify it manually.';
     }
     const hasPreviousBarangay={{ Illuminate\Support\Js::from(session()->hasOldInput('barangay_id')) }};
-    if(form && type==='flood' && !hasPreviousBarangay)populateBarangay(origin[0],origin[1]);
+    const hasSelectedBarangay={{ Illuminate\Support\Js::from($publicReport->incident_barangay_id !== null) }};
+    if(form && type==='flood' && !hasPreviousBarangay && !hasSelectedBarangay)populateBarangay(origin[0],origin[1]);
     let points=[], line;
     if(form && type==='fire') {
         const latitude=document.getElementById('official-latitude'),longitude=document.getElementById('official-longitude');
         const marker=L.marker([Number(latitude.value),Number(longitude.value)],{draggable:true}).addTo(map);
         const update=(position,detect=true)=>{if(detect)populateBarangay(position.lat,position.lng);marker.setLatLng(position);latitude.value=position.lat.toFixed(7);longitude.value=position.lng.toFixed(7);status.textContent='Confirmed pin: '+latitude.value+', '+longitude.value;};
-        marker.on('dragend',()=>update(marker.getLatLng()));map.on('click',e=>update(e.latlng));update(marker.getLatLng(),!hasPreviousBarangay);
+        marker.on('dragend',()=>update(marker.getLatLng()));map.on('click',e=>update(e.latlng));update(marker.getLatLng(),!hasPreviousBarangay && !hasSelectedBarangay);
     }
     if(form && type==='flood') {
         const geometry=document.getElementById('flood-geometry');

@@ -23,12 +23,11 @@ class ProcessDashboardService
         $tasks = [];
         $links = [];
         $admin = $role->slug === 'administrator';
-        $permissions = $role->permissions->where('is_active', true)->pluck('slug')->all();
-        $can = fn (string $permission): bool => $user->is_active && $role->is_active
-            && $role->slug !== 'public-resident' && ($admin || in_array($permission, $permissions, true));
-        $hazards = match ($role->slug) {
+        $roleSlug = \App\Support\RoleAccess::canonical($role->slug);
+        $can = fn (string $permission): bool => $user->hasPermission($permission);
+        $hazards = match ($roleSlug) {
             'fire-responder' => ['fire'], 'flood-analyst' => ['flood'],
-            'operations-manager' => ['fire', 'flood'], default => [],
+            'operations-manager', 'system-viewer' => ['fire', 'flood'], default => [],
         };
         $today = now('Asia/Manila')->startOfDay()->utc();
         $tomorrow = $today->copy()->addDay();
@@ -139,7 +138,7 @@ class ProcessDashboardService
             }
         }
 
-        if (($admin || $role->slug === 'operations-manager') && $can('sms.view')) {
+        if (($roleSlug === 'operations-manager') && $can('sms.view')) {
             $query = SmsLog::where('status', 'failed')->where('created_at', '>=', $today)->where('created_at', '<', $tomorrow);
             $url = route('sms.index', ['status' => 'failed', 'date' => $today->copy()->timezone('Asia/Manila')->format('Y-m-d')]).'#sms-logs';
             $this->card($cards, 'sms', 'SMS Failures Today', $query->count(), $url, 'Check Delivery Logs');
@@ -162,10 +161,14 @@ class ProcessDashboardService
         foreach ($navigation as [$label, $route, $permission]) {
             $inScope = $admin || (! str_starts_with($permission, 'prediction.') || in_array('flood', $hazards, true))
                 && (! str_starts_with($permission, 'fire.') || in_array('fire', $hazards, true))
-                && ($permission !== 'sms.view' || $role->slug === 'operations-manager');
+                && ($permission !== 'sms.view' || $roleSlug === 'operations-manager');
             if ($inScope && $can($permission) && Route::has($route)) {
                 $links[] = ['label' => $label, 'url' => route($route)];
             }
+        }
+
+        if ($roleSlug === 'system-viewer') {
+            $tasks = [];
         }
 
         return [

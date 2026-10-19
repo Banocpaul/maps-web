@@ -1,8 +1,7 @@
 {{-- One Flood Prediction workspace with current forecast and saved history tabs.
      The administrator must not receive the run-prediction tab. --}}
 @php
-    $showCurrentTab = auth()->user()?->hasPermission('prediction.run')
-        && ! auth()->user()?->isAdministrator();
+    $showCurrentTab = auth()->user()?->hasPermission('prediction.view');
 @endphp
 <nav class="flex flex-wrap gap-2 border-b border-slate-200 pb-3" aria-label="Flood prediction sections">
     @if ($showCurrentTab && Route::has('prediction.index'))

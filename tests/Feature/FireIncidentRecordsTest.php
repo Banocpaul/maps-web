@@ -343,7 +343,7 @@ class FireIncidentRecordsTest extends TestCase
 
     private function staff(): User
     {
-        $role = Role::firstOrCreate(['slug' => 'fire-responder'], ['name' => 'Fire responder', 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'operations-manager'], ['name' => 'Operations Manager', 'is_active' => true]);
         foreach (['fire.view', 'fire.create', 'fire.edit', 'fire.delete', 'records.view', 'records.export', 'gis.view'] as $slug) {
             $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'module' => explode('.', $slug)[0], 'is_active' => true]);
             $role->permissions()->syncWithoutDetaching([$permission->id]);

@@ -138,7 +138,7 @@ class GisMapController extends Controller
     public function nearestHydrants(
         Request $request
     ): JsonResponse {
-        abort_if($request->user()->hasRole('flood-analyst'), 403);
+        abort_unless($request->user()->hasPermission('fire.view'), 403);
 
         $validated = $request->validate([
             'latitude' => [
@@ -303,8 +303,14 @@ class GisMapController extends Controller
 
     private function wantsFloodMap(Request $request): bool
     {
-        if ($request->user()->hasRole('flood-analyst')) return true;
-        if ($request->query('hazard') !== 'flood') return false;
+        if ($request->user()->hasRole('flood-analyst')) {
+            abort_unless($request->user()->hasPermission('flood.view'), 403);
+            return true;
+        }
+        if ($request->query('hazard') !== 'flood') {
+            abort_unless($request->user()->hasPermission('fire.view'), 403);
+            return false;
+        }
         abort_unless($request->user()->hasPermission('flood.view')
             || $request->user()->hasPermission('flood.create')
             || $request->user()->hasPermission('flood.edit'), 403);

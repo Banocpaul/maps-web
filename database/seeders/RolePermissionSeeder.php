@@ -16,7 +16,7 @@ class RolePermissionSeeder extends Seeder
                 [
                     'name' => 'Administrator',
                     'slug' => 'administrator',
-                    'description' => 'Full system administration and unrestricted system access.',
+                    'description' => 'Manages accounts, access, security, configuration, and backups. No operational access.',
                 ],
                 [
                     'name' => 'Operations Manager',
@@ -255,81 +255,19 @@ class RolePermissionSeeder extends Seeder
                 );
             }
 
-            $rolePermissions = [
-                'administrator' => Permission::pluck('slug')->all(),
+            $rolePermissions = \App\Support\RoleAccess::matrix();
+            unset($rolePermissions['public-resident']);
 
-                'operations-manager' => [
-                    'dashboard.view',
-                    'flood.view',
-                    'flood.create',
-                    'flood.edit',
-                    'flood.delete',
-                    'fire.view',
-                    'fire.create',
-                    'fire.edit',
-                    'fire.delete',
-                    'hydrants.manage',
-                    'prediction.view',
-                    'prediction.run',
-                    'prediction.review',
-                    'prediction.data.manage',
-                    'records.view',
-                    'records.export',
-                    'gis.view',
-                    'gis.manage',
-                    'sms.view',
-                    'sms.send',
-                    'sms.recipients.manage',
-                    'sms.automation.manage',
-                    'reports.view',
-                    'reports.export',
-                    'public-submissions.view',
-                    'public-submissions.review',
-                    'public-submissions.approve',
-                    'public-submissions.reject',
-                ],
+            foreach (array_unique(array_merge(...array_values($rolePermissions))) as $slug) {
+                Permission::firstOrCreate(['slug' => $slug], [
+                    'name' => str($slug)->replace('.', ' ')->headline()->toString(),
+                    'module' => explode('.', $slug)[0], 'is_active' => true,
+                ]);
+            }
 
-                'flood-analyst' => [
-                    'dashboard.view',
-                    'flood.view',
-                    'flood.create',
-                    'flood.edit',
-                    'prediction.view',
-                    'prediction.run',
-                    'prediction.review',
-                    'prediction.data.manage',
-                    'gis.view',
-                    'reports.view',
-                    'reports.export',
-                    'public-submissions.view',
-                    'public-submissions.review',
-                    'public-submissions.approve',
-                    'public-submissions.reject',
-                ],
-
-                'fire-responder' => [
-                    'dashboard.view',
-                    'fire.view',
-                    'fire.create',
-                    'fire.edit',
-                    'hydrants.manage',
-                    'gis.view',
-                    'reports.view',
-                    'public-submissions.view',
-                    'public-submissions.review',
-                    'public-submissions.approve',
-                    'public-submissions.reject',
-                ],
-
-                'system-viewer' => [
-                    'dashboard.view',
-                    'flood.view',
-                    'fire.view',
-                    'prediction.view',
-                    'gis.view',
-                    'reports.view',
-                ],
-            ];
+            if (Role::where('slug', 'operations-officer')->exists()) {
+                $rolePermissions['operations-officer'] = $rolePermissions['operations-manager'];
+            }
 
             foreach ($rolePermissions as $roleSlug => $permissionSlugs) {
                 $role = Role::where('slug', $roleSlug)->firstOrFail();

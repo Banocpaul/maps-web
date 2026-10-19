@@ -30,8 +30,8 @@
     $floodKpis = $floodDashboard['kpis'] ?? [];
     $activeIncidents = collect($fireOperations['recent_active'] ?? []);
     $recentFloods = collect($floodDashboard['recent_records'] ?? []);
-    $showFire = in_array($roleSlug, ['fire-responder', 'operations-manager'], true);
-    $showFlood = in_array($roleSlug, ['flood-analyst', 'operations-manager'], true);
+    $showFire = in_array($roleSlug, ['fire-responder', 'operations-manager', 'system-viewer'], true);
+    $showFlood = in_array($roleSlug, ['flood-analyst', 'operations-manager', 'system-viewer'], true);
     $selectedAnalytics = $selectedAnalytics ?? ($roleSlug === 'flood-analyst' ? 'flood' : 'fire');
     $rainfall24h = data_get($liveWeather, 'rainfall_24h_mm');
     $temperature = data_get($liveWeather, 'avg_temp_mean_c');

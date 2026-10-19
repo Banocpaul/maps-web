@@ -305,7 +305,8 @@ class PublicResidentAccountTest extends TestCase
     {
         $resident = $this->resident();
         $recipient = $resident->smsRecipient;
-        $role = Role::create(['name' => 'Administrator', 'slug' => 'administrator', 'is_active' => true]);
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $role = Role::where('slug', 'operations-manager')->firstOrFail();
         $admin = User::factory()->create(['role_id' => $role->id, 'is_active' => true]);
         $this->actingAs($admin)->put(route('sms.recipients.update', $recipient), [])->assertForbidden();
         $this->patch(route('sms.recipients.status', $recipient))->assertForbidden();
@@ -324,7 +325,8 @@ class PublicResidentAccountTest extends TestCase
         $officer = SmsRecipient::create(['full_name' => 'Bañoc "Officer"', 'phone_number' => '+639171234599',
             'position' => 'Fire Responder', 'barangay_id' => $this->barangay('New Zañiga')->id, 'is_active' => true]);
         $inactive = SmsRecipient::create(['full_name' => 'Inactive Officer', 'phone_number' => '+639171234598', 'is_active' => false]);
-        $role = Role::create(['name' => 'Administrator', 'slug' => 'administrator', 'is_active' => true]);
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $role = Role::where('slug', 'operations-manager')->firstOrFail();
         $admin = User::factory()->create(['role_id' => $role->id, 'is_active' => true]);
         $response = $this->actingAs($admin)->withSession(['_old_input' => [
             'recipient_ids' => [$officer->id, $inactive->id, [$public->id]],

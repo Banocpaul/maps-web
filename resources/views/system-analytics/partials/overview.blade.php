@@ -20,7 +20,7 @@
             System Analytics
         </h2>
         <p class="mt-1 text-sm text-indigo-700">
-            Authentication, user adoption, system activity, and operational usage intelligence.
+            Authentication, account administration, and system security activity.
         </p>
     </div>
 

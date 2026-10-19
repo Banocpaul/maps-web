@@ -165,6 +165,7 @@
                 ];
         @endphp
 
+        @if (auth()->user()->hasPermission('prediction.run'))
         <section class="rounded-2xl border border-sky-200 bg-sky-50 p-5 sm:p-6">
             <form
                 method="POST"
@@ -269,6 +270,7 @@
                 </button>
             </form>
         </section>
+        @endif
     @else
         <section class="rounded-2xl border border-rose-200 bg-rose-50 p-5">
             <h2 class="font-semibold text-rose-800">

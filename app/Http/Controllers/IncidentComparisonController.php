@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 class IncidentComparisonController extends Controller {
     public function index(Request $request, IncidentComparisonService $service) {
         $user = $request->user();
-        $types = $user->isAdministrator() || $user->hasAnyRole(['operations-manager', 'operations-officer'])
+        $types = $user->hasAnyRole(['operations-manager', 'operations-officer', 'system-viewer'])
             ? ['fire', 'flood'] : ($user->hasRole('fire-responder') ? ['fire'] : ($user->hasRole('flood-analyst') ? ['flood'] : []));
         abort_unless($types && $user->hasPermission('dashboard.view'), 403);
         $data = $request->validate([

@@ -45,6 +45,7 @@
 
 @include('flood-operation.dataset-manager')
 
+    @if (auth()->user()->hasPermission('prediction.run'))
     <section class="flex w-fit max-w-full flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <h2 class="text-sm font-semibold text-slate-950">Rainfall Scenario Input</h2>
         <button id="rainfall-scenario-button" type="button" aria-haspopup="dialog" aria-controls="rainfall-scenario-dialog" class="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500">
@@ -52,7 +53,11 @@
         </button>
     </section>
 
+    @endif
+
     @include('flood-operation.history')
+
+    @if (auth()->user()->hasPermission('prediction.run'))
 
     <dialog id="rainfall-scenario-dialog" aria-labelledby="rainfall-scenario-title" class="m-auto max-h-[90vh] overflow-y-auto rounded-2xl border-0 bg-white p-0 shadow-xl backdrop:bg-slate-900/50" style="width: min(64rem, calc(100% - 2rem));">
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -183,6 +188,7 @@
         </form>
     </section>
     </dialog>
+    @endif
 
     <section id="loading-section" class="hidden rounded-2xl border border-sky-200 bg-sky-50 p-5">
         <div class="flex items-center gap-4">

@@ -20,7 +20,7 @@ class ActivityLogController extends Controller
             'Only administrators may access activity logs.'
         );
 
-        $query = ActivityLog::query()->with('user.role');
+        $query = ActivityLog::administrative()->with('user.role');
 
         $this->applyFilters($query, $request);
 
@@ -35,20 +35,20 @@ class ActivityLogController extends Controller
                 ->orderBy('first_name')
                 ->orderBy('last_name')
                 ->get(['id', 'name', 'first_name', 'last_name']),
-            'modules' => ActivityLog::query()
+            'modules' => ActivityLog::administrative()
                 ->select('module')
                 ->distinct()
                 ->orderBy('module')
                 ->pluck('module'),
-            'actions' => ActivityLog::query()
+            'actions' => ActivityLog::administrative()
                 ->select('action')
                 ->distinct()
                 ->orderBy('action')
                 ->pluck('action'),
-            'totalLogs' => ActivityLog::count(),
-            'todayLogs' => ActivityLog::where('created_at', '>=', $today)
+            'totalLogs' => ActivityLog::administrative()->count(),
+            'todayLogs' => ActivityLog::administrative()->where('created_at', '>=', $today)
                 ->where('created_at', '<', $today->copy()->addDay())->count(),
-            'failedLogins' => ActivityLog::where(
+            'failedLogins' => ActivityLog::administrative()->where(
                 'action',
                 'failed_login'
             )->count(),
@@ -63,7 +63,7 @@ class ActivityLogController extends Controller
             'Only administrators may export activity logs.'
         );
 
-        $query = ActivityLog::query()->latest('created_at')->orderByDesc('id');
+        $query = ActivityLog::administrative()->latest('created_at')->orderByDesc('id');
         $this->applyFilters($query, $request);
 
         $filename = 'maps-audit-trail-'.now('Asia/Manila')->format('Y-m-d-His').'.xls';

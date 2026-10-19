@@ -286,7 +286,8 @@ class OperationalRecordsTest extends TestCase
 
     private function staff(array $extra = [], bool $export = true): User
     {
-        $role = Role::create(['name' => 'Operations Officer', 'slug' => 'operations-officer-'.uniqid(), 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'operations-manager'], ['name' => 'Operations Manager', 'is_active' => true]);
+        $role->permissions()->detach();
         foreach (array_merge(['records.view'], $export ? ['records.export'] : [], $extra) as $slug) {
             $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'module' => 'records', 'is_active' => true]);
             $role->permissions()->attach($permission);

@@ -34,6 +34,16 @@ class ActivityLog extends Model
         ];
     }
 
+    public function scopeAdministrative(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->whereIn('module', [
+            'authentication', 'user-management', 'users', 'roles', 'permissions', 'role-permission',
+            'administration', 'admin', 'backup-recovery', 'database-backups',
+            'activity-logs', 'settings', 'profile', 'profile-photos', 'password',
+            'password-change-requests', 'system-analytics',
+        ]);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

@@ -291,7 +291,7 @@ Route::middleware('auth')->group(function (): void {
     |--------------------------------------------------------------------------
     */
     Route::post('/prediction/weather/refresh', [PredictionController::class, 'refreshWeather'])
-        ->middleware(['permission:prediction.view', 'throttle:2,1,weather-refresh-'])
+        ->middleware(['permission:prediction.run', 'throttle:2,1,weather-refresh-'])
         ->name('prediction.weather.refresh');
 
     Route::get('/weather/live', [WeatherController::class, 'live'])

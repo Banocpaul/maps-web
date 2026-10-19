@@ -111,9 +111,13 @@ class User extends Authenticatable
             return false;
         }
 
+        if (! in_array($permissionSlug, \App\Support\RoleAccess::permissions($role->slug), true)) {
+            return false;
+        }
+
+        // Administrative capabilities are explicit; there is no operational superuser.
         if ($role->slug === 'administrator') {
-            // Prediction belongs to operational roles, including history and runs.
-            return ! str_starts_with($permissionSlug, 'prediction.');
+            return true;
         }
 
         return $role->permissions()

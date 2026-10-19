@@ -18,7 +18,8 @@ class AuditTimeHandlingTest extends TestCase
     {
         $this->withoutVite();
         Http::fake(); // Never send an actual incident notification during a test.
-        $role = Role::create(['name' => 'Administrator', 'slug' => 'administrator', 'is_active' => true]);
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $role = Role::where('slug', 'operations-manager')->firstOrFail();
         $user = User::factory()->create(['role_id' => $role->id, 'is_active' => true]);
         $barangay = Barangay::create(['name' => 'Hulo', 'district' => 1, 'is_active' => true]);
         $payload = [

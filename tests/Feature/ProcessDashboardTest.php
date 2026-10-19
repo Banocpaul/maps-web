@@ -160,7 +160,7 @@ class ProcessDashboardTest extends TestCase
         $old->forceFill(['created_at' => now()->subDays(2)])->save();
         $this->sms('failed', '2026-10-10 06:00:00');
         $response = $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertSee('System Analytics')->assertDontSee('chart.js');
-        $this->assertSame(['accounts' => 2, 'backups' => 1, 'backup-failures' => 1, 'security' => 1, 'sms' => 1], $this->counts($response));
+        $this->assertSame(['accounts' => 2, 'backups' => 1, 'backup-failures' => 1, 'security' => 1], $this->counts($response));
         $this->assertEqualsCanonicalizing([$inactive->id, $unassigned->id], $this->get(route('users.index', ['attention' => 1]))->assertOk()->viewData('users')->pluck('id')->all());
         $this->assertSame([$backup->id], $this->get(route('admin.backups.index', ['attention' => 'unverified']))->assertOk()->viewData('backups')->pluck('id')->all());
         $this->assertSame([$failed->id], $this->get(route('admin.backups.index', ['attention' => 'failed-today']))->assertOk()->viewData('backups')->pluck('id')->all());

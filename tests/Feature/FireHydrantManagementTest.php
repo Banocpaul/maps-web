@@ -10,7 +10,7 @@ class FireHydrantManagementTest extends TestCase {
         $this->withoutVite();
         $this->seed(RolePermissionSeeder::class);
         $barangay = Barangay::firstOrCreate(['name' => 'Hulo'], ['district' => 2, 'is_active' => true]);
-        foreach (['administrator', 'fire-responder'] as $slug) {
+        foreach (['operations-manager', 'fire-responder'] as $slug) {
             $user = User::factory()->create(['role_id' => Role::where('slug', $slug)->value('id'), 'is_active' => true]);
             $this->actingAs($user)->get(route('fire-hydrants.create'))->assertOk()->assertViewIs('fire.hydrants.create')->assertSee('Create Hydrant');
             $this->post(route('fire-hydrants.store'), ['barangay_id' => $barangay->id, 'hydrant_code' => 'TEST-'.$slug,

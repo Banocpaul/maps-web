@@ -340,6 +340,7 @@ Route::resource('fire-incidents', FireIncidentController::class)
         ->middleware('permission:fire.view');
     Route::middleware('permission:records.view')->prefix('incident-archives')->name('incident-archives.')->group(function (): void {
         Route::get('/', [\App\Http\Controllers\IncidentArchiveController::class, 'index'])->name('index');
+        Route::get('/analytics', [\App\Http\Controllers\IncidentArchiveAnalyticsController::class, 'index'])->name('analytics');
         Route::post('/bulk', [\App\Http\Controllers\IncidentArchiveController::class, 'bulk'])->middleware('throttle:10,1')->name('bulk');
         Route::get('/{type}/{id}', [\App\Http\Controllers\IncidentArchiveController::class, 'show'])->whereNumber('id')->name('show');
         Route::post('/{type}/{id}/archive', [\App\Http\Controllers\IncidentArchiveController::class, 'archive'])->whereNumber('id')->middleware('throttle:30,1')->name('archive');

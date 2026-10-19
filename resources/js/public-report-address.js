@@ -1,7 +1,16 @@
 import { normalizeBarangay } from './barangay-location.js';
 
+// Known Mandaluyong locality names returned in structured address metadata.
+// Keep this explicit: arbitrary landmark names must not select an alert barangay.
+const barangayAliases = new Map([
+    ['plainviewsubdivision', 'plainview'],
+]);
+
 export function matchIncidentBarangay(select, candidates) {
-    const names = (Array.isArray(candidates) ? candidates : []).map(name => normalizeBarangay(String(name).trim()));
+    const names = (Array.isArray(candidates) ? candidates : []).map(name => {
+        const normalized = normalizeBarangay(String(name).trim());
+        return barangayAliases.get(normalized) ?? normalized;
+    });
     const options = [...select.options].filter(option => option.value && names.includes(normalizeBarangay(option.textContent.trim())));
     return options.length === 1 ? options[0].value : '';
 }

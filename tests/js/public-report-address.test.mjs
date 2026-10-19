@@ -42,7 +42,10 @@ test('barangay matching recognizes prefixes and accents without guessing from la
     const select = app.element('incident-barangay');
     assert.equal(matchIncidentBarangay(select, [' Barangay Hulo ']), '22');
     assert.equal(matchIncidentBarangay(select, ['Brgy. New Zaniga']), '33');
-    assert.equal(matchIncidentBarangay(select, ['Plainview Subdivision']), '');
+    assert.equal(matchIncidentBarangay(select, ['Plainview Subdivision']), '11');
+    assert.equal(matchIncidentBarangay(select, ['Plainview Shopping Center']), '');
+    assert.equal(matchIncidentBarangay(select, ['Hulo Subdivision']), '');
+    assert.equal(matchIncidentBarangay(select, ['Plainview Subdivision', 'Hulo']), '');
     assert.equal(matchIncidentBarangay(select, ['Plainview', 'Hulo']), '');
 });
 
@@ -69,6 +72,23 @@ test('landmark selection resolves street and barangay from the selected point', 
     assert.equal(app.element('report-street').value, 'San Isidro Street');
     assert.equal(app.element('incident-barangay').value, '22');
     assert.equal(app.element('submit-report').disabled, false);
+});
+
+test('the observed Payapa Street response selects Plainview from its structured locality', async () => {
+    const app = setup(async () => ({ ok: true, json: async () => ({
+        street: 'Payapa Street', barangay_candidates: ['Plainview Subdivision'],
+    }) }));
+    await app.choose({ label: 'Plainview Subdivision, Mandaluyong', street: '', barangay_candidates: [],
+        latitude: 14.572189, longitude: 121.0338833 });
+    assert.equal(app.element('report-street').value, 'Payapa Street');
+    assert.equal(app.element('incident-barangay').value, '11');
+    assert.match(app.element('report-address-status').textContent, /Barangay and street filled/);
+});
+
+test('a landmark label alone does not select a barangay', async () => {
+    const app = setup();
+    await app.choose({ label: 'Plainview Subdivision, Mandaluyong', street: '', barangay_candidates: [] });
+    assert.equal(app.element('incident-barangay').value, '');
 });
 
 test('a late lookup cannot overwrite a newer selected address', async () => {

@@ -23,7 +23,7 @@
                 Export to Excel
             </a>
             <span class="inline-flex w-fit rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
-                Administrator access only
+                Administrator view
             </span>
         </div>
     </div>
@@ -110,10 +110,10 @@
                 <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                         <th class="px-5 py-3">Date and time</th>
-                        <th class="px-5 py-3">User</th>
-                        <th class="px-5 py-3">Action</th>
                         <th class="px-5 py-3">Module</th>
-                        <th class="px-5 py-3">Description</th>
+                        <th class="px-5 py-3">Action</th>
+                        <th class="px-5 py-3">What happened</th>
+                        <th class="px-5 py-3">Performed by</th>
                         
                         
                     </tr>
@@ -125,22 +125,18 @@
                                 {{ $log->created_at->timezone('Asia/Manila')->format('M d, Y') }}
                                 <div class="text-xs text-slate-400">{{ $log->created_at->timezone('Asia/Manila')->format('h:i:s A') }}</div>
                             </td>
-                            <td class="px-5 py-4">
-                                <div class="font-semibold text-slate-900">{{ $log->user_name ?? 'Guest user' }}</div>
-                                <div class="text-xs text-slate-500">{{ $log->role_name ?? 'No role' }}</div>
-                            </td>
-                            <td class="px-5 py-4">
-                                <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                                    {{ ucwords(str_replace('_', ' ', $log->action)) }}
-                                </span>
-                            </td>
-                            <td class="px-5 py-4 text-slate-700">{{ ucwords(str_replace('-', ' ', $log->module)) }}</td>
-                            <td class="max-w-sm px-5 py-4 text-slate-700">
-                                {{ $log->description }}
-                                @if ($log->route_name)
+                            <td class="px-5 py-4 font-semibold text-slate-800">{{ ucwords(str_replace(['-', '_'], ' ', $log->module)) }}</td>
+                            <td class="px-5 py-4">{{ ucwords(str_replace('_', ' ', $log->action)) }}</td>
+                            <td class="max-w-xl px-5 py-4 text-slate-700">
+                                {{ $log->description ?: 'Activity recorded in '.ucwords(str_replace('-', ' ', $log->module)) }}
+                                @if($log->response_status !== null && $log->response_status >= 400)
+                                    <div class="mt-1 text-xs font-semibold text-rose-700">This action was unsuccessful.</div>
                                 @endif
                             </td>
-                            
+                            <td class="px-5 py-4">
+                                <div class="font-semibold">{{ $log->user_name ?? 'System / Guest' }}</div>
+                                <div class="text-xs text-slate-500">{{ $log->role_name ?? '—' }}</div>
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="5" class="px-5 py-12 text-center text-slate-500">No activity logs matched the selected filters.</td></tr>

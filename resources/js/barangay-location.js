@@ -1,5 +1,6 @@
 export function normalizeBarangay(name) {
-    return String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    return String(name).trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+        .replace(/^(?:barangay|brgy)\b[\s.-]*/, '')
         .replace(/hagdang/g, 'hagdan').replace(/greenhills east/g, 'greenhills').replace(/[^a-z0-9]/g, '');
 }
 

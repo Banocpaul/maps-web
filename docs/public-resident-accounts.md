@@ -61,3 +61,11 @@ without replacing existing records. Rebuild frontend assets with `npm ci && npm 
 Focused verification: `php vendor/phpunit/phpunit/phpunit -c phpunit-public-reports.xml`.
 Also compile views with `php artisan view:cache` and check existing permission/workflow tests.
 No real SMS messages are sent by the automated tests.
+
+## Incident address search
+
+Selecting an address result fills the incident street and selects a uniquely matching active
+barangay from the address details. A landmark with incomplete details triggers a cached
+Photon reverse street lookup at the selected pin. Both fields stay editable; missing or
+ambiguous details prompt manual completion. A delayed lookup cannot overwrite a newer
+address, a moved pin, or manual field corrections. The selected incident pin is preserved.

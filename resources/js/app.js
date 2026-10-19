@@ -1,6 +1,7 @@
 import { initializeBackupLoading } from "./backup-loading.js";
 import { initializeBarangayLocation } from "./barangay-location.js";
 import { initializeAddressSearch } from "./address-search.js";
+import { initializePublicReportAddress } from "./public-report-address.js";
 import { initializeProfileDialog } from "./profile-dialog.js";
 import { initializeFloodRecordMap } from "./flood-record-map.js";
 import { initializeRecipientSearch } from "./sms-recipient-search.js";
@@ -8,6 +9,7 @@ import { initializeRecipientSearch } from "./sms-recipient-search.js";
 document.addEventListener("DOMContentLoaded", () => {
     initializeBarangayLocation();
     initializeAddressSearch();
+    initializePublicReportAddress();
     initializeBackupLoading();
     initializeSidebar();
     initializeSidebarGroups();

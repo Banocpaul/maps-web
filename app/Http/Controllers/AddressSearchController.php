@@ -22,6 +22,59 @@ class AddressSearchController extends Controller
         return $this->search($request);
     }
 
+    public function residentDetails(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->isPublicResident(), 403);
+        $coordinates = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+        $latitude = (float) $coordinates['latitude'];
+        $longitude = (float) $coordinates['longitude'];
+
+        try {
+            $details = Cache::remember(sprintf('address-details:v1:%.7f:%.7f', $latitude, $longitude), now()->addDay(), function () use ($latitude, $longitude): array {
+                $data = Http::acceptJson()->connectTimeout(4)->timeout(10)
+                    ->get(config('services.address_search.reverse_url'), [
+                        'lat' => $latitude, 'lon' => $longitude, 'layer' => 'street',
+                        'radius' => 0.2, 'limit' => 1, 'lang' => 'en',
+                    ])->throw()->json();
+                $properties = $data['features'][0]['properties'] ?? [];
+                $city = $properties['city'] ?? '';
+                if (! is_array($properties) || ! is_string($city)
+                    || ($city !== '' && ! str_contains(mb_strtolower($city), 'mandaluyong'))) {
+                    return ['street' => '', 'barangay_candidates' => []];
+                }
+
+                $candidates = [$properties['district'] ?? '', $properties['locality'] ?? '', $properties['suburb'] ?? ''];
+                if (in_array($properties['type'] ?? '', ['district', 'locality'], true)) {
+                    $candidates[] = $properties['name'] ?? '';
+                }
+
+                return [
+                    'street' => $this->street($properties),
+                    'barangay_candidates' => array_values(array_unique(array_filter(array_map(
+                        fn ($name) => is_string($name) ? mb_substr(trim($name), 0, 255) : '', $candidates
+                    )))),
+                ];
+            });
+
+            return response()->json($details);
+        } catch (Throwable) {
+            return response()->json(['message' => 'Address details are unavailable. Select the barangay and enter the street manually.'], 503);
+        }
+    }
+
+    private function street(array $properties): string
+    {
+        $street = is_string($properties['street'] ?? null) ? trim($properties['street']) : '';
+        if ($street === '' && (($properties['type'] ?? '') === 'street' || ($properties['osm_key'] ?? '') === 'highway')) {
+            $street = is_string($properties['name'] ?? null) ? trim($properties['name']) : '';
+        }
+
+        return mb_substr($street, 0, 255);
+    }
+
     private function search(Request $request): JsonResponse
     {
         $input = $request->validate(['q' => ['required', 'string', 'min:3', 'max:150']]);
@@ -65,10 +118,7 @@ class AddressSearchController extends Controller
                     ]);
                     $label = mb_substr(implode(', ', array_unique($parts)), 0, 255);
                     if ($label === '') continue;
-                    $street = $properties['street'] ?? '';
-                    if ($street === '' && (($properties['type'] ?? '') === 'street' || ($properties['osm_key'] ?? '') === 'highway')) {
-                        $street = $properties['name'] ?? '';
-                    }
+                    $street = $this->street($properties);
                     $results[] = ['label' => $label, 'street' => $street,
                         'barangay_candidates' => array_values(array_filter([
                             $properties['district'] ?? '', $properties['locality'] ?? '', $properties['suburb'] ?? '',

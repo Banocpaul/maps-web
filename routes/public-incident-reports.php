@@ -8,6 +8,8 @@ Route::get('/public-portal/report-incident', [PublicIncidentReportController::cl
     ->middleware(['auth', 'resident', 'throttle:60,1,public-report-form'])->name('public.incident-reports.create');
 Route::get('/public-portal/report-address/search', [\App\Http\Controllers\AddressSearchController::class, 'residentSearch'])
     ->middleware(['auth', 'resident', 'throttle:12,1,public-report-address'])->name('public.incident-reports.address-search');
+Route::get('/public-portal/report-address/details', [\App\Http\Controllers\AddressSearchController::class, 'residentDetails'])
+    ->middleware(['auth', 'resident', 'throttle:30,1,public-report-address-details'])->name('public.incident-reports.address-details');
 Route::post('/public-portal/report-incident', [PublicIncidentReportController::class, 'store'])
     ->middleware(['auth', 'resident', 'throttle:5,1,public-report-submit'])->name('public.incident-reports.store');
 

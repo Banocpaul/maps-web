@@ -11,6 +11,7 @@ use App\Services\FloodIncidentAlertService;
 use App\Services\FloodObservationEnrichmentService;
 use App\Services\IncidentReportArea;
 use App\Services\IncidentReportWorkflow;
+use App\Services\ValidatedReportAlertService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,7 +52,7 @@ class IncidentReportReviewController extends Controller
         IncidentReportArea $area
     ): View {
         $workflow->authorize($request->user(), $publicReport->incident_type);
-        $publicReport->load(['events.actor', 'fireIncident', 'floodTrainingRecord', 'submitter', 'reporterBarangay']);
+        $publicReport->load(['events.actor', 'fireIncident', 'floodTrainingRecord', 'submitter', 'reporterBarangay', 'incidentBarangay']);
         $barangays = Barangay::active()->orderBy('name')->get(['id', 'name']);
         $boundaries = $area->boundaries();
         $barangayKey = static function (string $name): string {
@@ -66,8 +67,8 @@ class IncidentReportReviewController extends Controller
         }
         unset($feature);
         $pinNames = $area->barangayNames($publicReport->latitude, $publicReport->longitude);
-        $suggestedBarangayId = null;
-        if (count($pinNames) === 1) {
+        $suggestedBarangayId = $publicReport->incident_barangay_id;
+        if (! $suggestedBarangayId && count($pinNames) === 1) {
             $matches = $barangays->filter(fn ($barangay) => $barangayKey($barangay->name) === $barangayKey($pinNames[0]));
             $suggestedBarangayId = $matches->count() === 1 ? $matches->first()->id : null;
         }
@@ -169,20 +170,24 @@ class IncidentReportReviewController extends Controller
     public function validateReport(
         Request $request,
         PublicIncidentReport $publicReport,
-        IncidentReportWorkflow $workflow
+        IncidentReportWorkflow $workflow,
+        ValidatedReportAlertService $alerts
     ): RedirectResponse {
         $workflow->authorize($request->user(), $publicReport->incident_type, 'review');
+        $request->merge(['incident_barangay_id' => $request->input('incident_barangay_id', $publicReport->incident_barangay_id)]);
         $data = $request->validate(['validation_notes' => ['required', 'string', 'min:5', 'max:2000'],
+            'incident_barangay_id' => ['required', 'integer', Rule::exists('barangays', 'id')->where('is_active', true)],
             'alarm_level' => ['nullable', Rule::in(\App\Models\FireIncidentUpdate::ALARMS)],
             'alarm_source' => ['nullable', 'string', 'max:255'],
             'injured_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'deceased_count' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
         ]);
-        DB::transaction(function () use ($publicReport, $data, $request): void {
+        DB::transaction(function () use ($publicReport, $data, $request, $alerts): void {
             $report = PublicIncidentReport::query()->lockForUpdate()->findOrFail($publicReport->id);
             abort_unless($report->status === 'Pending', 409, 'Only pending reports can be validated.');
             $report->update([
                 'status' => 'Validated', 'validation_notes' => $data['validation_notes'],
+                'incident_barangay_id' => $data['incident_barangay_id'],
                 'validated_by' => $request->user()->id, 'validated_at' => now(),
                 'alarm_level' => $report->incident_type === 'fire' ? ($data['alarm_level'] ?? null) : null,
                 'alarm_source' => $report->incident_type === 'fire' ? ($data['alarm_source'] ?? null) : null,
@@ -192,9 +197,10 @@ class IncidentReportReviewController extends Controller
                 'actor_id' => $request->user()->id, 'from_status' => 'Pending', 'to_status' => 'Validated',
                 'notes' => $data['validation_notes'],
             ]);
+            DB::afterCommit(fn () => $alerts->send($report->id, $request->user()->id));
         });
 
-        return back()->with('success', 'Report validated. Add the official incident details to publish it.');
+        return back()->with('success', 'Report validated. Automatic SMS alerts target subscribers in the incident barangay; check SMS Center for delivery results. Add the official incident details to publish it.');
     }
 
     public function reject(

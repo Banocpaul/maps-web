@@ -67,6 +67,14 @@
     <p id="pin-status" role="status" aria-live="polite">Select the incident location to continue.</p>
     <form method="POST" action="{{ route('public.incident-reports.store') }}" id="report-form" enctype="multipart/form-data">
         @csrf
+        <label class="block font-semibold mt-4" for="incident-barangay">Barangay of the incident</label>
+        <select id="incident-barangay" name="incident_barangay_id" required class="block w-full rounded-lg border border-slate-300 bg-white p-3 mt-2">
+            <option value="">Select the barangay where the incident occurred</option>
+            @foreach($barangays as $barangay)
+                <option value="{{ $barangay->id }}" @selected((string) old('incident_barangay_id') === (string) $barangay->id)>{{ $barangay->name }}</option>
+            @endforeach
+        </select>
+        <p class="text-sm text-slate-600">Validated incident alerts are sent to subscribers in this barangay.</p>
         <label class="block font-semibold mt-4">Street of the incident
             <input id="report-street" name="street" maxlength="255" value="{{ old('street') }}" class="block w-full rounded-lg border border-slate-300 p-3 mt-2" placeholder="Street name (same spelling as the map)">
         </label><p class="text-sm text-slate-600">A street name and matching nearby reports are needed for automatic community verification.</p>

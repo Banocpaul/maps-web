@@ -134,6 +134,7 @@ class PostDefenseRevisionsTest extends TestCase
         $report = $this->report($this->user('public-resident'));
         $this->actingAs($this->user())->post(route('public-submissions.validate', $report), [
             'validation_notes' => 'Confirmed through response team.', 'alarm_level' => '3rd', 'alarm_source' => 'BFP radio',
+            'incident_barangay_id' => $this->barangay()->id,
             'injured_count' => 2, 'deceased_count' => 0,
         ])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(2, $report->fresh()->injured_count);

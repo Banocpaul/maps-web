@@ -62,6 +62,7 @@ class PublicResidentAccountTest extends TestCase
     private function submission(): array
     {
         return ['incident_type' => 'fire', 'latitude' => 14.5794, 'longitude' => 121.0359,
+            'incident_barangay_id' => $this->barangay()->id,
             'submission_token' => (string) Str::uuid()];
     }
 

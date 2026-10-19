@@ -51,6 +51,7 @@ class PublicIncidentReportingTest extends TestCase
     private function submission(string $type = 'fire', ?string $token = null): array
     {
         return ['street' => 'Mabini Street', 'incident_type' => $type, 'latitude' => 14.5794, 'longitude' => 121.0359,
+            'incident_barangay_id' => $this->barangay()->id,
             'submission_token' => $token ?? (string) Str::uuid()];
     }
 
@@ -608,7 +609,7 @@ class PublicIncidentReportingTest extends TestCase
         $incidentBarangay = Barangay::firstOrCreate(['name' => $name], ['district' => 2, 'is_active' => true]);
         foreach (['fire', 'flood'] as $type) {
             $report = $this->report($type, 'Validated');
-            $report->update(['reporter_barangay_id' => $this->barangay()->id]);
+            $report->update(['reporter_barangay_id' => $this->barangay()->id, 'incident_barangay_id' => $incidentBarangay->id]);
             $this->actingAs($this->operator())->get(route('public-submissions.show', $report))->assertOk()
                 ->assertViewHas('suggestedBarangayId', $incidentBarangay->id)
                 ->assertSee('id="official-barangay"', false);
@@ -618,7 +619,7 @@ class PublicIncidentReportingTest extends TestCase
     public function test_pin_barangay_does_not_guess_outside_city_or_override_previous_input(): void
     {
         $report = $this->report('fire', 'Validated');
-        $report->update(['latitude' => 10, 'longitude' => 120]);
+        $report->update(['latitude' => 10, 'longitude' => 120, 'incident_barangay_id' => null]);
         $this->actingAs($this->operator())->get(route('public-submissions.show', $report))->assertOk()
             ->assertViewHas('suggestedBarangayId', null);
         $this->withSession(['_old_input' => ['barangay_id' => $this->barangay()->id]])

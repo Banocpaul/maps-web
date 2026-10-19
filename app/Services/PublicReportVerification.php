@@ -27,6 +27,7 @@ class PublicReportVerification
         $anchor = PublicIncidentReport::query()
             ->where('incident_type', $report->incident_type)
             ->where('street_key', $report->street_key)
+            ->where('incident_barangay_id', $report->incident_barangay_id)
             ->whereIn('status', ['Pending', 'Validated', 'Published'])
             ->where('created_at', '>=', now()->subMinutes($settings->window_minutes))
             ->whereColumn('report_group_id', 'id')->orderBy('id')->lockForUpdate()->get()
@@ -35,6 +36,7 @@ class PublicReportVerification
         $groupId = $anchor?->id ?? $report->id;
         $report->forceFill(['report_group_id' => $groupId])->save();
         $members = PublicIncidentReport::where('report_group_id', $groupId)
+            ->where('incident_barangay_id', $report->incident_barangay_id)
             ->whereIn('status', ['Pending', 'Validated', 'Published'])
             ->where('created_at', '>=', now()->subMinutes($settings->window_minutes))->lockForUpdate()->get();
         $count = $members->pluck('submitted_by')->filter()->unique()->count();

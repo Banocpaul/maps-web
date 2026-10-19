@@ -306,13 +306,30 @@ class PublicIncidentReportingTest extends TestCase
         $this->assertDatabaseCount('public_incident_report_events', 1);
     }
 
-    public function test_missing_pin_and_outside_city_pin_are_rejected(): void
+    public function test_missing_and_invalid_coordinates_are_rejected(): void
     {
         $this->post(route('public.incident-reports.store'), ['incident_type' => 'fire', 'submission_token' => Str::uuid()])
             ->assertSessionHasErrors(['latitude', 'longitude']);
-        $this->post(route('public.incident-reports.store'), array_replace($this->submission(), ['latitude' => 10]))
-            ->assertSessionHasErrors('latitude');
+        foreach ([['latitude' => 91], ['longitude' => 181], ['latitude' => 'invalid']] as $coordinates) {
+            $this->post(route('public.incident-reports.store'), array_replace($this->submission(), $coordinates))
+                ->assertSessionHasErrors(array_keys($coordinates));
+        }
         $this->assertDatabaseCount('public_incident_reports', 0);
+    }
+
+    public function test_valid_coordinates_outside_city_polygons_can_be_submitted_for_review(): void
+    {
+        foreach (['fire', 'flood'] as $type) {
+            $payload = array_replace($this->submission($type), ['latitude' => 14.6, 'longitude' => 121.0]);
+            $this->post(route('public.incident-reports.store'), $payload)
+                ->assertRedirect(route('public.incident-reports.create'))
+                ->assertSessionHasNoErrors()->assertSessionHas('report_reference');
+            $this->assertDatabaseHas('public_incident_reports', [
+                'incident_type' => $type, 'latitude' => 14.6, 'longitude' => 121.0, 'status' => 'Pending',
+            ]);
+        }
+        $this->assertDatabaseCount('fire_incidents', 0);
+        $this->assertDatabaseCount('flood_training_records', 0);
     }
 
     public function test_public_cannot_set_a_report_status_or_publish_an_incident(): void
@@ -413,10 +430,45 @@ class PublicIncidentReportingTest extends TestCase
         $this->assertDatabaseCount('flood_training_records', 1);
     }
 
-    public function test_flood_line_must_have_distinct_points_inside_the_city(): void
+    public function test_validated_fire_outside_city_polygons_can_be_published(): void
+    {
+        $report = $this->report('fire', 'Validated');
+        $this->mock(FireIncidentAlertService::class, fn ($mock) => $mock->shouldReceive('sendCreatedAlert')->once()
+            ->andReturn(['eligible' => 0, 'sent' => 0, 'failed' => 0, 'skipped' => 0]));
+        $payload = array_replace($this->fireDetails(), ['latitude' => 14.6, 'longitude' => 121.0]);
+
+        $this->actingAs($this->operator('fire-responder'))->post(route('public-submissions.publish', $report), $payload)
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('Published', $report->fresh()->status);
+        $this->assertDatabaseHas('fire_incidents', ['latitude' => 14.6, 'longitude' => 121.0]);
+    }
+
+    public function test_validated_flood_line_outside_city_polygons_can_be_published(): void
     {
         $report = $this->report('flood', 'Validated');
-        foreach ([[[121.0359,14.5794],[121.0359,14.5794]], [[121.0359,14.5794],[120,10]]] as $points) {
+        $this->mock(FloodObservationEnrichmentService::class, fn ($mock) => $mock->shouldReceive('enrich')->once()
+            ->andReturnUsing(fn ($record) => $record));
+        $payload = $this->floodDetails();
+        $payload['geometry_json'] = json_encode(['type' => 'LineString',
+            'coordinates' => [[121.0, 14.6], [121.001, 14.601]]]);
+
+        $this->actingAs($this->operator('flood-analyst'))->post(route('public-submissions.publish', $report), $payload)
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('Published', $report->fresh()->status);
+        $this->assertDatabaseHas('flood_training_records', ['latitude' => 14.6, 'longitude' => 121.0]);
+    }
+
+    public function test_flood_line_must_have_distinct_points_with_valid_coordinates(): void
+    {
+        $report = $this->report('flood', 'Validated');
+        foreach ([
+            [[121.0359,14.5794],[121.0359,14.5794]],
+            [[121.0359,14.5794],[181,14.58]],
+            [[121.0359,14.5794],[121,91]],
+            [[121.0359,14.5794],['invalid',14.58]],
+        ] as $points) {
             $payload = $this->floodDetails();
             $payload['geometry_json'] = json_encode(['type' => 'LineString', 'coordinates' => $points]);
             $this->actingAs($this->operator())->post(route('public-submissions.publish', $report), $payload)->assertSessionHasErrors('geometry_json');

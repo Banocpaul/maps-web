@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\PublicIncidentReport;
-use App\Services\IncidentReportArea;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,15 +15,14 @@ use Throwable;
 
 class PublicIncidentReportController extends Controller
 {
-    public function create(IncidentReportArea $area): View
+    public function create(): View
     {
         return view('public.report-incident', [
-            'boundaries' => $area->boundaries(),
             'submissionToken' => (string) Str::uuid(),
         ]);
     }
 
-    public function store(Request $request, IncidentReportArea $area): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'street' => ['nullable', 'string', 'max:255'],
@@ -36,10 +34,6 @@ class PublicIncidentReportController extends Controller
             'photo' => ['bail', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048',
                 'dimensions:max_width=8000,max_height=8000'],
         ]);
-        if (! $area->contains((float) $validated['latitude'], (float) $validated['longitude'])) {
-            throw ValidationException::withMessages(['latitude' => 'Please place the pin inside Mandaluyong City.']);
-        }
-
         $storedPhoto = null;
         $photoDisk = config('filesystems.incident_report_disk', 'local');
         try {

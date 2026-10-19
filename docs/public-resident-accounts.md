@@ -69,3 +69,11 @@ barangay from the address details. A landmark with incomplete details triggers a
 Photon reverse street lookup at the selected pin. Both fields stay editable; missing or
 ambiguous details prompt manual completion. A delayed lookup cannot overwrite a newer
 address, a moved pin, or manual field corrections. The selected incident pin is preserved.
+
+The public form also maps the known Mandaluyong locality `Plainview Subdivision` to
+`Plainview` when it appears in structured barangay candidates. Photon returned this
+locality with `Payapa Street` for the reported pin (14.5721890, 121.0338833) on
+2026-10-19. The [PWPA member directory](https://www.pwpa.org.ph/wp-content/uploads/2017/01/List-of-PWPA-Members-Associate-January-2017.pdf)
+lists a Payapa Street address in Barangay Plainview. This is an explicit locality
+mapping, not a rule that strips `Subdivision` from arbitrary names or guesses from
+the search label. Conflicting matches still require manual selection.

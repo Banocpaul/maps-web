@@ -535,11 +535,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('flood-change-error').textContent = '';
         document.getElementById('flood-change-dialog').showModal();
     }));
-    document.getElementById('flood-change-x').addEventListener('click', () => document.getElementById('flood-change-dialog').close());
+    document.getElementById('flood-change-x')?.addEventListener('click', () => document.getElementById('flood-change-dialog').close());
     document.getElementById('flood-history-x').addEventListener('click', () => document.getElementById('flood-history-dialog').close());
-    document.getElementById('flood-change-cancel').addEventListener('click', () => document.getElementById('flood-change-dialog').close());
+    document.getElementById('flood-change-cancel')?.addEventListener('click', () => document.getElementById('flood-change-dialog').close());
     document.getElementById('flood-history-close').addEventListener('click', () => document.getElementById('flood-history-dialog').close());
-    document.getElementById('flood-change-form').addEventListener('submit', async event => {
+    document.getElementById('flood-change-form')?.addEventListener('submit', async event => {
         event.preventDefault();
         const button = document.getElementById('flood-change-submit');
         button.disabled = true;

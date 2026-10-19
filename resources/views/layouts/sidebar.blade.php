@@ -133,6 +133,9 @@
         ],
     ];
 
+    $operationsNavigation[] = ['label' => 'Incident Archives', 'route' => 'incident-archives.index',
+        'active' => ['incident-archives.*'], 'permission' => 'records.view', 'icon' => 'records'];
+
     $managementNavigation = [
         [
             'label' => 'Reports',
@@ -218,8 +221,6 @@
         'administrator' => [
             'Dashboard',
             'System Analytics',
-            'Prediction History',
-            'SMS Center',
         ],
         'fire-responder' => [
             'Dashboard',
@@ -240,6 +241,7 @@
             'Dashboard',
             'Incident Analytics',
             'Operational Records',
+            'Incident Archives',
             'Flood Prediction',
             'Prediction History',
             'Flood Operations',
@@ -248,12 +250,12 @@
             'GIS Mapping',
             'SMS Center',
         ],
+        'system-viewer' => ['Dashboard', 'Incident Analytics', 'Flood Prediction', 'Prediction History', 'Flood Operations', 'Fire Incidents', 'Fire Hydrants', 'GIS Mapping'],
         default => ['Dashboard'],
     };
 
     $visibleManagement = match ($roleSlug) {
         'administrator' => [
-            'Reports',
             'User Management',
             'Settings',
             'Backup & Recovery',
@@ -312,7 +314,7 @@
         ['id' => 'fire', 'label' => 'Fire Management', 'icon' => 'fire',
             'items' => ['Fire Incidents', 'Fire Hydrants']],
         ['id' => 'records', 'label' => 'Records & Reports', 'icon' => 'records',
-            'items' => ['Operational Records', 'Incident Reports', 'Reports']],
+            'items' => ['Operational Records', 'Incident Archives', 'Incident Reports', 'Reports']],
         ['id' => 'communications', 'label' => 'Communications', 'icon' => 'message',
             'items' => ['SMS Center', 'Public Advisories']],
         ['id' => 'administration', 'label' => 'Administration', 'icon' => 'settings',
@@ -385,7 +387,7 @@
     {{-- Office identification --}}
     <div class="flex-none border-b border-white/10 px-5 py-4">
         <p class="text-xs font-medium text-white">
-            Disaster Operations
+            {{ $currentUser?->isAdministrator() ? 'System Administration' : 'Disaster Operations' }}
         </p>
 
         <p class="mt-1 text-[11px] leading-4 text-slate-400">

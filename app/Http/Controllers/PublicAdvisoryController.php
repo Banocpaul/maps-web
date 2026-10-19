@@ -12,15 +12,6 @@ use Throwable;
 
 class PublicAdvisoryController extends Controller
 {
-    private const TYPES = [
-        'flood',
-        'fire',
-        'weather',
-        'evacuation',
-        'class-suspension',
-        'general',
-    ];
-
     public function index(): View
     {
         $advisories = PublicAdvisory::query()
@@ -39,7 +30,7 @@ class PublicAdvisoryController extends Controller
     public function create(): View
     {
         return view('advisories.create', [
-            'types' => self::TYPES,
+            'types' => $this->allowedTypes(),
         ]);
     }
 
@@ -87,7 +78,7 @@ class PublicAdvisoryController extends Controller
 
         return view('advisories.edit', [
             'advisory' => $publicAdvisory,
-            'types' => self::TYPES,
+            'types' => $this->allowedTypes(),
         ]);
     }
 
@@ -178,7 +169,7 @@ class PublicAdvisoryController extends Controller
             'type' => [
                 'required',
                 'string',
-                Rule::in(self::TYPES),
+                Rule::in($this->allowedTypes()),
             ],
             'subject' => [
                 'required',
@@ -203,10 +194,17 @@ class PublicAdvisoryController extends Controller
         ]);
     }
 
+    private function allowedTypes(): array
+    {
+        return \App\Support\RoleAccess::advisoryTypes(auth()->user()->role()->value('slug'));
+    }
+
     private function ensureOwner(PublicAdvisory $advisory): void
     {
+        abort_unless(in_array($advisory->type, $this->allowedTypes(), true), 403);
         abort_unless(
-            (int) $advisory->user_id === (int) auth()->id(),
+            auth()->user()->hasAnyRole(['operations-manager', 'operations-officer'])
+                || (int) $advisory->user_id === (int) auth()->id(),
             403,
             'You may only edit or delete advisories that you published.'
         );

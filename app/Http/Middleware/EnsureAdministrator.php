@@ -14,7 +14,7 @@ class EnsureAdministrator
 
         abort_unless(
             $user !== null
-                && $user->is_active
+                && $user->hasPermission('users.manage')
                 && $user->isAdministrator(),
             403,
             'Only administrators may access this protected area.'

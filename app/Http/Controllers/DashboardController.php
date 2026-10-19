@@ -6,7 +6,6 @@ use App\Models\ActivityLog;
 use App\Models\Barangay;
 use App\Models\FireIncident;
 use App\Models\Role;
-use App\Models\SmsLog;
 use App\Models\User;
 use App\Services\FireAnalyticsService;
 use App\Services\FloodAnalyticsService;
@@ -32,7 +31,7 @@ class DashboardController extends Controller
     {
         $assignedRole = $this->assignedRole($request);
         return view('dashboard.index', array_merge([
-            'user' => $request->user(), 'assignedRole' => $assignedRole, 'roleSlug' => $assignedRole->slug,
+            'user' => $request->user(), 'assignedRole' => $assignedRole, 'roleSlug' => \App\Support\RoleAccess::canonical($assignedRole->slug),
         ], app(ProcessDashboardService::class)->build($request->user(), $assignedRole)));
     }
 
@@ -63,6 +62,8 @@ class DashboardController extends Controller
             'fire-responder',
             'flood-analyst',
             'operations-manager',
+            'operations-officer',
+            'system-viewer',
         ], true), 403, 'This role does not have a personalized dashboard.');
 
         return $assignedRole;
@@ -72,9 +73,9 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $assignedRole = $this->assignedRole($request);
-        $roleSlug = $assignedRole->slug;
+        $roleSlug = \App\Support\RoleAccess::canonical($assignedRole->slug);
         abort_unless($systemAnalytics ? $roleSlug === 'administrator' : in_array($roleSlug, [
-            'fire-responder', 'flood-analyst', 'operations-manager',
+            'fire-responder', 'flood-analyst', 'operations-manager', 'system-viewer',
         ], true), 403);
 
         $validated = $request->validate([
@@ -119,12 +120,12 @@ class DashboardController extends Controller
             }
         }
 
-        $needsFire = in_array($roleSlug, [
+        $needsFire = $roleSlug === 'system-viewer' || in_array($roleSlug, [
             'fire-responder',
             'operations-manager',
         ], true);
 
-        $needsFlood = in_array($roleSlug, [
+        $needsFlood = $roleSlug === 'system-viewer' || in_array($roleSlug, [
             'flood-analyst',
             'operations-manager',
         ], true);
@@ -200,7 +201,6 @@ class DashboardController extends Controller
     private function administratorDashboard(): array
     {
         $hasActivityLogs = Schema::hasTable('activity_logs');
-        $hasSmsLogs = Schema::hasTable('sms_logs');
         $hasLastSeen = Schema::hasColumn('users', 'last_seen_at');
 
         $now = now();
@@ -232,21 +232,21 @@ class DashboardController extends Controller
             : collect();
 
         $loginsThisMonth = $hasActivityLogs
-            ? ActivityLog::query()
+            ? ActivityLog::administrative()
                 ->where('action', 'login')
                 ->where('created_at', '>=', $monthStart)
                 ->count()
             : 0;
 
         $failedLoginsThisMonth = $hasActivityLogs
-            ? ActivityLog::query()
+            ? ActivityLog::administrative()
                 ->where('action', 'failed_login')
                 ->where('created_at', '>=', $monthStart)
                 ->count()
             : 0;
 
         $actionsThisMonth = $hasActivityLogs
-            ? ActivityLog::query()
+            ? ActivityLog::administrative()
                 ->where('created_at', '>=', $monthStart)
                 ->whereNotIn('action', [
                     'login',
@@ -272,29 +272,17 @@ class DashboardController extends Controller
             'failed_logins_this_month' => $failedLoginsThisMonth,
             'actions_this_month' => $actionsThisMonth,
             'failed_logins_today' => $hasActivityLogs
-                ? ActivityLog::query()
+                ? ActivityLog::administrative()
                     ->where('action', 'failed_login')
                     ->whereDate('created_at', today())
                     ->count()
                 : 0,
             'recent_activity' => $hasActivityLogs
-                ? ActivityLog::query()
+                ? ActivityLog::administrative()
                     ->latest()
                     ->limit(8)
                     ->get()
                 : collect(),
-            'sms_sent_today' => $hasSmsLogs
-                ? SmsLog::query()
-                    ->where('status', 'sent')
-                    ->whereDate('created_at', today())
-                    ->count()
-                : 0,
-            'sms_failed_today' => $hasSmsLogs
-                ? SmsLog::query()
-                    ->where('status', 'failed')
-                    ->whereDate('created_at', today())
-                    ->count()
-                : 0,
             'login_trend' => $hasActivityLogs
                 ? $this->adminLoginTrend($now)
                 : $this->emptyLoginTrend($now),
@@ -327,7 +315,7 @@ class DashboardController extends Controller
             ->subMonths(5)
             ->startOfMonth();
 
-        $rows = ActivityLog::query()
+        $rows = ActivityLog::administrative()
             ->selectRaw(
                 (DB::connection()->getDriverName() === 'sqlite'
                     ? "strftime('%Y-%m', created_at)"
@@ -384,7 +372,7 @@ class DashboardController extends Controller
 
     private function adminActionMix(Carbon $monthStart): array
     {
-        $rows = ActivityLog::query()
+        $rows = ActivityLog::administrative()
             ->selectRaw('action, COUNT(*) as total')
             ->where('created_at', '>=', $monthStart)
             ->groupBy('action')
@@ -422,7 +410,7 @@ class DashboardController extends Controller
 
     private function adminModuleActivity(Carbon $monthStart): array
     {
-        $rows = ActivityLog::query()
+        $rows = ActivityLog::administrative()
             ->selectRaw('module, COUNT(*) as total')
             ->where('created_at', '>=', $monthStart)
             ->groupBy('module')
@@ -452,7 +440,7 @@ class DashboardController extends Controller
 
     private function adminMostActiveUsers(Carbon $monthStart): array
     {
-        $rows = ActivityLog::query()
+        $rows = ActivityLog::administrative()
             ->selectRaw(
                 'user_id, MAX(user_name) as user_name, COUNT(*) as total'
             )
@@ -490,7 +478,7 @@ class DashboardController extends Controller
             ->subDays(13)
             ->startOfDay();
 
-        $rows = ActivityLog::query()
+        $rows = ActivityLog::administrative()
             ->selectRaw('DATE(created_at) as day_key, COUNT(*) as total')
             ->where('created_at', '>=', $start)
             ->groupBy('day_key')

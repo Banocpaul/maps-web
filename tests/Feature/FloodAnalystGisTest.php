@@ -89,6 +89,9 @@ class FloodAnalystGisTest extends TestCase
                 'name' => 'View GIS', 'module' => 'gis', 'is_active' => true,
             ]);
             $role->permissions()->syncWithoutDetaching([$permission->id]);
+            $hazard = $slug === 'flood-analyst' ? 'flood' : 'fire';
+            $view = Permission::firstOrCreate(['slug' => $hazard.'.view'], ['name' => 'View hazard', 'module' => $hazard, 'is_active' => true]);
+            $role->permissions()->syncWithoutDetaching([$view->id]);
         }
         return User::factory()->create(['role_id' => $role->id, 'is_active' => true]);
     }
@@ -110,7 +113,9 @@ class FloodAnalystGisTest extends TestCase
         $user = $this->operator('flood-analyst');
         // Give this role only GIS access initially, independent of seeded permissions.
         $user->role->permissions()->sync(Permission::where('slug', 'gis.view')->pluck('id'));
-        $this->actingAs($user)->get(route('gis.data'))->assertOk()->assertJsonPath('floods.0.manage_url', null);
+        $this->actingAs($user)->get(route('gis.data'))->assertForbidden();
+        $user->role->permissions()->syncWithoutDetaching(Permission::where('slug', 'flood.view')->pluck('id'));
+        $this->get(route('gis.data'))->assertOk()->assertJsonPath('floods.0.manage_url', null);
         foreach (['flood.edit', 'prediction.view'] as $slug) {
             $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'module' => 'flood', 'is_active' => true]);
             $user->role->permissions()->syncWithoutDetaching([$permission->id]);

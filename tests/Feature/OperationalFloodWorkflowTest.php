@@ -264,7 +264,8 @@ class OperationalFloodWorkflowTest extends TestCase
     private function staff(?array $permissions = null): User
     {
         $permissions ??= ['records.view', 'gis.view', 'flood.create', 'flood.edit', 'flood.delete'];
-        $role = Role::create(['slug' => 'workflow-'.uniqid(), 'name' => 'Flood Staff '.uniqid(), 'is_active' => true]);
+        $role = Role::firstOrCreate(['slug' => 'operations-manager'], ['name' => 'Operations Manager', 'is_active' => true]);
+        $role->permissions()->detach();
         foreach ($permissions as $slug) {
             $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug, 'module' => 'flood', 'is_active' => true]);
             $role->permissions()->attach($permission);

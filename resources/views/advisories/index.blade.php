@@ -31,12 +31,14 @@
             </p>
         </div>
 
+        @if (auth()->user()->hasPermission('advisories.create'))
         <a
             href="{{ route('advisories.create') }}"
             class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"
         >
             + Create Advisory
         </a>
+        @endif
     </div>
 
     <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -78,6 +80,10 @@
                 @foreach ($advisories as $advisory)
                     @php
                         $isOwner = (int) $advisory->user_id === (int) auth()->id();
+                        $canManage = ($isOwner || auth()->user()->hasAnyRole(['operations-manager', 'operations-officer']))
+                            && in_array($advisory->type, \App\Support\RoleAccess::advisoryTypes(auth()->user()->role()->value('slug')), true);
+                        $canEdit = $canManage && auth()->user()->hasPermission('advisories.edit');
+                        $canDelete = $canManage && auth()->user()->hasPermission('advisories.delete');
                         $roleName = $advisory->user?->role?->name ?? 'Former/Unavailable Account';
                         $posterName = $advisory->user?->full_name
                             ?: $advisory->user?->name
@@ -171,14 +177,15 @@
                             </div>
 
                             <div class="flex items-start justify-start gap-2 lg:justify-end">
-                                @if ($isOwner)
+                                @if ($canEdit)
                                     <a
                                         href="{{ route('advisories.edit', $advisory) }}"
                                         class="inline-flex rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                                     >
                                         Edit
                                     </a>
-
+                                @endif
+                                @if ($canDelete)
                                     <form
                                         method="POST"
                                         action="{{ route('advisories.destroy', $advisory) }}"
@@ -194,7 +201,8 @@
                                             Delete
                                         </button>
                                     </form>
-                                @else
+                                @endif
+                                @if (! $canEdit && ! $canDelete)
                                     <span class="text-xs font-semibold text-slate-400">
                                         View only
                                     </span>

@@ -3,6 +3,7 @@
         'administrator' => 'Review accounts, backups, and system issues.',
         'fire-responder' => 'Review active incidents and continue the next required response action.',
         'flood-analyst' => 'Review flood reports, active floods, and saved forecasts.',
+        'system-viewer' => 'Browse approved fire and flood information. Your access is read-only.',
         'operations-manager' => 'Review reports, follow up incidents, and check delivery issues.',
     ];
 @endphp

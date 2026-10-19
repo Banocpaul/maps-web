@@ -37,6 +37,7 @@ class EnsureAdvisoryPublisher
          */
         if (! $user->hasAnyRole([
             'operations-manager',
+            'operations-officer',
             'flood-analyst',
             'fire-responder',
         ])) {

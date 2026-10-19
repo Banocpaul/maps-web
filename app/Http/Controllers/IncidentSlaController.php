@@ -10,7 +10,7 @@ class IncidentSlaController extends Controller
 {
     public function update(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->role?->is_active && $request->user()->role->slug === 'operations-manager', 403);
+        abort_unless($request->user()->hasAnyRole(['operations-manager', 'operations-officer']), 403);
         $data = $request->validate([
             'hazard' => ['required', 'in:fire,flood'],
             'validation_minutes' => ['nullable', 'integer', 'min:1', 'max:525600'],

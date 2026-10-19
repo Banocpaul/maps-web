@@ -52,7 +52,7 @@
 @include('public.partials.footer')
 <dialog id="report-dialog" aria-labelledby="report-title">
     <div class="dialog-head"><h2 id="report-title">Report an incident</h2><button type="button" class="secondary" id="close-report" aria-label="Close map">✕</button></div>
-    <p>Tap or click the incident location inside Mandaluyong. Drag the pin to adjust it.</p>
+    <p>Tap or click the incident location. Drag the pin to adjust it.</p>
     <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <label for="report-address-query" class="block text-sm font-semibold">Search incident address or landmark</label>
         <div class="mt-2 flex flex-wrap gap-2">
@@ -90,7 +90,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (() => {
-    const boundaries = {{ Illuminate\Support\Js::from($boundaries) }};
     const dialog = document.getElementById('report-dialog');
     const type = document.getElementById('incident-type');
     const latitude = document.getElementById('report-latitude');
@@ -119,36 +118,17 @@
     });
     removePhoto.addEventListener('click',clearPhoto);
     let map, pin;
-    function inRing(x,y,ring) {
-        let inside = false;
-        for(let i=0,j=ring.length-1;i<ring.length;j=i++) {
-            const [xi,yi]=ring[i], [xj,yj]=ring[j];
-            const cross=(x-xi)*(yj-yi)-(y-yi)*(xj-xi);
-            if(Math.abs(cross)<1e-10 && x>=Math.min(xi,xj) && x<=Math.max(xi,xj) && y>=Math.min(yi,yj) && y<=Math.max(yi,yj)) return true;
-            if((yi>y)!==(yj>y) && x<(xj-xi)*(y-yi)/(yj-yi)+xi) inside=!inside;
-        }
-        return inside;
-    }
-    function inCity(lat,lng) {
-        return boundaries.features.some(f => {
-            const polygons=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.type==='MultiPolygon'?f.geometry.coordinates:[];
-            return polygons.some(rings => inRing(lng,lat,rings[0]) && !rings.slice(1).some(ring=>inRing(lng,lat,ring)));
-        });
-    }
     function setPin(position) {
         if(!pin) {
             pin=L.marker(position,{draggable:true}).addTo(map);
             pin.on('dragend',()=>setPin(pin.getLatLng()));
         } else pin.setLatLng(position);
-        const valid=inCity(position.lat,position.lng);
+        const valid=Number.isFinite(position.lat) && Number.isFinite(position.lng)
+            && position.lat>=-90 && position.lat<=90 && position.lng>=-180 && position.lng<=180;
         latitude.value=valid?position.lat.toFixed(7):'';
         longitude.value=valid?position.lng.toFixed(7):'';
         submit.disabled=!valid;
-        const names=boundaries.features.filter(f=>{
-            const polygons=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.type==='MultiPolygon'?f.geometry.coordinates:[];
-            return polygons.some(rings=>inRing(position.lng,position.lat,rings[0])&&!rings.slice(1).some(r=>inRing(position.lng,position.lat,r)));
-        }).map(f=>f.properties.barangay);
-        status.textContent=valid?'Selected location: '+latitude.value+', '+longitude.value+(names.length===1?' · Barangay: '+names[0]:' · Verify the barangay boundary.'):'Please move the pin inside Mandaluyong City.';
+        status.textContent=valid?'Selected location: '+latitude.value+', '+longitude.value:'Select a valid incident location.';
     }
     const query=document.getElementById('report-address-query');
     const searchButton=document.getElementById('report-address-search');
@@ -204,8 +184,6 @@
         if(!map) {
             map=L.map('report-map').setView([14.5832,121.039],14);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
-            const outline=L.geoJSON(boundaries,{style:{color:'#2563eb',weight:1,fillOpacity:0.035}}).addTo(map);
-            map.fitBounds(outline.getBounds());
             map.on('click',e=>setPin(e.latlng));
         }
         if(changed) {

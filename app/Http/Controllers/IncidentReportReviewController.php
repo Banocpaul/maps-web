@@ -244,7 +244,7 @@ class IncidentReportReviewController extends Controller
         abort_unless($publicReport->status === 'Validated', 409, 'Validate the report before publishing.');
 
         if ($publicReport->incident_type === 'fire') {
-            $pin = $request->validate([
+            $request->validate([
                 'barangay_id' => ['required', 'integer', Rule::exists('barangays', 'id')->where('is_active', true)],
                 'latitude' => ['required', 'numeric', 'between:-90,90'],
                 'longitude' => ['required', 'numeric', 'between:-180,180'],
@@ -252,9 +252,6 @@ class IncidentReportReviewController extends Controller
                 'responded_at' => ['nullable', 'date'],
                 'resolved_at' => ['nullable', 'date'],
             ]);
-            if (! $area->contains((float) $pin['latitude'], (float) $pin['longitude'])) {
-                throw ValidationException::withMessages(['latitude' => 'Place the confirmed fire pin inside Mandaluyong.']);
-            }
             // Reuse existing validation, numbering, GIS integration and automatic SMS.
             $request->merge(['public_report_id' => $publicReport->id]);
 
@@ -281,8 +278,9 @@ class IncidentReportReviewController extends Controller
         }
         foreach ($coordinates as $point) {
             if (! is_array($point) || ! array_is_list($point) || count($point) !== 2 || ! is_numeric($point[0])
-                || ! is_numeric($point[1]) || ! $area->contains((float) $point[1], (float) $point[0])) {
-                throw ValidationException::withMessages(['geometry_json' => 'Every flood line point must be inside Mandaluyong.']);
+                || ! is_numeric($point[1]) || $point[0] < -180 || $point[0] > 180
+                || $point[1] < -90 || $point[1] > 90) {
+                throw ValidationException::withMessages(['geometry_json' => 'Every flood line point must have valid longitude and latitude coordinates.']);
             }
         }
         $length = $area->lineLength($coordinates);

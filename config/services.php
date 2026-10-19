@@ -41,6 +41,7 @@ return [
 
     'address_search' => [
         'url' => env('ADDRESS_SEARCH_URL', 'https://photon.komoot.io/api/'),
+        'reverse_url' => env('ADDRESS_REVERSE_SEARCH_URL', 'https://photon.komoot.io/reverse'),
     ],
 
     'maps_ml' => [

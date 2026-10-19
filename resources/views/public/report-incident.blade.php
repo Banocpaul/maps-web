@@ -65,7 +65,7 @@
     </div>
     <div id="report-map" aria-label="Select incident location on the map"></div>
     <p id="pin-status" role="status" aria-live="polite">Select the incident location to continue.</p>
-    <form method="POST" action="{{ route('public.incident-reports.store') }}" id="report-form" enctype="multipart/form-data">
+    <form method="POST" action="{{ route('public.incident-reports.store') }}" id="report-form" enctype="multipart/form-data" data-address-details-url="{{ route('public.incident-reports.address-details') }}">
         @csrf
         <label class="block font-semibold mt-4" for="incident-barangay">Barangay of the incident</label>
         <select id="incident-barangay" name="incident_barangay_id" required class="block w-full rounded-lg border border-slate-300 bg-white p-3 mt-2">
@@ -137,6 +137,7 @@
         longitude.value=valid?position.lng.toFixed(7):'';
         submit.disabled=!valid;
         status.textContent=valid?'Selected location: '+latitude.value+', '+longitude.value:'Select a valid incident location.';
+        document.dispatchEvent(new CustomEvent('public-report-pin-changed'));
     }
     const query=document.getElementById('report-address-query');
     const searchButton=document.getElementById('report-address-search');
@@ -175,6 +176,7 @@
                     document.getElementById('report-street').value=(result.street || '').slice(0,255);
                     query.value=result.label.slice(0,150);setPin(point);map.setView(point,17);resetSearch();
                     searchStatus.textContent='Address selected. Drag the pin to the exact location before submitting.';
+                    document.dispatchEvent(new CustomEvent('public-report-address-selected', {detail:result}));
                 });searchResults.append(button);
             }
             searchResults.hidden=data.results.length===0;
@@ -200,6 +202,7 @@
             clearPhoto();
             if(pin){map.removeLayer(pin);pin=null;}
             latitude.value='';longitude.value='';submit.disabled=true;
+            document.dispatchEvent(new CustomEvent('public-report-pin-changed'));
             status.textContent='Select the incident location to continue.';
         } else if(latitude.value && longitude.value) setPin(L.latLng(Number(latitude.value),Number(longitude.value)));
         requestAnimationFrame(()=>map.invalidateSize());
